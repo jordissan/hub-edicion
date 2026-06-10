@@ -14,6 +14,8 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      TZ: America/Mexico_City   # el runner es UTC; forzamos hora de México (fechas/sesiones/sello)
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
