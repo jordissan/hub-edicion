@@ -1,0 +1,28 @@
+name: Publicar dashboard
+
+# Refresca los datos de Notion y los sube a Cloudflare KV.
+on:
+  schedule:
+    - cron: "*/30 * * * *"   # cada 30 min (UTC). Ajustable.
+  workflow_dispatch:          # botón "Run workflow" + refresco on-demand desde el teléfono
+
+concurrency:
+  group: publicar
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Extraer Notion y publicar a KV
+        run: python3 publish.py
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_KV_NAMESPACE_ID: ${{ secrets.CF_KV_NAMESPACE_ID }}
