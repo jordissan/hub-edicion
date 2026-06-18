@@ -278,9 +278,10 @@ def build_wedding(page):
             "estado": norm_estado(p_select(sp, "Estado")),
             "orden": p_number(sp, "Orden") if p_number(sp, "Orden") is not None else 99,
             "start": s_start, "end": s_end,
-            # Las "Correcciones" (plural) se trackean pero NO cuentan como tiempo de edición.
-            # OJO: "correcciones" ≠ "Corrección de Color y Finalización" (etapa normal de edición).
-            "isCorrections": "correcciones" in s_etapa.lower(),
+            # "Cambios"/"Correcciones" se trackean pero NO cuentan como tiempo de edición
+            # (dependen de terceros: Claudio/Romina). OJO: "correcciones" plural ≠
+            # "Corrección de Color y Finalización" (etapa normal de edición, singular).
+            "isCorrections": ("cambios" in s_etapa.lower()) or ("correcciones" in s_etapa.lower()),
             "scenes": [], "hours": None, "sessions": 0, "sessionLog": [],
         }
         total_h = 0.0
@@ -326,6 +327,7 @@ def build_wedding(page):
                             "inicio": ini_local.strftime("%Y-%m-%dT%H:%M") if ini_local else ini,
                             "min": int(round(h * 60)),
                             "tipo": p_select(pp, "Tipo"),
+                            "ronda": p_number(pp, "Ronda"),   # para contar rondas de cambios
                         })
         if nsess:
             stage["hours"] = round(total_h, 1)
