@@ -313,12 +313,13 @@ function clamp(n,a,b){ return Math.max(a,Math.min(b,n)); }
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 function estadoLabel(e){ return e==='done'?'Completado':e==='live'?'En progreso':'Pendiente'; }
 function hrs(h){ return h==null?null:Math.round(h); }
-function stageProg(st){ if(st.scenes&&st.scenes.length){const d=st.scenes.filter(x=>x.estado==='done').length,l=st.scenes.filter(x=>x.estado==='live').length;return (d+l*0.5)/st.scenes.length;} return st.estado==='done'?1:st.estado==='live'?0.5:0; }
+function stageProg(st){ if(st.estado==='done') return 1; if(st.scenes&&st.scenes.length){const d=st.scenes.filter(x=>x.estado==='done').length,l=st.scenes.filter(x=>x.estado==='live').length;return (d+l*0.5)/st.scenes.length;} return st.estado==='live'?0.5:0; }
 // ── Correcciones: trackean pero NO cuentan como tiempo de edición ──
 function editStages(w){ return w.stages.filter(s=>!s.isCorrections); }
 function corrStages(w){ return w.stages.filter(s=>s.isCorrections); }
 function corrHours(w){ return corrStages(w).reduce((a,s)=>a+(s.hours||0),0); }
 function corrSessions(w){ return corrStages(w).reduce((a,s)=>a+(s.sessions||0),0); }
+function corrRounds(w){ const rs=new Set(); let any=false; corrStages(w).forEach(s=>(s.sessionLog||[]).forEach(x=>{any=true; if(x.ronda!=null) rs.add(x.ronda);})); return rs.size||(any?1:0); }
 function editComplete(w){ const e=editStages(w); return e.length>0&&e.every(s=>s.estado==='done'); }
 function wedInCorr(w){ return /correc/i.test(w.status||''); }   // estado de boda en Notion ("Correcciones")
 function focusWeds(){ return (selWed!=null&&D.weddings[selWed])?[D.weddings[selWed]]:D.weddings; }
@@ -400,7 +401,7 @@ function renderHero(){
   const liveStage=liveW&&editStages(liveW).find(s=>s.estado==='live');
   const liveScene=liveStage&&(liveStage.scenes||[]).find(s=>s.estado==='live');
   const proj=liveW?projectDelivery(liveW):null,liveDays=liveStage?stageDays(liveStage):null;
-  const corrH=Math.round(weds.reduce((a,w)=>a+corrHours(w),0)),corrN=weds.reduce((a,w)=>a+corrSessions(w),0);
+  const corrH=Math.round(weds.reduce((a,w)=>a+corrHours(w),0)),corrN=weds.reduce((a,w)=>a+corrSessions(w),0),corrR=weds.reduce((a,w)=>a+corrRounds(w),0);
   const kpis=[
     {v:`${sd}/${all.length}`,l:'Etapas completadas',t:`${sd} hechas · ${all.filter(s=>s.estado==='live').length} en curso · ${all.filter(s=>s.estado==='wait').length} pendientes`},
     {v:scenes.length?`${scd}/${scenes.length}`:'—',l:'Escenas (etapa activa)',t:`${scd} de ${scenes.length} escenas completadas`},
@@ -411,7 +412,7 @@ function renderHero(){
   if(liveStage) focus=`${icon('play',13)} <span>En curso: <b>${esc(liveW.name)}</b> · ${esc(liveStage.etapa)}${liveScene?` · ${esc(liveScene.escena)}`:''}</span>`;
   else if(liveW&&editComplete(liveW)) focus=`${icon('check',13)} <span>Edición terminada${one?` · <b>${esc(liveW.name)}</b>`:''}${corrH>0?' · en correcciones':''}</span>`;
   else focus=`${icon('check',13)} <span>Sin etapas en progreso</span>`;
-  if(corrH>0) focus+=`<span class="chip" style="border-color:#fb923c;color:#fb923c;margin-left:8px">${icon('refresh',10)} Correcciones: ${corrH}h · ${corrN} ses</span>`;
+  if(corrN>0||corrH>0) focus+=`<span class="chip" style="border-color:#fb923c;color:#fb923c;margin-left:8px">${icon('refresh',10)} Cambios: ${corrR?corrR+' ronda'+(corrR>1?'s':'')+' · ':''}${corrH}h · ${corrN} ses</span>`;
   const gtip=one&&liveW?`Avance de ${esc(liveW.name)}: ${gp}%`:`Avance global: ${gp}%`;
   document.getElementById('hero').innerHTML=`<div class="gauge" data-tip="${gtip}">${semiGauge(gp)}</div><div class="herobody"><div class="kpirow">${kpis.map(k=>`<div class="kpi" data-tip="${esc(k.t)}"><div class="v">${k.v}</div><div class="l">${k.l}</div></div>`).join('')}</div><div class="focus">${focus}</div></div>`;
 }
@@ -428,7 +429,7 @@ function renderBodas(){
   const list=selWed!=null?[selWed]:D.weddings.map((w,i)=>i);   // una sola boda si está seleccionada
   document.getElementById('bodas').innerHTML=list.map(wi=>{
     const w=D.weddings[wi],E=editStages(w),pct=Math.round(wedProg(w)*100),done=E.filter(s=>s.estado==='done').length,live=E.filter(s=>s.estado==='live').length,wait=E.filter(s=>s.estado==='wait').length;
-    const complete=editComplete(w),ordered=E.slice().sort((a,b)=>a.orden-b.orden),totH=Math.round(wedHours(w)),cH=Math.round(corrHours(w)),cN=corrSessions(w);
+    const complete=editComplete(w),ordered=E.slice().sort((a,b)=>a.orden-b.orden),totH=Math.round(wedHours(w)),cH=Math.round(corrHours(w)),cN=corrSessions(w),cR=corrRounds(w);
     const viewSeg=`<div class="seg2 bodaseg"><button class="${bodaView==='circulo'?'on':''}" data-bodaview="circulo">Círculo</button><button class="${bodaView==='barras'?'on':''}" data-bodaview="barras">Barras</button></div>`;
     let body;
     if(bodaView==='circulo'){
@@ -444,7 +445,7 @@ function renderBodas(){
         <div class="bhead-r">${viewSeg}<a class="blink" href="${w.url}" target="_blank" rel="noopener" data-noselect="1">Notion ${icon('ext',11)}</a></div>
       </div>
       <div class="bmeta">${statChip}${w.studio?`<span class="chip">${esc(w.studio)}</span>`:''}</div>
-      <div class="bsum"><span><b>${done}</b> hechas</span><span><b>${live}</b> en curso</span><span><b>${wait}</b> pend.</span><span>${icon('clock',11)} <b>${totH}h</b></span>${cH>0?`<span style="color:#fb923c">${icon('refresh',11)} <b>Corr: ${cH}h · ${cN} ses</b></span>`:''}</div>
+      <div class="bsum"><span><b>${done}</b> hechas</span><span><b>${live}</b> en curso</span><span><b>${wait}</b> pend.</span><span>${icon('clock',11)} <b>${totH}h</b></span>${(cN>0||cH>0)?`<span style="color:#fb923c">${icon('refresh',11)} <b>Cambios: ${cR?cR+' rnd · ':''}${cH}h · ${cN} ses</b></span>`:''}</div>
       ${body}
       <div style="margin-top:11px;font-size:10px;color:var(--dim)">${selWed!=null?'':(wi===sel?'● Mostrando en drilldown':'Clic para ver detalle →')}</div></div>`;
   }).join('');
