@@ -271,12 +271,16 @@ def build_wedding(page):
     for st in query_db(tracking_db):
         sp = st.get("properties", {})
         s_start, s_end = first_date(sp)
+        s_etapa = p_title(sp, "Etapa") or title_any(sp)
         stage = {
-            "etapa": p_title(sp, "Etapa") or title_any(sp),
+            "etapa": s_etapa,
             "fase": p_select(sp, "Fase"),
             "estado": norm_estado(p_select(sp, "Estado")),
             "orden": p_number(sp, "Orden") if p_number(sp, "Orden") is not None else 99,
             "start": s_start, "end": s_end,
+            # Las "Correcciones" (plural) se trackean pero NO cuentan como tiempo de edición.
+            # OJO: "correcciones" ≠ "Corrección de Color y Finalización" (etapa normal de edición).
+            "isCorrections": "correcciones" in s_etapa.lower(),
             "scenes": [], "hours": None, "sessions": 0, "sessionLog": [],
         }
         total_h = 0.0

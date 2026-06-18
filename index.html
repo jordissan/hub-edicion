@@ -122,6 +122,9 @@ h1 .ic{color:var(--accent)}
 
 .drillhead{margin:10px 0 4px}
 .seg2{display:inline-flex;background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:2px;gap:2px}
+.bodasel{display:flex;flex-wrap:wrap;margin-bottom:16px}
+.wdot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-left:2px}
+.wdot.live{background:var(--live)}.wdot.corr{background:#fb923c}
 .seg2 button{font-family:inherit;font-size:11px;font-weight:600;color:var(--muted);background:none;border:none;border-radius:7px;padding:5px 13px;cursor:pointer;transition:.12s;display:flex;align-items:center;gap:5px}
 .seg2 button.on{background:var(--accent);color:var(--ink)}
 .drilltop{display:flex;align-items:center;gap:16px;margin:12px 0 6px}
@@ -237,6 +240,7 @@ h1 .ic{color:var(--accent)}
 </div>
 
 <div class="stack">
+  <div id="bodaSelector"></div>
   <div class="card" id="hero"></div>
   <div id="dailyk"></div>
   <div class="cols">
@@ -309,10 +313,18 @@ function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').repla
 function estadoLabel(e){ return e==='done'?'Completado':e==='live'?'En progreso':'Pendiente'; }
 function hrs(h){ return h==null?null:Math.round(h); }
 function stageProg(st){ if(st.scenes&&st.scenes.length){const d=st.scenes.filter(x=>x.estado==='done').length,l=st.scenes.filter(x=>x.estado==='live').length;return (d+l*0.5)/st.scenes.length;} return st.estado==='done'?1:st.estado==='live'?0.5:0; }
-function wedProg(w){ return w.stages.reduce((a,x)=>a+stageProg(x),0)/w.stages.length; }
+// ── Correcciones: trackean pero NO cuentan como tiempo de edición ──
+function editStages(w){ return w.stages.filter(s=>!s.isCorrections); }
+function corrStages(w){ return w.stages.filter(s=>s.isCorrections); }
+function corrHours(w){ return corrStages(w).reduce((a,s)=>a+(s.hours||0),0); }
+function corrSessions(w){ return corrStages(w).reduce((a,s)=>a+(s.sessions||0),0); }
+function editComplete(w){ const e=editStages(w); return e.length>0&&e.every(s=>s.estado==='done'); }
+function wedInCorr(w){ return /correc/i.test(w.status||''); }   // estado de boda en Notion ("Correcciones")
+function focusWeds(){ return (selWed!=null&&D.weddings[selWed])?[D.weddings[selWed]]:D.weddings; }
+function wedProg(w){ const e=editStages(w); return e.length?e.reduce((a,x)=>a+stageProg(x),0)/e.length:0; }
 function stageDays(st){ const s=parseD(st.start); if(!s) return null; const e=st.end?parseD(st.end):TODAY; return Math.max(1,dayDiff(s,e)+1); }
-function wedHours(w){ return w.stages.reduce((a,s)=>a+(s.hours||0),0); }
-function projectDelivery(w){ const done=w.stages.filter(s=>s.estado==='done'&&s.start&&s.end); if(!done.length) return null; const avg=done.reduce((a,s)=>a+stageDays(s),0)/done.length; const rem=w.stages.filter(s=>s.estado==='wait').length; const live=w.stages.find(s=>s.estado==='live'); const ex=Math.round(rem*avg+(live?(1-stageProg(live))*avg:0)); const d=new Date(TODAY); d.setDate(d.getDate()+ex); return d; }
+function wedHours(w){ return editStages(w).reduce((a,s)=>a+(s.hours||0),0); }
+function projectDelivery(w){ const E=editStages(w),done=E.filter(s=>s.estado==='done'&&s.start&&s.end); if(!done.length) return null; const avg=done.reduce((a,s)=>a+stageDays(s),0)/done.length; const rem=E.filter(s=>s.estado==='wait').length; const live=E.find(s=>s.estado==='live'); const ex=Math.round(rem*avg+(live?(1-stageProg(live))*avg:0)); const d=new Date(TODAY); d.setDate(d.getDate()+ex); return d; }
 function abbr(n){const m={"Importación y Organización":"Import","Separación por Escenas":"Separ.","Limpieza":"Limp.","Sincronización":"Sinc.","Musicalización":"Mús.","Edición Musical":"Ed.Mus","Corrección de Color y Finalización":"Color","Selección de Material (HL/SF)":"Mat.","Selección Musical (HL/SF)":"Selec","Montaje (HL/SF)":"HL/SF"};return m[n]||n.slice(0,6);}
 function tipFor(st){ const r=st.start?`${fmtShort(parseD(st.start))} → ${st.end?fmtShort(parseD(st.end)):'hoy'} · ${stageDays(st)}d${st.hours!=null?' · '+hrs(st.hours)+'h efectivas':''}`:'sin programar'; return `<b>${esc(st.etapa)}</b><br>${estadoLabel(st.estado)} · ${r}`; }
 
@@ -367,67 +379,85 @@ function lineChart(points){
 }
 
 /* ───── Render ───── */
+function renderBodaSelector(){
+  const el=document.getElementById('bodaSelector'); if(!el) return;
+  if(!D.weddings||!D.weddings.length){el.innerHTML='';return;}
+  const order=D.weddings.map((w,i)=>i).sort((a,b)=>(wedInCorr(D.weddings[a])?1:0)-(wedInCorr(D.weddings[b])?1:0));
+  const btn=(label,val,on,tag)=>`<button class="${on?'on':''}" data-wed-select="${val}">${esc(label)}${tag||''}</button>`;
+  let html=btn('Todas','all',selWed==null,'');
+  order.forEach(i=>{const w=D.weddings[i];const tag=wedInCorr(w)?'<span class="wdot corr"></span>':(editStages(w).some(s=>s.estado==='live')?'<span class="wdot live"></span>':'');html+=btn(w.name,i,selWed===i,tag);});
+  el.innerHTML=`<div class="seg2 bodasel">${html}</div>`;
+}
 function renderHero(){
-  const all=D.weddings.flatMap(w=>w.stages);
-  const gp=Math.round(all.reduce((a,s)=>a+stageProg(s),0)/all.length*100);
+  const weds=focusWeds(),one=selWed!=null;
+  const all=weds.flatMap(w=>editStages(w));
+  const gp=all.length?Math.round(all.reduce((a,s)=>a+stageProg(s),0)/all.length*100):0;
   const sd=all.filter(s=>s.estado==='done').length;
   const scenes=all.flatMap(s=>s.scenes||[]),scd=scenes.filter(s=>s.estado==='done').length;
   const totH=Math.round(all.reduce((a,s)=>a+(s.hours||0),0));
-  const liveW=D.weddings.find(w=>w.stages.some(s=>s.estado==='live')),liveStage=liveW&&liveW.stages.find(s=>s.estado==='live');
+  const liveW=one?D.weddings[selWed]:D.weddings.find(w=>editStages(w).some(s=>s.estado==='live'));
+  const liveStage=liveW&&editStages(liveW).find(s=>s.estado==='live');
   const liveScene=liveStage&&(liveStage.scenes||[]).find(s=>s.estado==='live');
   const proj=liveW?projectDelivery(liveW):null,liveDays=liveStage?stageDays(liveStage):null;
+  const corrH=Math.round(weds.reduce((a,w)=>a+corrHours(w),0)),corrN=weds.reduce((a,w)=>a+corrSessions(w),0);
   const kpis=[
     {v:`${sd}/${all.length}`,l:'Etapas completadas',t:`${sd} hechas · ${all.filter(s=>s.estado==='live').length} en curso · ${all.filter(s=>s.estado==='wait').length} pendientes`},
     {v:scenes.length?`${scd}/${scenes.length}`:'—',l:'Escenas (etapa activa)',t:`${scd} de ${scenes.length} escenas completadas`},
-    {v:totH?totH+'h':'—',l:'Horas efectivas',t:'Suma de sesiones de trabajo registradas en todas las etapas'},
+    {v:totH?totH+'h':'—',l:'Horas de edición',t:'Suma de sesiones de edición (sin correcciones)'},
     {v:proj?fmtShort(proj):'—',l:'Entrega estimada',t:'Proyección según tu ritmo promedio por etapa'},
     {v:liveDays!=null?liveDays+'d':'—',l:'Días en etapa activa',t:liveStage?`${esc(liveStage.etapa)}: ${liveDays} día(s)`:'Sin etapa en curso'}];
-  const focus=liveW?`${icon('play',13)} <span>En curso: <b>${esc(liveW.name)}</b> · ${esc(liveStage.etapa)}${liveScene?` · ${esc(liveScene.escena)}`:''}</span>`:`${icon('check',13)} <span>Sin etapas en progreso</span>`;
-  document.getElementById('hero').innerHTML=`<div class="gauge" data-tip="Avance global: ${gp}%">${semiGauge(gp)}</div><div class="herobody"><div class="kpirow">${kpis.map(k=>`<div class="kpi" data-tip="${esc(k.t)}"><div class="v">${k.v}</div><div class="l">${k.l}</div></div>`).join('')}</div><div class="focus">${focus}</div></div>`;
+  let focus;
+  if(liveStage) focus=`${icon('play',13)} <span>En curso: <b>${esc(liveW.name)}</b> · ${esc(liveStage.etapa)}${liveScene?` · ${esc(liveScene.escena)}`:''}</span>`;
+  else if(liveW&&editComplete(liveW)) focus=`${icon('check',13)} <span>Edición terminada${one?` · <b>${esc(liveW.name)}</b>`:''}${corrH>0?' · en correcciones':''}</span>`;
+  else focus=`${icon('check',13)} <span>Sin etapas en progreso</span>`;
+  if(corrH>0) focus+=`<span class="chip" style="border-color:#fb923c;color:#fb923c;margin-left:8px">${icon('refresh',10)} Correcciones: ${corrH}h · ${corrN} ses</span>`;
+  const gtip=one&&liveW?`Avance de ${esc(liveW.name)}: ${gp}%`:`Avance global: ${gp}%`;
+  document.getElementById('hero').innerHTML=`<div class="gauge" data-tip="${gtip}">${semiGauge(gp)}</div><div class="herobody"><div class="kpirow">${kpis.map(k=>`<div class="kpi" data-tip="${esc(k.t)}"><div class="v">${k.v}</div><div class="l">${k.l}</div></div>`).join('')}</div><div class="focus">${focus}</div></div>`;
 }
 function bodaBarData(w){
   const horas=barsMetric==='horas';
-  return w.stages.filter(s=>s.start).sort((a,b)=>a.orden-b.orden).map((s,i)=>{
+  return editStages(w).filter(s=>s.start).sort((a,b)=>a.orden-b.orden).map((s,i)=>{
     const d=stageDays(s),h=hrs(s.hours),val=horas?(h!=null?h:0):d;
     return {label:abbr(s.etapa),value:val,label2:horas?(h!=null?h+'h':'—'):String(d),color:stageColor(s.etapa,i),tip:`<b>${esc(s.etapa)}</b><br>${d}d${h!=null?' · '+h+'h efectivas':' · sin sesiones'}`};
   });
 }
 function renderBodas(){
-  const liveIdx=D.weddings.findIndex(w=>w.stages.some(s=>s.estado==='live'));
+  const liveIdx=D.weddings.findIndex(w=>editStages(w).some(s=>s.estado==='live'));
   const sel=selWed!=null?selWed:(liveIdx>=0?liveIdx:0);
   document.getElementById('bodas').innerHTML=D.weddings.map((w,wi)=>{
-    const pct=Math.round(wedProg(w)*100),done=w.stages.filter(s=>s.estado==='done').length,live=w.stages.filter(s=>s.estado==='live').length,wait=w.stages.filter(s=>s.estado==='wait').length;
-    const complete=w.stages.every(s=>s.estado==='done'),ordered=w.stages.slice().sort((a,b)=>a.orden-b.orden),totH=Math.round(wedHours(w));
+    const E=editStages(w),pct=Math.round(wedProg(w)*100),done=E.filter(s=>s.estado==='done').length,live=E.filter(s=>s.estado==='live').length,wait=E.filter(s=>s.estado==='wait').length;
+    const complete=editComplete(w),ordered=E.slice().sort((a,b)=>a.orden-b.orden),totH=Math.round(wedHours(w)),cH=Math.round(corrHours(w)),cN=corrSessions(w);
     const viewSeg=`<div class="seg2 bodaseg"><button class="${bodaView==='circulo'?'on':''}" data-bodaview="circulo">Círculo</button><button class="${bodaView==='barras'?'on':''}" data-bodaview="barras">Barras</button></div>`;
     let body;
     if(bodaView==='circulo'){
-      body=`<div class="boda"><div class="donutwrap">${donut(ordered)}<div class="donutpct">${totH>0?`<div class="p">${totH}h</div><div class="s">${pct}% · ${done}/${w.stages.length} etapas</div>`:`<div class="p">${pct}%</div><div class="s">${done}/${w.stages.length} etapas</div>`}</div></div>
+      body=`<div class="boda"><div class="donutwrap">${donut(ordered)}<div class="donutpct">${totH>0?`<div class="p">${totH}h</div><div class="s">${pct}% · ${done}/${E.length} etapas</div>`:`<div class="p">${pct}%</div><div class="s">${done}/${E.length} etapas</div>`}</div></div>
         <div class="binfo"><div class="lglist">${ordered.map((s,i)=>{const ic=s.estado==='done'?icon('check',11):s.estado==='live'?icon('play',11):'',cls=s.estado==='live'?'lg-live':s.estado==='wait'?'lg-wait':'';return `<div class="lgrow ${cls}" data-tip="${tipFor(s)}"><span class="lgd" style="background:${stageColor(s.etapa,i)}"></span><span class="lgn">${esc(s.etapa)}</span><span class="lgh">${s.hours>0?hrs(s.hours)+'h':''}</span><span class="lgs">${ic}</span></div>`;}).join('')}</div></div></div>`;
     } else {
       body=`<div style="margin-top:8px"><div style="display:flex;justify-content:flex-end;margin-bottom:8px"><div class="seg2"><button class="${barsMetric==='dias'?'on':''}" data-bars="dias">Días</button><button class="${barsMetric==='horas'?'on':''}" data-bars="horas">Horas</button></div></div>${barsChart(bodaBarData(w))}<div style="font-size:10px;color:var(--dim);text-align:center;margin-top:2px">${barsMetric==='horas'?'horas efectivas':'días'} por etapa</div></div>`;
     }
+    const statChip=wedInCorr(w)?`<span class="chip" style="border-color:#fb923c;color:#fb923c">En correcciones</span>`:`<span class="chip ${complete?'done':'live'}">${complete?'Edición completa':esc(w.status||'En progreso')}</span>`;
     return `<div class="card bodacard ${wi===sel?'sel':''}" data-wed="${wi}">
       <div class="bhead">
         <div class="bname">${icon('rings',18)}${esc(w.name)}</div>
         <div class="bhead-r">${viewSeg}<a class="blink" href="${w.url}" target="_blank" rel="noopener" data-noselect="1">Notion ${icon('ext',11)}</a></div>
       </div>
-      <div class="bmeta"><span class="chip ${complete?'done':'live'}">${complete?'Edición completa':esc(w.status||'')}</span>${w.studio?`<span class="chip">${esc(w.studio)}</span>`:''}</div>
-      <div class="bsum"><span><b>${done}</b> hechas</span><span><b>${live}</b> en curso</span><span><b>${wait}</b> pend.</span><span>${icon('clock',11)} <b>${totH}h</b></span></div>
+      <div class="bmeta">${statChip}${w.studio?`<span class="chip">${esc(w.studio)}</span>`:''}</div>
+      <div class="bsum"><span><b>${done}</b> hechas</span><span><b>${live}</b> en curso</span><span><b>${wait}</b> pend.</span><span>${icon('clock',11)} <b>${totH}h</b></span>${cH>0?`<span style="color:#fb923c">${icon('refresh',11)} <b>Corr: ${cH}h · ${cN} ses</b></span>`:''}</div>
       ${body}
       <div style="margin-top:11px;font-size:10px;color:var(--dim)">${wi===sel?'● Mostrando en drilldown':'Clic para ver detalle →'}</div>`;
   }).join('');
 }
 function renderDrill(){
   const el=document.getElementById('drill');
-  const liveIdx=D.weddings.findIndex(w=>w.stages.some(s=>s.estado==='live'));
+  const liveIdx=D.weddings.findIndex(w=>editStages(w).some(s=>s.estado==='live'));
   const w=D.weddings[selWed!=null?selWed:(liveIdx>=0?liveIdx:0)];
-  const hasScenes=w.stages.some(s=>(s.scenes||[]).length);
+  const hasScenes=editStages(w).some(s=>(s.scenes||[]).length);
   let view=drillView; if(view==='auto') view=hasScenes?'escenas':'etapas';
   const toggle=`<div class="seg2"><button class="${view==='escenas'?'on':''}" data-view="escenas">Escenas</button><button class="${view==='etapas'?'on':''}" data-view="etapas">Etapas</button></div>`;
   let body;
   if(view==='escenas'){
-    const liveStage=w.stages.find(s=>s.estado==='live');
-    const st=(liveStage&&(liveStage.scenes||[]).length)?liveStage:w.stages.slice().reverse().find(s=>(s.scenes||[]).length);
+    const liveStage=editStages(w).find(s=>s.estado==='live');
+    const st=(liveStage&&(liveStage.scenes||[]).length)?liveStage:editStages(w).slice().reverse().find(s=>(s.scenes||[]).length);
     if(!st) body=`<div class="muted2">Esta boda no tiene desglose por escenas en ninguna etapa. Usa la vista <b>Etapas</b>.</div>`;
     else{const isFb=liveStage&&st!==liveStage,total=st.scenes.length,sd=st.scenes.filter(s=>s.estado==='done').length,sl=st.scenes.filter(s=>s.estado==='live').length,pct=Math.round(stageProg(st)*100);
       const days=[...new Set(st.scenes.map(s=>s.dia))];
@@ -439,7 +469,7 @@ function renderDrill(){
       body=`${head}<div class="drilltop"><div class="ringmini">${ringMini(pct,cv('--live'))}<div class="c"><div class="p">${pct}%</div></div></div><div><div style="font-size:13px"><b>${sd}/${total}</b> escenas</div>${sl?`<div style="font-size:11.5px;color:var(--live);margin-top:2px">${sl} en curso</div>`:''}${st.hours!=null?`<div style="font-size:11px;color:var(--muted);margin-top:4px;display:flex;align-items:center;gap:5px">${icon('clock',12)} ${hrs(st.hours)}h efectivas</div>`:''}</div></div>${sec}`;
     }
   } else {
-    const ordered=w.stages.slice().sort((a,b)=>a.orden-b.orden);
+    const ordered=editStages(w).slice().sort((a,b)=>a.orden-b.orden);
     body=`<div style="margin-top:12px">${ordered.map((s,i)=>`<div class="stagerow" data-tip="${tipFor(s)}"><span class="sd" style="background:${stageColor(s.etapa,i)};opacity:${s.estado==='wait'?.35:1}"></span><span class="sn">${esc(s.etapa)}</span><span class="sb ${s.estado}">${estadoLabel(s.estado)}</span><span class="sdy">${stageDays(s)?stageDays(s)+'d':'—'}${s.hours!=null?' · '+hrs(s.hours)+'h':''}</span></div>`).join('')}</div>`;
   }
   el.innerHTML=`<div class="clabel">${icon('video',14)} Drilldown · ${esc(w.name)}</div><div class="drillhead">${toggle}</div>${body}`;
@@ -489,9 +519,11 @@ function dayTotalsOf(ss){const m={};ss.forEach(s=>m[s.key]=(m[s.key]||0)+s.min);
 function calcStreak(tot){let s=0;const d=parseD(D.today);if((tot[D.today]||0)<metaMin(D.today))d.setDate(d.getDate()-1);for(let i=0;i<120;i++){const k=keyOf(d);if(d.getDay()!==0){if((tot[k]||0)>=metaMin(k))s++;else break;}d.setDate(d.getDate()-1);}return s;}
 
 function renderDaily(){
-  const ss=allSessions(),tot=dayTotalsOf(ss),tk=D.today,tm=tot[tk]||0,meta=metaMin(tk),diff=tm-meta,stk=calcStreak(tot);
+  const ssAll=allSessions(),totAll=dayTotalsOf(ssAll),stk=calcStreak(totAll);   // Racha = siempre global
+  const ss=(selWed!=null&&D.weddings[selWed])?ssAll.filter(s=>s.wedding===D.weddings[selWed].name):ssAll;
+  const tot=dayTotalsOf(ss),tk=D.today,tm=tot[tk]||0,meta=metaMin(tk),diff=tm-meta;
   const todays=ss.filter(s=>s.key===tk),etapasHoy=[...new Set(todays.map(s=>s.etapa))];
-  const liveW=D.weddings.find(w=>w.stages.some(s=>s.estado==='live'))||D.weddings[0],liveStage=liveW&&liveW.stages.find(s=>s.estado==='live');
+  const liveW=selWed!=null?D.weddings[selWed]:(D.weddings.find(w=>editStages(w).some(s=>s.estado==='live'))||D.weddings[0]),liveStage=liveW&&editStages(liveW).find(s=>s.estado==='live');
   const kpis=[
     {c:'g',l:'Hoy',v:fmtHM(tm),s:meta>0?((diff>=0?'+':'−')+fmtHM(Math.abs(diff))+' sobre meta'):'día de descanso'},
     {c:'b',l:'Racha',v:stk+(stk===1?' día':' días'),s:'cumpliendo meta diaria'},
@@ -516,7 +548,7 @@ function weekChart(tot){
 }
 
 function renderSesHoy(){
-  const ss=allSessions(),tot=dayTotalsOf(ss),tk=D.today,tm=tot[tk]||0;
+  const ssAll=allSessions(),ss=(selWed!=null&&D.weddings[selWed])?ssAll.filter(s=>s.wedding===D.weddings[selWed].name):ssAll,tot=dayTotalsOf(ss),tk=D.today,tm=tot[tk]||0;
   const todays=ss.filter(s=>s.key===tk).sort((a,b)=>a.inicio<b.inicio?-1:1),etapasHoy=[...new Set(todays.map(s=>s.etapa))];
   const maxS=Math.max(1,...todays.map(s=>s.min));
   const rows=todays.length?todays.map(s=>`<div class="sessrow"><div class="sl">${shortStage(s.etapa)} · ${esc((s.name||'').replace(/Sesi[oó]n\s*/i,'S'))}</div><div class="stk"><div class="sf" style="width:${Math.max(8,s.min/maxS*100).toFixed(0)}%;background:${s.color}">${s.min>=22?fmtHM(s.min):''}</div></div><div class="sv">${fmtHM(s.min)}</div></div>`).join(''):`<div class="muted2">Sin sesiones registradas hoy.${ss.length?'':' Si sigue vacío, reinicia el servidor para traer las sesiones.'}</div>`;
@@ -537,7 +569,7 @@ function renderChrome(){
 }
 
 /* ───── Orquestación ───── */
-function renderAll(){ TODAY=parseD(D.today); renderChrome(); renderHero(); renderDaily(); renderBodas(); renderDrill(); renderSesHoy(); renderHoras(); renderLine(); renderGantt(); renderAlerts(); }
+function renderAll(){ TODAY=parseD(D.today); if(selWed!=null&&!D.weddings[selWed])selWed=null; renderChrome(); renderBodaSelector(); renderHero(); renderDaily(); renderBodas(); renderDrill(); renderSesHoy(); renderHoras(); renderLine(); renderGantt(); renderAlerts(); }
 function showErr(e){ document.body.insertAdjacentHTML('beforeend',`<div style="color:#f87171;border:1px solid #5a1a1a;background:#1a0a0a;padding:14px;border-radius:10px;margin-top:20px;font-size:12px">Error: ${e.message}<br><pre style="white-space:pre-wrap;font-size:10px">${e.stack||''}</pre></div>`); console.error(e); }
 function applyTheme(t){ document.documentElement.setAttribute('data-theme',t); try{localStorage.setItem('hubTheme',t);}catch(e){} const b=document.getElementById('themeBtn'); if(b)b.innerHTML=icon(t==='light'?'sun':'moon',15); }
 function toggleTheme(){ applyTheme(document.documentElement.getAttribute('data-theme')==='light'?'dark':'light'); renderAll(); }
@@ -562,12 +594,14 @@ const tip=document.createElement('div'); tip.id='tip'; document.body.appendChild
 document.addEventListener('mouseover',e=>{const t=e.target.closest&&e.target.closest('[data-tip]');if(t){tip.innerHTML=t.getAttribute('data-tip');tip.style.opacity='1';}});
 document.addEventListener('mousemove',e=>{if(tip.style.opacity==='1'){const x=Math.min(e.clientX+14,innerWidth-tip.offsetWidth-10),y=Math.min(e.clientY+16,innerHeight-tip.offsetHeight-10);tip.style.left=Math.max(8,x)+'px';tip.style.top=Math.max(8,y)+'px';}});
 document.addEventListener('mouseout',e=>{if(e.target.closest&&e.target.closest('[data-tip]'))tip.style.opacity='0';});
+function focusWedding(){ renderBodaSelector(); renderHero(); renderDaily(); renderBodas(); renderDrill(); renderSesHoy(); }
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-noselect]'))return;
+  const ws=e.target.closest('[data-wed-select]'); if(ws){const v=ws.getAttribute('data-wed-select');selWed=v==='all'?null:+v;if(selWed!=null&&D.weddings[selWed])drillView=editStages(D.weddings[selWed]).some(s=>(s.scenes||[]).length)?'escenas':'etapas';focusWedding();return;}
   const dv=e.target.closest('[data-bodaview]'); if(dv){bodaView=dv.getAttribute('data-bodaview');renderBodas();return;}
   const bv=e.target.closest('[data-bars]'); if(bv){barsMetric=bv.getAttribute('data-bars');renderBodas();return;}
   const v=e.target.closest('[data-view]'); if(v){drillView=v.getAttribute('data-view');renderDrill();return;}
-  const b=e.target.closest('[data-wed]'); if(b){selWed=+b.getAttribute('data-wed');const w=D.weddings[selWed];drillView=w.stages.some(s=>(s.scenes||[]).length)?'escenas':'etapas';renderBodas();renderDrill();}
+  const b=e.target.closest('[data-wed]'); if(b){selWed=+b.getAttribute('data-wed');const w=D.weddings[selWed];drillView=editStages(w).some(s=>(s.scenes||[]).length)?'escenas':'etapas';focusWedding();}
 });
 
 applyTheme(document.documentElement.getAttribute('data-theme')||'dark');
