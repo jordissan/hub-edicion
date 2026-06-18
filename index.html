@@ -122,9 +122,10 @@ h1 .ic{color:var(--accent)}
 
 .drillhead{margin:10px 0 4px}
 .seg2{display:inline-flex;background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:2px;gap:2px}
-.bodasel{display:flex;flex-wrap:wrap;margin-bottom:16px}
-.wdot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-left:2px}
-.wdot.live{background:var(--live)}.wdot.corr{background:#fb923c}
+.projsel{display:inline-flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--border);border-radius:11px;padding:8px 14px;margin-bottom:16px}
+.projsel-l{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px}
+.projsel select{appearance:none;-webkit-appearance:none;background:none;border:none;color:var(--txt);font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;padding:0 2px;outline:none;max-width:62vw}
+.projsel-c{color:var(--muted);font-size:11px;pointer-events:none}
 .seg2 button{font-family:inherit;font-size:11px;font-weight:600;color:var(--muted);background:none;border:none;border-radius:7px;padding:5px 13px;cursor:pointer;transition:.12s;display:flex;align-items:center;gap:5px}
 .seg2 button.on{background:var(--accent);color:var(--ink)}
 .drilltop{display:flex;align-items:center;gap:16px;margin:12px 0 6px}
@@ -383,10 +384,10 @@ function renderBodaSelector(){
   const el=document.getElementById('bodaSelector'); if(!el) return;
   if(!D.weddings||!D.weddings.length){el.innerHTML='';return;}
   const order=D.weddings.map((w,i)=>i).sort((a,b)=>(wedInCorr(D.weddings[a])?1:0)-(wedInCorr(D.weddings[b])?1:0));
-  const btn=(label,val,on,tag)=>`<button class="${on?'on':''}" data-wed-select="${val}">${esc(label)}${tag||''}</button>`;
-  let html=btn('Todas','all',selWed==null,'');
-  order.forEach(i=>{const w=D.weddings[i];const tag=wedInCorr(w)?'<span class="wdot corr"></span>':(editStages(w).some(s=>s.estado==='live')?'<span class="wdot live"></span>':'');html+=btn(w.name,i,selWed===i,tag);});
-  el.innerHTML=`<div class="seg2 bodasel">${html}</div>`;
+  const opt=(val,label,on)=>`<option value="${val}"${on?' selected':''}>${esc(label)}</option>`;
+  let opts=opt('all','Todas las bodas',selWed==null);
+  order.forEach(i=>{const w=D.weddings[i];const tag=wedInCorr(w)?'  ·  correcciones':(editStages(w).some(s=>s.estado==='live')?'  ·  en curso':'');opts+=opt(i,w.name+tag,selWed===i);});
+  el.innerHTML=`<div class="projsel">${icon('rings',14)}<span class="projsel-l">Proyecto</span><select id="bodaSelect" aria-label="Seleccionar proyecto">${opts}</select><span class="projsel-c">▾</span></div>`;
 }
 function renderHero(){
   const weds=focusWeds(),one=selWed!=null;
@@ -424,8 +425,9 @@ function bodaBarData(w){
 function renderBodas(){
   const liveIdx=D.weddings.findIndex(w=>editStages(w).some(s=>s.estado==='live'));
   const sel=selWed!=null?selWed:(liveIdx>=0?liveIdx:0);
-  document.getElementById('bodas').innerHTML=D.weddings.map((w,wi)=>{
-    const E=editStages(w),pct=Math.round(wedProg(w)*100),done=E.filter(s=>s.estado==='done').length,live=E.filter(s=>s.estado==='live').length,wait=E.filter(s=>s.estado==='wait').length;
+  const list=selWed!=null?[selWed]:D.weddings.map((w,i)=>i);   // una sola boda si está seleccionada
+  document.getElementById('bodas').innerHTML=list.map(wi=>{
+    const w=D.weddings[wi],E=editStages(w),pct=Math.round(wedProg(w)*100),done=E.filter(s=>s.estado==='done').length,live=E.filter(s=>s.estado==='live').length,wait=E.filter(s=>s.estado==='wait').length;
     const complete=editComplete(w),ordered=E.slice().sort((a,b)=>a.orden-b.orden),totH=Math.round(wedHours(w)),cH=Math.round(corrHours(w)),cN=corrSessions(w);
     const viewSeg=`<div class="seg2 bodaseg"><button class="${bodaView==='circulo'?'on':''}" data-bodaview="circulo">Círculo</button><button class="${bodaView==='barras'?'on':''}" data-bodaview="barras">Barras</button></div>`;
     let body;
@@ -444,7 +446,7 @@ function renderBodas(){
       <div class="bmeta">${statChip}${w.studio?`<span class="chip">${esc(w.studio)}</span>`:''}</div>
       <div class="bsum"><span><b>${done}</b> hechas</span><span><b>${live}</b> en curso</span><span><b>${wait}</b> pend.</span><span>${icon('clock',11)} <b>${totH}h</b></span>${cH>0?`<span style="color:#fb923c">${icon('refresh',11)} <b>Corr: ${cH}h · ${cN} ses</b></span>`:''}</div>
       ${body}
-      <div style="margin-top:11px;font-size:10px;color:var(--dim)">${wi===sel?'● Mostrando en drilldown':'Clic para ver detalle →'}</div>`;
+      <div style="margin-top:11px;font-size:10px;color:var(--dim)">${selWed!=null?'':(wi===sel?'● Mostrando en drilldown':'Clic para ver detalle →')}</div></div>`;
   }).join('');
 }
 function renderDrill(){
@@ -595,13 +597,14 @@ document.addEventListener('mouseover',e=>{const t=e.target.closest&&e.target.clo
 document.addEventListener('mousemove',e=>{if(tip.style.opacity==='1'){const x=Math.min(e.clientX+14,innerWidth-tip.offsetWidth-10),y=Math.min(e.clientY+16,innerHeight-tip.offsetHeight-10);tip.style.left=Math.max(8,x)+'px';tip.style.top=Math.max(8,y)+'px';}});
 document.addEventListener('mouseout',e=>{if(e.target.closest&&e.target.closest('[data-tip]'))tip.style.opacity='0';});
 function focusWedding(){ renderBodaSelector(); renderHero(); renderDaily(); renderBodas(); renderDrill(); renderSesHoy(); }
+function setWed(v){ selWed=(v==='all'||v==null)?null:+v; if(selWed!=null&&D.weddings[selWed])drillView=editStages(D.weddings[selWed]).some(s=>(s.scenes||[]).length)?'escenas':'etapas'; focusWedding(); }
+document.addEventListener('change',e=>{ if(e.target.id==='bodaSelect') setWed(e.target.value); });
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-noselect]'))return;
-  const ws=e.target.closest('[data-wed-select]'); if(ws){const v=ws.getAttribute('data-wed-select');selWed=v==='all'?null:+v;if(selWed!=null&&D.weddings[selWed])drillView=editStages(D.weddings[selWed]).some(s=>(s.scenes||[]).length)?'escenas':'etapas';focusWedding();return;}
   const dv=e.target.closest('[data-bodaview]'); if(dv){bodaView=dv.getAttribute('data-bodaview');renderBodas();return;}
   const bv=e.target.closest('[data-bars]'); if(bv){barsMetric=bv.getAttribute('data-bars');renderBodas();return;}
   const v=e.target.closest('[data-view]'); if(v){drillView=v.getAttribute('data-view');renderDrill();return;}
-  const b=e.target.closest('[data-wed]'); if(b){selWed=+b.getAttribute('data-wed');const w=D.weddings[selWed];drillView=editStages(w).some(s=>(s.scenes||[]).length)?'escenas':'etapas';focusWedding();}
+  const b=e.target.closest('[data-wed]'); if(b){setWed(+b.getAttribute('data-wed'));}
 });
 
 applyTheme(document.documentElement.getAttribute('data-theme')||'dark');
