@@ -395,7 +395,7 @@ function renderHero(){
   const all=weds.flatMap(w=>editStages(w));
   const gp=all.length?Math.round(all.reduce((a,s)=>a+stageProg(s),0)/all.length*100):0;
   const sd=all.filter(s=>s.estado==='done').length;
-  const scenes=all.flatMap(s=>s.scenes||[]),scd=scenes.filter(s=>s.estado==='done').length;
+  const scenes=all.flatMap(s=>s.scenes||[]),scd=all.reduce((a,s)=>a+((s.estado==='done')?(s.scenes||[]).length:(s.scenes||[]).filter(x=>x.estado==='done').length),0);
   const totH=Math.round(all.reduce((a,s)=>a+(s.hours||0),0));
   const liveW=one?D.weddings[selWed]:D.weddings.find(w=>editStages(w).some(s=>s.estado==='live'));
   const liveStage=liveW&&editStages(liveW).find(s=>s.estado==='live');
@@ -404,7 +404,7 @@ function renderHero(){
   const corrH=Math.round(weds.reduce((a,w)=>a+corrHours(w),0)),corrN=weds.reduce((a,w)=>a+corrSessions(w),0),corrR=weds.reduce((a,w)=>a+corrRounds(w),0);
   const kpis=[
     {v:`${sd}/${all.length}`,l:'Etapas completadas',t:`${sd} hechas · ${all.filter(s=>s.estado==='live').length} en curso · ${all.filter(s=>s.estado==='wait').length} pendientes`},
-    {v:scenes.length?`${scd}/${scenes.length}`:'—',l:'Escenas (etapa activa)',t:`${scd} de ${scenes.length} escenas completadas`},
+    {v:scenes.length?`${scd}/${scenes.length}`:'—',l:'Escenas completadas',t:`${scd} de ${scenes.length} escenas (etapas hechas cuentan completas)`},
     {v:totH?totH+'h':'—',l:'Horas de edición',t:'Suma de sesiones de edición (sin correcciones)'},
     {v:proj?fmtShort(proj):'—',l:'Entrega estimada',t:'Proyección según tu ritmo promedio por etapa'},
     {v:liveDays!=null?liveDays+'d':'—',l:'Días en etapa activa',t:liveStage?`${esc(liveStage.etapa)}: ${liveDays} día(s)`:'Sin etapa en curso'}];
