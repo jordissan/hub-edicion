@@ -64,6 +64,60 @@ h1 .ic{color:var(--accent)}
 .stamp .dot.warn{background:#fbbf24;box-shadow:0 0 0 3px rgba(251,191,36,.16)}
 
 .stack{display:flex;flex-direction:column;gap:14px}
+.hubnav{display:inline-flex;gap:2px;background:var(--card2);border:1px solid var(--border);border-radius:13px;padding:3px}
+.hubnav button{font-family:var(--font-b);font-size:12.5px;font-weight:600;color:var(--muted);background:none;border:none;border-radius:10px;padding:8px 16px;cursor:pointer;transition:background-color .15s ease,color .15s ease,transform .14s var(--ease-out)}
+.hubnav button.on{background:var(--accent);color:var(--ink)}
+.hubnav button:not(.on):hover{color:var(--txt)}
+.hubnav button:active{transform:scale(.96)}
+.view{display:none;flex-direction:column;gap:14px}
+.view.on{display:flex}
+#evol{display:flex;flex-direction:column}
+#resumenGrid{display:flex;flex-direction:column;gap:14px}
+#resumenGrid:empty{display:none}
+.resgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:860px){.resgrid{grid-template-columns:1fr}}
+.aipill{display:flex;align-items:center;gap:14px;background:var(--accent-block);border-radius:20px;padding:15px 18px;color:var(--ink);box-shadow:0 18px 44px -28px color-mix(in srgb,var(--accent) 70%,transparent)}
+.aipill .ai-ic{flex:none;width:40px;height:40px;border-radius:13px;background:rgba(12,14,7,.14);display:flex;align-items:center;justify-content:center}
+.aipill .ai-ic .ic{color:var(--ink)}
+.aipill .ai-tx{flex:1;min-width:0}
+.aipill .ai-tx .t{font-family:var(--font-d);font-weight:700;font-size:15px;letter-spacing:-.2px;line-height:1.25}
+.aipill .ai-tx .s{font-size:11.5px;opacity:.74;margin-top:3px}
+.aipill .ai-tag{flex:none;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.1px;background:rgba(12,14,7,.16);padding:5px 10px;border-radius:20px}
+.metahd{display:flex;justify-content:space-between;align-items:flex-start;margin-top:14px}
+.metasub{font-size:11px;color:var(--muted);margin-top:3px}
+.metadate{font-family:var(--font-d);font-size:18px;font-weight:700;letter-spacing:-.5px}
+.metalbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--dim);margin-bottom:2px}
+@media(max-width:520px){.aipill .ai-tag{display:none}}
+.evol-sub{font-size:12px;color:var(--muted);margin:10px 0 2px}
+.evolrec{display:flex;gap:12px;flex-wrap:wrap;margin:14px 0 4px}
+.evolrec .r{flex:1;min-width:160px;background:var(--tile);border:1px solid var(--border);border-radius:15px;padding:13px 15px}
+.evolrec .r .l{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.evolrec .r .l .ic{color:var(--accent)}
+.evolrec .r .v{font-family:var(--font-d);font-size:20px;font-weight:700;margin-top:7px;letter-spacing:-.5px}
+.evolrec .r .s{font-size:11px;color:var(--dim);margin-top:3px}
+.evolcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(244px,1fr));gap:14px;margin:14px 0 18px}
+.evolcard{background:var(--tile);border:1px solid var(--border);border-radius:18px;padding:16px 18px;transition:border-color .15s ease,transform .18s var(--ease-out)}
+.evolcard:active{transform:scale(.99)}
+.evolcard .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.evolcard .nm{font-family:var(--font-d);font-weight:700;font-size:14px}
+.evolcard .big{font-family:var(--font-d);font-size:30px;font-weight:700;letter-spacing:-1px;margin:10px 0 2px;font-variant-numeric:tabular-nums;display:flex;align-items:center;gap:9px}
+.evolcard .mini{display:grid;grid-template-columns:1fr 1fr;gap:9px 12px;margin-top:13px;padding-top:13px;border-top:1px solid var(--hair)}
+.evolcard .mini>div{font-size:10.5px;color:var(--muted);display:flex;align-items:baseline;gap:6px}
+.evolcard .mini b{font-family:var(--font-d);font-size:15px;color:var(--txt);font-weight:700;font-variant-numeric:tabular-nums}
+.evolchg{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;white-space:nowrap}
+.evolchg.up{color:var(--done);background:color-mix(in srgb,var(--done) 14%,transparent)}
+.evolchg.down{color:#fb7185;background:rgba(251,113,133,.13)}
+.evolchg.flat{color:var(--dim);background:var(--tile);border:1px solid var(--border)}
+.evolcharts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.evolchart{background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:15px 17px}
+.evolchart .t{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.evolchart .t .ic{color:var(--accent)}
+.evolchart:first-child{grid-column:1/-1}
+@media(max-width:760px){.evolcharts{grid-template-columns:1fr}.evolchart:first-child{grid-column:auto}}
+/* Cap de altura para gráficas full-width: compactas en desktop, fluidas en móvil */
+#horas svg,#bodas svg,#evol svg{max-height:270px}
+@media(max-width:760px){#horas svg,#bodas svg,#evol svg{max-height:none}}
+@media(max-width:760px){.hubnav{order:3;width:100%;justify-content:space-between}.hubnav button{flex:1;padding:8px 6px;text-align:center}}
 #dailyk{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
 .cols{display:flex;gap:14px;align-items:flex-start}
 .col{display:flex;flex-direction:column;gap:14px;min-width:0}
@@ -238,11 +292,11 @@ h1 .ic{color:var(--accent)}
 .refresh:focus-visible{border-color:var(--accent)}
 /* Entrada orquestada: corre una sola vez por carga (los wrappers no se recrean al Actualizar) */
 @keyframes hubRise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.stack>*{animation:hubRise .45s var(--ease-out) both}
-.stack>*:nth-child(2){animation-delay:.06s}
-.stack>*:nth-child(3){animation-delay:.12s}
-.stack>*:nth-child(4){animation-delay:.18s}
-.stack>*:nth-child(5){animation-delay:.24s}
+.view.on>*{animation:hubRise .42s var(--ease-out) both}
+.view.on>*:nth-child(2){animation-delay:.05s}
+.view.on>*:nth-child(3){animation-delay:.1s}
+.view.on>*:nth-child(4){animation-delay:.15s}
+.view.on>*:nth-child(5){animation-delay:.2s}
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}
   .hk:hover,.bodacard:hover,.kpi[data-tip]:hover{transform:none}
@@ -256,6 +310,11 @@ h1 .ic{color:var(--accent)}
 
 <div class="topbar">
   <div><h1 id="h1"></h1></div>
+  <nav class="hubnav" id="hubnav" role="tablist" aria-label="Secciones">
+    <button class="on" data-tab="resumen" role="tab" aria-selected="true">Resumen</button>
+    <button data-tab="bodas" role="tab" aria-selected="false">Bodas</button>
+    <button data-tab="evolucion" role="tab" aria-selected="false">Evolución</button>
+  </nav>
   <div class="topright">
     <div class="btns">
       <button class="refresh icon" id="themeBtn" title="Cambiar tema claro/oscuro" aria-label="Tema"></button>
@@ -265,23 +324,30 @@ h1 .ic{color:var(--accent)}
   </div>
 </div>
 
-<div class="stack">
-  <div id="bodaSelector"></div>
+<div id="bodaSelector"></div>
+
+<div class="view on" id="v-resumen">
   <div class="card" id="hero"></div>
   <div id="dailyk"></div>
+  <div class="card" id="seshoy"></div>
+  <div id="resumenGrid"></div>
   <div class="cols">
-    <div class="col col-main">
-      <div id="bodas"></div>
-      <div class="card" id="seshoy"></div>
-      <div class="card" id="horas"></div>
-      <div class="card" id="alert"></div>
-    </div>
-    <div class="col col-side">
-      <div class="card" id="drill"></div>
-      <div class="card accent" id="lineCard"></div>
-    </div>
+    <div class="col col-main"><div class="card" id="horas"></div></div>
+    <div class="col col-side"><div class="card accent" id="lineCard"></div></div>
+  </div>
+  <div class="card" id="alert"></div>
+</div>
+
+<div class="view" id="v-bodas">
+  <div class="cols">
+    <div class="col col-main"><div id="bodas"></div></div>
+    <div class="col col-side"><div class="card" id="drill"></div></div>
   </div>
   <div class="card" id="gantt"></div>
+</div>
+
+<div class="view" id="v-evolucion">
+  <div class="card" id="evol"></div>
 </div>
 
 <div class="footer" id="footer"></div>
@@ -313,6 +379,7 @@ const ICONS={
   video:'<rect x="3" y="4.5" width="18" height="15" rx="3"/><path d="M10 9l5 3-5 3z" fill="currentColor" stroke="none"/>',
   clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 1.8"/>',
   trend:'<path d="M3 17l6-6 4 4 8-8"/><path d="M16 7h5v5"/>',
+  spark:'<path d="M12 3v6M12 15v6M3 12h6M15 12h6"/><path d="M6.6 6.6l3.1 3.1M14.3 14.3l3.1 3.1M17.4 6.6l-3.1 3.1M9.7 14.3l-3.1 3.1"/>',
   bell:'<path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/>',
   calendar:'<rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M16 3v4M8 3v4M3 10h18"/>',
   refresh:'<path d="M20 11a8 8 0 10-2.1 6.5"/><path d="M20 21v-5h-5"/>',
@@ -606,7 +673,101 @@ function renderChrome(){
 }
 
 /* ───── Orquestación ───── */
-function renderAll(){ TODAY=parseD(D.today); if(selWed!=null&&!D.weddings[selWed])selWed=null; renderChrome(); renderBodaSelector(); renderHero(); renderDaily(); renderBodas(); renderDrill(); renderSesHoy(); renderHoras(); renderLine(); renderGantt(); renderAlerts(); }
+function renderAll(){ TODAY=parseD(D.today); if(selWed!=null&&!D.weddings[selWed])selWed=null; renderChrome(); renderBodaSelector(); renderHero(); renderResumenGrid(); renderDaily(); renderBodas(); renderDrill(); renderSesHoy(); renderHoras(); renderLine(); renderGantt(); renderAlerts(); renderEvol(); }
+
+/* ───── Navegación por pestañas ───── */
+const HUB_TABS=['resumen','bodas','evolucion'];
+let hubView=(()=>{try{const v=localStorage.getItem('hubView');return HUB_TABS.includes(v)?v:'resumen';}catch(e){return 'resumen';}})();
+function setTab(t){
+  if(!HUB_TABS.includes(t)) t='resumen';
+  hubView=t; try{localStorage.setItem('hubView',t);}catch(e){}
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+t));
+  document.querySelectorAll('#hubnav button').forEach(b=>{const on=b.getAttribute('data-tab')===t;b.classList.toggle('on',on);b.setAttribute('aria-selected',on?'true':'false');});
+}
+/* ───── Resumen · tarjetas Finpath (insight IA + distribución + meta) ───── */
+function aiInsight(){
+  const weds=focusWeds();
+  const live=weds.find(w=>editStages(w).some(s=>s.estado==='live'));
+  if(live){ const del=projectDelivery(live),rem=editStages(live).filter(s=>s.estado==='wait').length;
+    if(del) return {t:`A este ritmo entregas ${live.name} el ${fmtShort(del)}`,s:`${rem} etapa(s) por iniciar · proyección según tu ritmo promedio`}; }
+  const sts=weddingsByDate();
+  if(sts.length>=2){ const cur=sts[sts.length-1],prev=sts[sts.length-2];
+    if(cur.hPerScene!=null&&prev.hPerScene!=null&&prev.hPerScene>0){ const d=Math.round((1-cur.hPerScene/prev.hPerScene)*100);
+      if(d>0) return {t:`Editas ${d}% más rápido por escena que en ${prev.name}`,s:`${cur.hPerScene}h/escena ahora · ${prev.hPerScene}h/escena antes`};
+      if(d<0) return {t:`Esta boda va ${Math.abs(d)}% más lenta por escena que ${prev.name}`,s:`${cur.hPerScene}h/escena ahora · ${prev.hPerScene}h/escena antes`}; }
+    if(cur.span!=null&&prev.span!=null&&cur.span<prev.span) return {t:`Entregaste ${prev.span-cur.span} días más rápido que en ${prev.name}`,s:`${cur.span} días vs ${prev.span} días`}; }
+  const h=Math.round(weds.reduce((a,w)=>a+wedHours(w),0));
+  return {t:`${h}h de edición acumuladas`,s:'Sigue así para mantener tu ritmo'};
+}
+function renderResumenGrid(){
+  const el=document.getElementById('resumenGrid'); if(!el) return;
+  const weds=focusWeds(),ai=aiInsight();
+  const pill=`<div class="aipill"><div class="ai-ic">${icon('spark',19)}</div><div class="ai-tx"><div class="t">${ai.t}</div><div class="s">${esc(ai.s)}</div></div><div class="ai-tag">Insight</div></div>`;
+  const agg={}; weds.forEach(w=>editStages(w).forEach(s=>{if(s.hours>0)agg[s.etapa]=(agg[s.etapa]||0)+s.hours;}));
+  const order=Object.keys(agg).sort((a,b)=>agg[b]-agg[a]),totalH=Math.round(order.reduce((a,et)=>a+agg[et],0));
+  const stages=order.map(et=>({etapa:et,hours:agg[et],estado:'done'}));
+  const legend=order.map((et,i)=>`<div class="lgrow"><span class="lgd" style="background:${stageColor(et,i)}"></span><span class="lgn">${esc(et)}</span><span class="lgh">${Math.round(agg[et])}h · ${totalH?Math.round(agg[et]/totalH*100):0}%</span></div>`).join('');
+  const distrib=stages.length?`<div class="card"><div class="clabel">${icon('rings',13)} Distribución de horas</div><div class="boda" style="margin-top:14px"><div class="donutwrap">${donut(stages)}<div class="donutpct"><div class="p">${totalH}h</div><div class="s">${stages.length} etapas</div></div></div><div class="binfo"><div class="lglist">${legend}</div></div></div></div>`:'';
+  const allE=weds.flatMap(w=>editStages(w)),done=allE.filter(s=>s.estado==='done').length,total=allE.length,pct=total?Math.round(done/total*100):0;
+  const live=weds.find(w=>editStages(w).some(s=>s.estado==='live')),del=live?projectDelivery(live):null,target=live||weds[0];
+  const trows=target?editStages(target).slice().sort((a,b)=>a.orden-b.orden).map((s,i)=>`<div class="stagerow" data-tip="${tipFor(s)}"><span class="sd" style="background:${stageColor(s.etapa,i)};opacity:${s.estado==='wait'?.4:1}"></span><span class="sn">${esc(s.etapa)}</span><span class="sb ${s.estado}">${estadoLabel(s.estado)}</span><span class="sdy">${s.hours>0?hrs(s.hours)+'h':'—'}</span></div>`).join(''):'';
+  const meta=`<div class="card"><div class="clabel">${icon('hourglass',13)} Meta vs real</div>
+    <div class="metahd"><div><div class="bigpct" style="font-size:30px">${pct}%</div><div class="metasub">${done}/${total} etapas completas</div></div><div style="text-align:right"><div class="metadate">${del?fmtShort(del):'—'}</div><div class="metasub">entrega estimada</div></div></div>
+    <div class="progbar" style="margin:12px 0 14px"><i style="width:${pct}%;background:var(--accent)"></i></div>
+    ${target?`<div class="metalbl">${esc(target.name)}</div>${trows}`:''}</div>`;
+  el.innerHTML=`${pill}<div class="resgrid">${distrib}${meta}</div>`;
+}
+
+/* ───── Evolución boda a boda ───── */
+function weddingStats(w){
+  const E=editStages(w),hours=Math.round(wedHours(w));
+  const scenes=E.reduce((a,s)=>a+((s.scenes||[]).length),0);
+  const dts=E.flatMap(s=>[s.start,s.end]).filter(Boolean).map(parseD).filter(Boolean).map(d=>+d);
+  const span=dts.length?Math.max(1,dayDiff(new Date(Math.min(...dts)),new Date(Math.max(...dts)))+1):null;
+  const hPerScene=scenes?Math.round(hours/scenes*10)/10:null;
+  return {name:w.name,hours,scenes,span,hPerScene,rounds:corrRounds(w),lastEnd:dts.length?Math.max(...dts):0,complete:editComplete(w)};
+}
+function weddingsByDate(){ return D.weddings.map(weddingStats).sort((a,b)=>a.lastEnd-b.lastEnd); }
+function chgChip(cur,prev,o){ o=o||{}; if(prev==null||cur==null) return ''; const d=cur-prev; if(Math.abs(d)<1e-9) return `<span class="evolchg flat">=</span>`; const up=d>0,arrow=up?'▲':'▼'; let cls='flat'; if(!o.neutral){const good=o.lowerBetter?!up:up; cls=good?'up':'down';} const val=o.pct?Math.round(Math.abs(d)/Math.abs(prev)*100)+'%':(Math.round(Math.abs(d)*10)/10)+(o.unit||''); return `<span class="evolchg ${cls}">${arrow} ${val}</span>`; }
+function evolLine(sts,val,unit){
+  const pts=sts.map((s,i)=>({i,y:val(s),nm:s.name.split(' ')[0]})).filter(p=>p.y!=null);
+  if(!pts.length) return `<div class="muted2" style="margin-top:8px">Aún sin datos.</div>`;
+  const W=560,H=148,padL=16,padR=16,padB=24,padT=24,n=pts.length;
+  const maxY=(Math.max(...pts.map(p=>p.y))||1)*1.2;
+  const X=i=>padL+(n<=1?0.5:i/(n-1))*(W-padL-padR),Y=v=>H-padB-(v/maxY)*(H-padB-padT);
+  const ink=cv('--accent'),txt=cv('--txt'),dim=cv('--dim');
+  const path=pts.map((p,k)=>(k?'L':'M')+X(p.i).toFixed(1)+' '+Y(p.y).toFixed(1)).join(' ');
+  const dots=pts.map(p=>`<circle cx="${X(p.i).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="4.2" fill="${ink}" stroke="${cv('--card2')}" stroke-width="2" data-tip="<b>${esc(p.nm)}</b><br>${p.y}${unit}"/>`).join('');
+  const labs=pts.map(p=>`<text x="${X(p.i).toFixed(1)}" y="${(Y(p.y)-11).toFixed(1)}" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="700" fill="${txt}" style="font-variant-numeric:tabular-nums">${p.y}${unit}</text>`).join('');
+  const xl=pts.map(p=>`<text x="${X(p.i).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="9" fill="${dim}">${esc(p.nm)}</text>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block"><path d="${path}" fill="none" stroke="${ink}" stroke-width="2.4" stroke-dasharray="2 5" stroke-linecap="round" stroke-linejoin="round"/>${dots}${labs}${xl}</svg>`;
+}
+function renderEvol(){
+  const el=document.getElementById('evol'); if(!el) return;
+  const sts=weddingsByDate(),n=sts.length;
+  if(!n){ el.innerHTML=`<div class="clabel">${icon('trend',13)} Evolución</div><div class="muted2">Sin bodas registradas todavía.</div>`; return; }
+  const wSpan=sts.filter(s=>s.span!=null),wEff=sts.filter(s=>s.hPerScene!=null);
+  const fastest=wSpan.slice().sort((a,b)=>a.span-b.span)[0];
+  const eff=wEff.slice().sort((a,b)=>a.hPerScene-b.hPerScene)[0];
+  const most=sts.slice().sort((a,b)=>b.hours-a.hours)[0];
+  const rec=`<div class="evolrec">
+    ${fastest?`<div class="r"><div class="l">${icon('hourglass',11)} Entrega más rápida</div><div class="v">${fastest.span} días</div><div class="s">${esc(fastest.name)}</div></div>`:''}
+    ${eff?`<div class="r"><div class="l">${icon('check',11)} Mejor eficiencia</div><div class="v">${eff.hPerScene}h<span style="font-size:11px;color:var(--dim)"> / escena</span></div><div class="s">${esc(eff.name)}</div></div>`:''}
+    ${most?`<div class="r"><div class="l">${icon('clock',11)} Más horas</div><div class="v">${most.hours}h</div><div class="s">${esc(most.name)}</div></div>`:''}
+  </div>`;
+  const cards=sts.map((s,i)=>{const p=i>0?sts[i-1]:null,parts=s.name.split('+');
+    return `<div class="evolcard"><div class="top"><span class="nm">${esc(parts[0].trim())}${parts[1]?` <span style="color:var(--dim);font-weight:500">+${esc(parts[1])}</span>`:''}</span><span class="chip ${s.complete?'done':'live'}">${s.complete?'Completa':'En progreso'}</span></div>
+      <div class="big">${s.hours}h ${p?chgChip(s.hours,p.hours,{neutral:true,pct:true}):''}</div>
+      <div class="mini"><div>Días <b>${s.span??'—'}</b> ${p?chgChip(s.span,p.span,{lowerBetter:true,unit:'d'}):''}</div><div>Escenas <b>${s.scenes||'—'}</b></div><div>h / escena <b>${s.hPerScene??'—'}</b> ${p?chgChip(s.hPerScene,p.hPerScene,{lowerBetter:true,unit:'h'}):''}</div><div>Cambios <b>${s.rounds||0}</b></div></div></div>`;}).join('');
+  const hb=sts.map((s,i)=>({value:s.hours,label:s.name.split(' ')[0],label2:s.hours+'h',color:stageColor('',i),tip:`<b>${esc(s.name)}</b><br>${s.hours}h totales`}));
+  const charts=`<div class="evolcharts">
+    <div class="evolchart"><div class="t">${icon('clock',11)} Horas por boda</div>${barsChart(hb)}</div>
+    <div class="evolchart"><div class="t">${icon('check',11)} Eficiencia · h / escena <span style="color:var(--dim)">— menos es mejor</span></div>${evolLine(sts,s=>s.hPerScene,'h')}</div>
+    <div class="evolchart"><div class="t">${icon('hourglass',11)} Días para entregar <span style="color:var(--dim)">— menos es mejor</span></div>${evolLine(sts,s=>s.span,'d')}</div>
+  </div>`;
+  const note=n<3?`<div class="evol-sub">Comparando ${n} boda${n>1?'s':''}. Conforme registres más, estas curvas revelarán mejor tu progreso.</div>`:`<div class="evol-sub">Tu edición a lo largo de ${n} bodas, ordenadas por fecha de entrega.</div>`;
+  el.innerHTML=`<div class="clabel">${icon('trend',13)} Evolución · boda a boda</div>${note}${rec}<div class="evolcards">${cards}</div>${charts}`;
+}
 function showErr(e){ document.body.insertAdjacentHTML('beforeend',`<div style="color:#f87171;border:1px solid #5a1a1a;background:#1a0a0a;padding:14px;border-radius:10px;margin-top:20px;font-size:12px">Error: ${e.message}<br><pre style="white-space:pre-wrap;font-size:10px">${e.stack||''}</pre></div>`); console.error(e); }
 function applyTheme(t){ document.documentElement.setAttribute('data-theme',t); try{localStorage.setItem('hubTheme',t);}catch(e){} const b=document.getElementById('themeBtn'); if(b)b.innerHTML=icon(t==='light'?'sun':'moon',15); }
 function toggleTheme(){ applyTheme(document.documentElement.getAttribute('data-theme')==='light'?'dark':'light'); renderAll(); }
@@ -631,11 +792,12 @@ const tip=document.createElement('div'); tip.id='tip'; document.body.appendChild
 document.addEventListener('mouseover',e=>{const t=e.target.closest&&e.target.closest('[data-tip]');if(t){tip.innerHTML=t.getAttribute('data-tip');tip.style.opacity='1';}});
 document.addEventListener('mousemove',e=>{if(tip.style.opacity==='1'){const x=Math.min(e.clientX+14,innerWidth-tip.offsetWidth-10),y=Math.min(e.clientY+16,innerHeight-tip.offsetHeight-10);tip.style.left=Math.max(8,x)+'px';tip.style.top=Math.max(8,y)+'px';}});
 document.addEventListener('mouseout',e=>{if(e.target.closest&&e.target.closest('[data-tip]'))tip.style.opacity='0';});
-function focusWedding(){ renderBodaSelector(); renderHero(); renderDaily(); renderBodas(); renderDrill(); renderSesHoy(); }
+function focusWedding(){ renderBodaSelector(); renderHero(); renderResumenGrid(); renderDaily(); renderBodas(); renderDrill(); renderSesHoy(); renderHoras(); renderLine(); renderGantt(); renderAlerts(); }
 function setWed(v){ selWed=(v==='all'||v==null)?null:+v; if(selWed!=null&&D.weddings[selWed])drillView=editStages(D.weddings[selWed]).some(s=>(s.scenes||[]).length)?'escenas':'etapas'; focusWedding(); }
 document.addEventListener('change',e=>{ if(e.target.id==='bodaSelect') setWed(e.target.value); });
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-noselect]'))return;
+  const tb=e.target.closest('[data-tab]'); if(tb){setTab(tb.getAttribute('data-tab'));return;}
   const dv=e.target.closest('[data-bodaview]'); if(dv){bodaView=dv.getAttribute('data-bodaview');renderBodas();return;}
   const bv=e.target.closest('[data-bars]'); if(bv){barsMetric=bv.getAttribute('data-bars');renderBodas();return;}
   const v=e.target.closest('[data-view]'); if(v){drillView=v.getAttribute('data-view');renderDrill();return;}
@@ -643,6 +805,7 @@ document.addEventListener('click',e=>{
 });
 
 applyTheme(document.documentElement.getAttribute('data-theme')||'dark');
+setTab(hubView);
 document.getElementById('themeBtn').addEventListener('click',toggleTheme);
 document.getElementById('refreshBtn').addEventListener('click',()=>load(true));
 load(false);
