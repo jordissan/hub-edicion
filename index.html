@@ -119,11 +119,15 @@ h1 .ic{color:var(--accent)}
 @media(max-width:760px){#horas svg,#bodas svg,#evol svg{max-height:none}}
 @media(max-width:760px){.hubnav{order:3;width:100%;justify-content:space-between}.hubnav button{flex:1;padding:12px 6px;text-align:center}}
 @media(max-width:600px){
-  .topbar{flex-direction:column;align-items:stretch;gap:11px;margin-bottom:14px}
-  .topright{flex-direction:column;align-items:stretch;gap:9px;width:100%}
-  .btns{width:100%;gap:9px}
-  .btns .refresh:not(.icon){flex:1;justify-content:center}
-  .stamp{width:100%;text-align:center}
+  .topbar{flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px 8px;margin-bottom:14px}
+  h1{font-size:19px;flex:0 1 auto;min-width:0}
+  .topright{order:1;width:auto;margin-left:auto;flex-direction:row;align-items:center;gap:6px}
+  .btns{width:auto;gap:6px}
+  .refresh,.refresh.icon{padding:8px;background:var(--card2);border-color:var(--border)}
+  .reflabel{display:none}
+  .stamp{padding:6px 9px;font-size:10px;white-space:nowrap}
+  .stamp .st-date{display:none}
+  .hubnav{order:3;width:100%}
   .projsel{width:100%}
   .projsel select{flex:1;max-width:none}
 }
@@ -135,7 +139,7 @@ h1 .ic{color:var(--accent)}
 #bodas{display:flex;flex-direction:column;gap:14px}
 @media(max-width:600px){body{padding:20px 13px 50px}}
 @media(max-width:900px){.cols{flex-direction:column}.col{flex:1 1 auto;width:100%}}
-@media(max-width:600px){.boda{flex-direction:column;align-items:center;gap:16px}.donutwrap{flex:0 0 auto;width:min(88vw,380px);height:auto;aspect-ratio:1/1;margin:2px auto 4px}.donutwrap svg{width:100%;height:100%}.donutpct .p{font-size:60px;letter-spacing:-3px}.donutpct .s{font-size:14px;margin-top:6px}.binfo{width:100%;min-width:0}.topright{justify-content:flex-start;width:100%}#dailyk{grid-template-columns:1fr 1fr;gap:12px}.hk{padding:14px 15px}.hk .v{font-size:26px}.hk .l{font-size:9.5px;letter-spacing:1px}}
+@media(max-width:600px){.boda{flex-direction:column;align-items:center;gap:16px}.donutwrap{flex:0 0 auto;width:min(88vw,380px);height:auto;aspect-ratio:1/1;margin:2px auto 4px}.donutwrap svg{width:100%;height:100%}.donutpct .p{font-size:60px;letter-spacing:-3px}.donutpct .s{font-size:14px;margin-top:6px}.binfo{width:100%;min-width:0}#dailyk{grid-template-columns:1fr 1fr;gap:12px}.hk{padding:14px 15px}.hk .v{font-size:26px}.hk .l{font-size:9.5px;letter-spacing:1px}}
 
 .card{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:20px;box-shadow:var(--shadow)}
 .card.accent{background:var(--accent-block);border-color:transparent;color:var(--ink)}
@@ -327,7 +331,7 @@ h1 .ic{color:var(--accent)}
   <div class="topright">
     <div class="btns">
       <button class="refresh icon" id="themeBtn" title="Cambiar tema claro/oscuro" aria-label="Tema"></button>
-      <button class="refresh" id="refreshBtn"></button>
+      <button class="refresh" id="refreshBtn" aria-label="Actualizar datos"></button>
     </div>
     <div class="stamp" id="stamp"></div>
   </div>
@@ -677,7 +681,7 @@ function renderHoras(){
 function renderChrome(){
   document.getElementById('h1').innerHTML=`${icon('logo',20)} Hub de Edición`;
   const gen=new Date(D.generatedAt),live=!!D.__live;
-  document.getElementById('stamp').innerHTML=`<span class="dot ${live?'':'warn'}"></span>${live?'En vivo':'Snapshot'} · <b>${gen.toLocaleString('es-MX',{dateStyle:'medium',timeStyle:'short'})}</b>`;
+  document.getElementById('stamp').innerHTML=`<span class="dot ${live?'':'warn'}"></span>${live?'En vivo':'Snapshot'}<span class="st-date"> · <b>${gen.toLocaleString('es-MX',{dateStyle:'medium',timeStyle:'short'})}</b></span>`;
   document.getElementById('footer').innerHTML=`<span>Hub de Edición · datos ${live?'en vivo':'de respaldo'} desde Notion (workspace "Trabajo")</span><span>${live?'Recarga o pica Actualizar para refrescar':'Servidor local no conectado — mostrando último snapshot'}</span>`;
 }
 
@@ -786,12 +790,12 @@ function notice(m,c){ if(!_n){_n=document.createElement('div');_n.style.cssText=
 
 async function load(fresh){
   const btn=document.getElementById('refreshBtn');
-  if(btn){btn.disabled=true;btn.classList.add('spin');btn.innerHTML=icon('refresh',14)+' Actualizando…';}
+  if(btn){btn.disabled=true;btn.classList.add('spin');btn.innerHTML=icon('refresh',14)+'<span class="reflabel"> Actualizando…</span>';}
   let ok=false,err=null;
   try{const r=await fetch('/api/edicion',{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json();if(j&&j.error)throw new Error(j.error);if(!j||!j.weddings)throw new Error('respuesta inválida');D=j;D.__live=true;ok=true;}
   catch(e){err=e.message;D=window.SNAPSHOT_DATA;D.__live=false;}
   try{renderAll();}catch(e){showErr(e);}
-  if(btn){btn.disabled=false;btn.classList.remove('spin');btn.innerHTML=icon('refresh',14)+' Actualizar';}
+  if(btn){btn.disabled=false;btn.classList.remove('spin');btn.innerHTML=icon('refresh',14)+'<span class="reflabel"> Actualizar</span>';}
   if(ok) notice(fresh?'✓ Datos actualizados desde Notion':'✓ Conectado en vivo','#7bd14a');
   else notice('Sin servidor en vivo — mostrando snapshot'+(err?' ('+err.slice(0,46)+')':''),'#fbbf24');
 }
