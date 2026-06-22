@@ -117,7 +117,16 @@ h1 .ic{color:var(--accent)}
 /* Cap de altura para gráficas full-width: compactas en desktop, fluidas en móvil */
 #horas svg,#bodas svg,#evol svg{max-height:270px}
 @media(max-width:760px){#horas svg,#bodas svg,#evol svg{max-height:none}}
-@media(max-width:760px){.hubnav{order:3;width:100%;justify-content:space-between}.hubnav button{flex:1;padding:8px 6px;text-align:center}}
+@media(max-width:760px){.hubnav{order:3;width:100%;justify-content:space-between}.hubnav button{flex:1;padding:12px 6px;text-align:center}}
+@media(max-width:600px){
+  .topbar{flex-direction:column;align-items:stretch;gap:11px;margin-bottom:14px}
+  .topright{flex-direction:column;align-items:stretch;gap:9px;width:100%}
+  .btns{width:100%;gap:9px}
+  .btns .refresh:not(.icon){flex:1;justify-content:center}
+  .stamp{width:100%;text-align:center}
+  .projsel{width:100%}
+  .projsel select{flex:1;max-width:none}
+}
 #dailyk{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
 .cols{display:flex;gap:14px;align-items:flex-start}
 .col{display:flex;flex-direction:column;gap:14px;min-width:0}
