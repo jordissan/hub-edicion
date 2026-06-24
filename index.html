@@ -76,12 +76,19 @@ h1 .ic{color:var(--accent)}
 .moneyrow{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px}
 .moneyrow>div{flex:1;min-width:96px;background:var(--tile);border:1px solid var(--border);border-radius:16px;padding:14px 16px}
 .moneyrow .mh{background:var(--accent-block);border-color:transparent}
-.moneycard .mv{font-family:var(--font-d);font-size:28px;font-weight:700;letter-spacing:-1px;line-height:1;font-variant-numeric:tabular-nums}
+.moneycard .mv{font-family:var(--font-d);font-size:28px;font-weight:700;letter-spacing:-1px;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap}
 .moneyrow .mh .mv{font-size:34px;color:var(--ink)}
 .moneycard .mv span{font-size:15px;color:var(--muted);font-weight:600}
 .moneyrow .mh .mv span{color:rgba(12,14,7,.6)}
 .moneyrow .proj{border-style:dashed;border-color:color-mix(in srgb,var(--accent) 50%,var(--border))}
 .moneyrow .proj .mv{color:var(--accent)}
+@media(max-width:600px){
+  .moneyrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .moneyrow>div{min-width:0;padding:13px 14px}
+  .moneycard .mv{font-size:23px}
+  .moneyrow .mh .mv{font-size:26px}
+  .moneycard .mv span{font-size:13px}
+}
 .moneycard .ml{font-size:11px;color:var(--muted);margin-top:7px}
 .moneyrow .mh .ml{color:rgba(12,14,7,.66)}
 .moneynote{font-size:11px;color:var(--dim);margin-top:14px;padding-top:12px;border-top:1px solid var(--hair)}
