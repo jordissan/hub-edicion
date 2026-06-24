@@ -118,6 +118,8 @@ h1 .ic{color:var(--accent)}
 .evolcard .mini{display:grid;grid-template-columns:1fr 1fr;gap:9px 12px;margin-top:13px;padding-top:13px;border-top:1px solid var(--hair)}
 .evolcard .mini>div{font-size:10.5px;color:var(--muted);display:flex;align-items:baseline;gap:6px}
 .evolcard .mini b{font-family:var(--font-d);font-size:15px;color:var(--txt);font-weight:700;font-variant-numeric:tabular-nums}
+.evolcard.partial{border-style:dashed}
+.evolpartial{font-size:10px;color:var(--dim);margin-top:12px;padding-top:10px;border-top:1px dashed var(--border)}
 .evolchg{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;white-space:nowrap}
 .evolchg.up{color:var(--done);background:color-mix(in srgb,var(--done) 14%,transparent)}
 .evolchg.down{color:#fb7185;background:rgba(251,113,133,.13)}
@@ -778,47 +780,57 @@ function weddingStats(w){
   return {name:w.name,hours,scenes,span,hPerScene,rounds:corrRounds(w),perHour:hours?Math.round(wedPrice(w)/hours):null,lastEnd:dts.length?Math.max(...dts):0,complete:editComplete(w)};
 }
 function weddingsByDate(){ return D.weddings.map(weddingStats).sort((a,b)=>a.lastEnd-b.lastEnd); }
-function chgChip(cur,prev,o){ o=o||{}; if(prev==null||cur==null) return ''; const d=cur-prev; if(Math.abs(d)<1e-9) return `<span class="evolchg flat">=</span>`; const up=d>0,arrow=up?'▲':'▼'; let cls='flat'; if(!o.neutral){const good=o.lowerBetter?!up:up; cls=good?'up':'down';} const val=o.pct?Math.round(Math.abs(d)/Math.abs(prev)*100)+'%':(Math.round(Math.abs(d)*10)/10)+(o.unit||''); return `<span class="evolchg ${cls}">${arrow} ${val}</span>`; }
+function chgChip(cur,prev,o){ o=o||{}; if(prev==null||cur==null) return ''; if(o.pct&&Math.abs(prev)<1e-9) return ''; const d=cur-prev; if(Math.abs(d)<1e-9) return `<span class="evolchg flat">=</span>`; const up=d>0,arrow=up?'▲':'▼'; let cls='flat'; if(!o.neutral){const good=o.lowerBetter?!up:up; cls=good?'up':'down';} const val=o.pct?Math.round(Math.abs(d)/Math.abs(prev)*100)+'%':(Math.round(Math.abs(d)*10)/10)+(o.unit||''); return `<span class="evolchg ${cls}">${arrow} ${val}</span>`; }
 function evolLine(sts,val,unit,fmt){
-  const pts=sts.map((s,i)=>({i,y:val(s),nm:s.name.split(' ')[0]})).filter(p=>p.y!=null);
+  const pts=sts.map(s=>({y:val(s),nm:s.name.split(' ')[0]})).filter(p=>p.y!=null);
   if(!pts.length) return `<div class="muted2" style="margin-top:8px">Aún sin datos.</div>`;
   const L=p=>fmt?fmt(p.y):(p.y+unit);
   const W=560,H=148,padL=16,padR=16,padB=24,padT=24,n=pts.length;
   const maxY=(Math.max(...pts.map(p=>p.y))||1)*1.2;
-  const X=i=>padL+(n<=1?0.5:i/(n-1))*(W-padL-padR),Y=v=>H-padB-(v/maxY)*(H-padB-padT);
+  const X=k=>padL+(n<=1?0.5:k/(n-1))*(W-padL-padR),Y=v=>H-padB-(v/maxY)*(H-padB-padT);
   const ink=cv('--accent'),txt=cv('--txt'),dim=cv('--dim');
-  const path=pts.map((p,k)=>(k?'L':'M')+X(p.i).toFixed(1)+' '+Y(p.y).toFixed(1)).join(' ');
-  const dots=pts.map(p=>`<circle cx="${X(p.i).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="4.2" fill="${ink}" stroke="${cv('--card2')}" stroke-width="2" data-tip="<b>${esc(p.nm)}</b><br>${L(p)}"/>`).join('');
-  const labs=pts.map(p=>`<text x="${X(p.i).toFixed(1)}" y="${(Y(p.y)-11).toFixed(1)}" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="700" fill="${txt}" style="font-variant-numeric:tabular-nums">${L(p)}</text>`).join('');
-  const xl=pts.map(p=>`<text x="${X(p.i).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="9" fill="${dim}">${esc(p.nm)}</text>`).join('');
+  const path=pts.map((p,k)=>(k?'L':'M')+X(k).toFixed(1)+' '+Y(p.y).toFixed(1)).join(' ');
+  const dots=pts.map((p,k)=>`<circle cx="${X(k).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="4.2" fill="${ink}" stroke="${cv('--card2')}" stroke-width="2" data-tip="<b>${esc(p.nm)}</b><br>${L(p)}"/>`).join('');
+  const labs=pts.map((p,k)=>`<text x="${X(k).toFixed(1)}" y="${(Y(p.y)-11).toFixed(1)}" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="700" fill="${txt}" style="font-variant-numeric:tabular-nums">${L(p)}</text>`).join('');
+  const xl=pts.map((p,k)=>`<text x="${X(k).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="9" fill="${dim}">${esc(p.nm)}</text>`).join('');
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block"><path d="${path}" fill="none" stroke="${ink}" stroke-width="2.4" stroke-dasharray="2 5" stroke-linecap="round" stroke-linejoin="round"/>${dots}${labs}${xl}</svg>`;
 }
 function renderEvol(){
   const el=document.getElementById('evol'); if(!el) return;
   const sts=weddingsByDate(),n=sts.length;
   if(!n){ el.innerHTML=`<div class="clabel">${icon('trend',13)} Evolución</div><div class="muted2">Sin bodas registradas todavía.</div>`; return; }
-  const wSpan=sts.filter(s=>s.span!=null),wEff=sts.filter(s=>s.hPerScene!=null);
+  const done=sts.filter(s=>s.complete),inprog=sts.filter(s=>!s.complete);
+  // Records y tendencias: solo bodas COMPLETAS (comparar en-progreso vs completa no es justo)
+  const wSpan=done.filter(s=>s.span!=null),wEff=done.filter(s=>s.hPerScene!=null);
   const fastest=wSpan.slice().sort((a,b)=>a.span-b.span)[0];
   const eff=wEff.slice().sort((a,b)=>a.hPerScene-b.hPerScene)[0];
-  const most=sts.slice().sort((a,b)=>b.hours-a.hours)[0];
-  const rec=`<div class="evolrec">
+  const most=done.slice().sort((a,b)=>b.hours-a.hours)[0];
+  const rec=done.length?`<div class="evolrec">
     ${fastest?`<div class="r"><div class="l">${icon('hourglass',11)} Entrega más rápida</div><div class="v">${fastest.span} días</div><div class="s">${esc(fastest.name)}</div></div>`:''}
     ${eff?`<div class="r"><div class="l">${icon('check',11)} Mejor eficiencia</div><div class="v">${eff.hPerScene}h<span style="font-size:11px;color:var(--dim)"> / escena</span></div><div class="s">${esc(eff.name)}</div></div>`:''}
     ${most?`<div class="r"><div class="l">${icon('clock',11)} Más horas</div><div class="v">${most.hours}h</div><div class="s">${esc(most.name)}</div></div>`:''}
-  </div>`;
-  const cards=sts.map((s,i)=>{const p=i>0?sts[i-1]:null,parts=s.name.split('+');
-    return `<div class="evolcard"><div class="top"><span class="nm">${esc(parts[0].trim())}${parts[1]?` <span style="color:var(--dim);font-weight:500">+${esc(parts[1])}</span>`:''}</span><span class="chip ${s.complete?'done':'live'}">${s.complete?'Completa':'En progreso'}</span></div>
+  </div>`:'';
+  // Tarjetas: todas las bodas; deltas y métricas derivadas ($/h, h/escena) solo en completas
+  let prevDone=null;
+  const cards=sts.map((s)=>{const parts=s.name.split('+'),dn=s.complete,p=dn?prevDone:null;
+    const html=`<div class="evolcard${dn?'':' partial'}"><div class="top"><span class="nm">${esc(parts[0].trim())}${parts[1]?` <span style="color:var(--dim);font-weight:500">+${esc(parts[1])}</span>`:''}</span><span class="chip ${dn?'done':'live'}">${dn?'Completa':'En progreso'}</span></div>
       <div class="big">${s.hours}h ${p?chgChip(s.hours,p.hours,{neutral:true,pct:true}):''}</div>
-      <div class="mini"><div>Días <b>${s.span??'—'}</b> ${p?chgChip(s.span,p.span,{lowerBetter:true,unit:'d'}):''}</div><div>Escenas <b>${s.scenes||'—'}</b></div><div>h / escena <b>${s.hPerScene??'—'}</b> ${p?chgChip(s.hPerScene,p.hPerScene,{lowerBetter:true,unit:'h'}):''}</div><div>$ / hora <b>${s.perHour?fmtMoney(s.perHour):'—'}</b> ${p?chgChip(s.perHour,p.perHour,{pct:true}):''}</div></div></div>`;}).join('');
+      <div class="mini"><div>Días <b>${s.span??'—'}</b> ${p?chgChip(s.span,p.span,{lowerBetter:true,unit:'d'}):''}</div><div>Escenas <b>${s.scenes||'—'}</b></div><div>h / escena <b>${dn?(s.hPerScene??'—'):'—'}</b> ${p?chgChip(s.hPerScene,p.hPerScene,{lowerBetter:true,unit:'h'}):''}</div><div>$ / hora <b>${dn&&s.perHour?fmtMoney(s.perHour):'—'}</b> ${p?chgChip(s.perHour,p.perHour,{pct:true}):''}</div></div>
+      ${dn?'':'<div class="evolpartial">En progreso · entra a la comparación al completarse</div>'}</div>`;
+    if(dn) prevDone=s;
+    return html;}).join('');
+  // Horas por boda = factual (todas). Tendencias derivadas = solo completas.
   const hb=sts.map((s,i)=>({value:s.hours,label:s.name.split(' ')[0],label2:s.hours+'h',color:stageColor('',i),tip:`<b>${esc(s.name)}</b><br>${s.hours}h totales`}));
-  const charts=`<div class="evolcharts">
-    <div class="evolchart"><div class="t">${icon('clock',11)} Horas por boda</div>${barsChart(hb)}</div>
-    <div class="evolchart"><div class="t">${icon('trend',11)} Rentabilidad · $/h <span style="color:var(--dim)">— más es mejor</span></div>${evolLine(sts,s=>s.perHour,'',v=>fmtMoney(v))}</div>
-    <div class="evolchart"><div class="t">${icon('check',11)} Eficiencia · h / escena <span style="color:var(--dim)">— menos es mejor</span></div>${evolLine(sts,s=>s.hPerScene,'h')}</div>
-    <div class="evolchart"><div class="t">${icon('hourglass',11)} Días para entregar <span style="color:var(--dim)">— menos es mejor</span></div>${evolLine(sts,s=>s.span,'d')}</div>
-  </div>`;
-  const note=n<3?`<div class="evol-sub">Comparando ${n} boda${n>1?'s':''}. Conforme registres más, estas curvas revelarán mejor tu progreso.</div>`:`<div class="evol-sub">Tu edición a lo largo de ${n} bodas, ordenadas por fecha de entrega.</div>`;
-  el.innerHTML=`<div class="clabel">${icon('trend',13)} Evolución · boda a boda</div>${note}${rec}<div class="evolcards">${cards}</div>${charts}`;
+  const trend=done.length>=2
+    ? `<div class="evolchart"><div class="t">${icon('trend',11)} Rentabilidad · $/h <span style="color:var(--dim)">— más es mejor</span></div>${evolLine(done,s=>s.perHour,'',v=>fmtMoney(v))}</div>
+       <div class="evolchart"><div class="t">${icon('check',11)} Eficiencia · h / escena <span style="color:var(--dim)">— menos es mejor</span></div>${evolLine(done,s=>s.hPerScene,'h')}</div>
+       <div class="evolchart"><div class="t">${icon('hourglass',11)} Días para entregar <span style="color:var(--dim)">— menos es mejor</span></div>${evolLine(done,s=>s.span,'d')}</div>`
+    : `<div class="evolchart" style="grid-column:1/-1"><div class="t">${icon('trend',11)} Tendencias de rentabilidad y eficiencia</div><div class="muted2" style="margin-top:8px">Con ${done.length} boda${done.length===1?'':'s'} completa${done.length===1?'':'s'} aún no hay tendencia — aparece al terminar 2+. Las curvas comparan solo proyectos completos para que sea justo.</div></div>`;
+  const charts=`<div class="evolcharts"><div class="evolchart"><div class="t">${icon('clock',11)} Horas por boda</div>${barsChart(hb)}</div>${trend}</div>`;
+  const note=done.length>=2
+    ? `Tendencias sobre ${done.length} bodas completas, ordenadas por entrega.${inprog.length?` ${inprog.length} en progreso aún no entran.`:''}`
+    : `Comparación justa = solo bodas completas (${done.length} de ${n}).${inprog.length?` En progreso: ${inprog.map(s=>s.name.split(' ')[0]).join(', ')} — entran al terminar.`:''}`;
+  el.innerHTML=`<div class="clabel">${icon('trend',13)} Evolución · boda a boda</div><div class="evol-sub">${note}</div>${rec}<div class="evolcards">${cards}</div>${charts}`;
 }
 function showErr(e){ document.body.insertAdjacentHTML('beforeend',`<div style="color:#f87171;border:1px solid #5a1a1a;background:#1a0a0a;padding:14px;border-radius:10px;margin-top:20px;font-size:12px">Error: ${e.message}<br><pre style="white-space:pre-wrap;font-size:10px">${e.stack||''}</pre></div>`); console.error(e); }
 function applyTheme(t){ document.documentElement.setAttribute('data-theme',t); try{localStorage.setItem('hubTheme',t);}catch(e){} const b=document.getElementById('themeBtn'); if(b)b.innerHTML=icon(t==='light'?'sun':'moon',15); }
