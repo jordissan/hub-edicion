@@ -80,6 +80,8 @@ h1 .ic{color:var(--accent)}
 .moneyrow .mh .mv{font-size:34px;color:var(--ink)}
 .moneycard .mv span{font-size:15px;color:var(--muted);font-weight:600}
 .moneyrow .mh .mv span{color:rgba(12,14,7,.6)}
+.moneyrow .proj{border-style:dashed;border-color:color-mix(in srgb,var(--accent) 50%,var(--border))}
+.moneyrow .proj .mv{color:var(--accent)}
 .moneycard .ml{font-size:11px;color:var(--muted);margin-top:7px}
 .moneyrow .mh .ml{color:rgba(12,14,7,.66)}
 .moneynote{font-size:11px;color:var(--dim);margin-top:14px;padding-top:12px;border-top:1px solid var(--hair)}
@@ -718,6 +720,17 @@ const DEFAULT_PRICE = 15000;                          // precio por defecto si n
 const PRICE_BY_WEDDING = { "Camila + Andrés": 15000 }; // ← edita aquí lo cobrado por boda (o llega como w.price desde Notion)
 function wedPrice(w){ if(!w) return DEFAULT_PRICE; if(w.price!=null) return +w.price; if(PRICE_BY_WEDDING[w.name]!=null) return PRICE_BY_WEDDING[w.name]; return DEFAULT_PRICE; }
 function fmtMoney(n){ return '$'+Math.round(n||0).toLocaleString('es-MX'); }
+// Tasa histórica horas/escena de tus bodas COMPLETAS (se afina conforme entregas más)
+function avgHoursPerScene(){
+  const rated=D.weddings.filter(editComplete).map(w=>{const sc=editStages(w).reduce((a,s)=>a+((s.scenes||[]).length),0);return sc>0?wedHours(w)/sc:null;}).filter(x=>x!=null);
+  return rated.length?rated.reduce((a,b)=>a+b,0)/rated.length:null;
+}
+// Horas totales estimadas para terminar una boda = tasa histórica × sus escenas (mín. lo ya hecho)
+function estTotalHours(w){
+  const sc=editStages(w).reduce((a,s)=>a+((s.scenes||[]).length),0),rate=avgHoursPerScene(),now=wedHours(w);
+  if(rate==null||sc===0) return null;
+  return Math.max(now,rate*sc);
+}
 function renderMoney(){
   const el=document.getElementById('moneyStrip'); if(!el) return;
   const weds=focusWeds();
@@ -725,14 +738,18 @@ function renderMoney(){
   const hours=weds.reduce((a,w)=>a+wedHours(w),0);
   const scenes=weds.reduce((a,w)=>a+editStages(w).reduce((b,s)=>b+((s.scenes||[]).length),0),0);
   const stages=weds.reduce((a,w)=>a+editStages(w).length,0);
-  const perH=hours?price/hours:0,perScene=scenes?price/scenes:0,perStage=stages?price/stages:0;
+  const projHours=weds.reduce((a,w)=>a+(editComplete(w)?wedHours(w):(estTotalHours(w)??wedHours(w))),0);
+  const rate=avgHoursPerScene();
+  const perH=hours?price/hours:0,perScene=scenes?price/scenes:0,perStage=stages?price/stages:0,perHproj=projHours?price/projHours:0;
+  const showProj=rate!=null && projHours-hours>0.5;   // hay trabajo estimado por delante y tenemos referencia
   el.innerHTML=`<div class="moneycard"><div class="clabel">${icon('trend',13)} Rentabilidad${weds.length>1?' · todas las bodas':''}</div>
     <div class="moneyrow">
-      <div class="mh"><div class="mv">${fmtMoney(perH)}<span>/h</span></div><div class="ml">por hora efectiva</div></div>
+      <div class="mh"><div class="mv">${fmtMoney(perH)}<span>/h</span></div><div class="ml">por hora ${showProj?'· a hoy':'efectiva'}</div></div>
+      ${showProj?`<div class="md proj"><div class="mv">${fmtMoney(perHproj)}<span>/h</span></div><div class="ml">proyectado al terminar</div></div>`:''}
       <div class="md"><div class="mv">${scenes?fmtMoney(perScene):'—'}</div><div class="ml">por escena</div></div>
       <div class="md"><div class="mv">${fmtMoney(perStage)}</div><div class="ml">por etapa (prom.)</div></div>
     </div>
-    <div class="moneynote">Sobre ${fmtMoney(price)} cobrado${hours?` · ${Math.round(hours)}h efectivas${scenes?` · ${scenes} escenas`:''}`:''}</div></div>`;
+    <div class="moneynote">Sobre ${fmtMoney(price)} cobrado${hours?` · ${Math.round(hours)}h a hoy${scenes?` · ${scenes} escenas`:''}`:''}${showProj?` · proyectado con ${rate.toFixed(1)} h/escena de tu histórico (~${Math.round(projHours)}h totales est.)`:''}</div></div>`;
 }
 
 /* ───── Resumen · tarjetas Finpath (insight IA + distribución + meta) ───── */
