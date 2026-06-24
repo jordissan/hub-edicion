@@ -339,11 +339,19 @@ def build_wedding(page):
     return wedding
 
 
+RECENT_DONE_DAYS = 45  # bodas "Hecho" editadas en los últimos N días siguen en el tablero
+
 def discover_wedding_pages():
-    """Devuelve las páginas de bodas activas (Tipo=Boda, Status≠Hecho)."""
+    """Bodas activas (Tipo=Boda, Status≠Hecho) + finalizadas hace poco (editadas en
+    los últimos RECENT_DONE_DAYS días) — para no perder el tiempo de proyectos recién
+    cerrados (p.ej. correcciones post-entrega que acabas hoy)."""
+    cutoff = (datetime.date.today() - datetime.timedelta(days=RECENT_DONE_DAYS)).isoformat()
     filt = {"and": [
         {"property": "Tipo", "select": {"equals": "Boda"}},
-        {"property": "Status", "status": {"does_not_equal": "Hecho"}},
+        {"or": [
+            {"property": "Status", "status": {"does_not_equal": "Hecho"}},
+            {"timestamp": "last_edited_time", "last_edited_time": {"on_or_after": cutoff}},
+        ]},
     ]}
     try:
         pages = query_db(TRABAJO_DB_ID, filt)
