@@ -253,6 +253,7 @@ def build_wedding(page):
     wedding = {
         "name": name, "icon": page_icon(page), "studio": studio,
         "status": status, "priority": prioridad,
+        "price": p_number(props, "Total"),   # precio cobrado (MXN) para rentabilidad $/h
         "url": page.get("url", ""),
         "projectStart": ps, "projectEnd": pe,
         "stages": [],
