@@ -72,6 +72,19 @@ h1 .ic{color:var(--accent)}
 .view{display:none;flex-direction:column;gap:14px}
 .view.on{display:flex}
 #evol{display:flex;flex-direction:column}
+.moneycard{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:20px;box-shadow:var(--shadow)}
+.moneyrow{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px}
+.moneyrow>div{flex:1;min-width:96px;background:var(--tile);border:1px solid var(--border);border-radius:16px;padding:14px 16px}
+.moneyrow .mh{background:var(--accent-block);border-color:transparent}
+.moneycard .mv{font-family:var(--font-d);font-size:28px;font-weight:700;letter-spacing:-1px;line-height:1;font-variant-numeric:tabular-nums}
+.moneyrow .mh .mv{font-size:34px;color:var(--ink)}
+.moneycard .mv span{font-size:15px;color:var(--muted);font-weight:600}
+.moneyrow .mh .mv span{color:rgba(12,14,7,.6)}
+.moneycard .ml{font-size:11px;color:var(--muted);margin-top:7px}
+.moneyrow .mh .ml{color:rgba(12,14,7,.66)}
+.moneynote{font-size:11px;color:var(--dim);margin-top:14px;padding-top:12px;border-top:1px solid var(--hair)}
+.lgrow .lgh{min-width:78px;white-space:nowrap}
+.lgsub{color:var(--dim);font-weight:400}
 #resumenGrid{display:flex;flex-direction:column;gap:14px}
 #resumenGrid:empty{display:none}
 .resgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -113,8 +126,7 @@ h1 .ic{color:var(--accent)}
 .evolchart{background:var(--card2);border:1px solid var(--border);border-radius:16px;padding:15px 17px}
 .evolchart .t{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px}
 .evolchart .t .ic{color:var(--accent)}
-.evolchart:first-child{grid-column:1/-1}
-@media(max-width:760px){.evolcharts{grid-template-columns:1fr}.evolchart:first-child{grid-column:auto}}
+@media(max-width:760px){.evolcharts{grid-template-columns:1fr}}
 /* Cap de altura para gráficas full-width: compactas en desktop, fluidas en móvil */
 #horas svg,#bodas svg,#evol svg{max-height:270px}
 @media(max-width:760px){#horas svg,#bodas svg,#evol svg{max-height:none}}
@@ -342,6 +354,7 @@ h1 .ic{color:var(--accent)}
 
 <div class="view on" id="v-resumen">
   <div class="card" id="hero"></div>
+  <div id="moneyStrip"></div>
   <div id="dailyk"></div>
   <div class="card" id="seshoy"></div>
   <div id="resumenGrid"></div>
@@ -687,7 +700,7 @@ function renderChrome(){
 }
 
 /* ───── Orquestación ───── */
-function renderAll(){ TODAY=parseD(D.today); if(selWed!=null&&!D.weddings[selWed])selWed=null; renderChrome(); renderBodaSelector(); renderHero(); renderResumenGrid(); renderDaily(); renderBodas(); renderDrill(); renderSesHoy(); renderHoras(); renderLine(); renderGantt(); renderAlerts(); renderEvol(); }
+function renderAll(){ TODAY=parseD(D.today); if(selWed!=null&&!D.weddings[selWed])selWed=null; renderChrome(); renderBodaSelector(); renderHero(); renderMoney(); renderResumenGrid(); renderDaily(); renderBodas(); renderDrill(); renderSesHoy(); renderHoras(); renderLine(); renderGantt(); renderAlerts(); renderEvol(); }
 
 /* ───── Navegación por pestañas ───── */
 const HUB_TABS=['resumen','bodas','evolucion'];
@@ -698,6 +711,28 @@ function setTab(t){
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+t));
   document.querySelectorAll('#hubnav button').forEach(b=>{const on=b.getAttribute('data-tab')===t;b.classList.toggle('on',on);b.setAttribute('aria-selected',on?'true':'false');});
 }
+/* ───── Rentabilidad: $/hora, $/escena, $/etapa ───── */
+const DEFAULT_PRICE = 15000;                          // precio por defecto si no hay dato
+const PRICE_BY_WEDDING = { "Camila + Andrés": 15000 }; // ← edita aquí lo cobrado por boda (o llega como w.price desde Notion)
+function wedPrice(w){ if(!w) return DEFAULT_PRICE; if(w.price!=null) return +w.price; if(PRICE_BY_WEDDING[w.name]!=null) return PRICE_BY_WEDDING[w.name]; return DEFAULT_PRICE; }
+function fmtMoney(n){ return '$'+Math.round(n||0).toLocaleString('es-MX'); }
+function renderMoney(){
+  const el=document.getElementById('moneyStrip'); if(!el) return;
+  const weds=focusWeds();
+  const price=weds.reduce((a,w)=>a+wedPrice(w),0);
+  const hours=weds.reduce((a,w)=>a+wedHours(w),0);
+  const scenes=weds.reduce((a,w)=>a+editStages(w).reduce((b,s)=>b+((s.scenes||[]).length),0),0);
+  const stages=weds.reduce((a,w)=>a+editStages(w).length,0);
+  const perH=hours?price/hours:0,perScene=scenes?price/scenes:0,perStage=stages?price/stages:0;
+  el.innerHTML=`<div class="moneycard"><div class="clabel">${icon('trend',13)} Rentabilidad${weds.length>1?' · todas las bodas':''}</div>
+    <div class="moneyrow">
+      <div class="mh"><div class="mv">${fmtMoney(perH)}<span>/h</span></div><div class="ml">por hora efectiva</div></div>
+      <div class="md"><div class="mv">${scenes?fmtMoney(perScene):'—'}</div><div class="ml">por escena</div></div>
+      <div class="md"><div class="mv">${fmtMoney(perStage)}</div><div class="ml">por etapa (prom.)</div></div>
+    </div>
+    <div class="moneynote">Sobre ${fmtMoney(price)} cobrado${hours?` · ${Math.round(hours)}h efectivas${scenes?` · ${scenes} escenas`:''}`:''}</div></div>`;
+}
+
 /* ───── Resumen · tarjetas Finpath (insight IA + distribución + meta) ───── */
 function aiInsight(){
   const weds=focusWeds();
@@ -720,7 +755,8 @@ function renderResumenGrid(){
   const agg={}; weds.forEach(w=>editStages(w).forEach(s=>{if(s.hours>0)agg[s.etapa]=(agg[s.etapa]||0)+s.hours;}));
   const order=Object.keys(agg).sort((a,b)=>agg[b]-agg[a]),totalH=Math.round(order.reduce((a,et)=>a+agg[et],0));
   const stages=order.map(et=>({etapa:et,hours:agg[et],estado:'done'}));
-  const legend=order.map((et,i)=>`<div class="lgrow"><span class="lgd" style="background:${stageColor(et,i)}"></span><span class="lgn">${esc(et)}</span><span class="lgh">${Math.round(agg[et])}h · ${totalH?Math.round(agg[et]/totalH*100):0}%</span></div>`).join('');
+  const price=weds.reduce((a,w)=>a+wedPrice(w),0);
+  const legend=order.map((et,i)=>`<div class="lgrow"><span class="lgd" style="background:${stageColor(et,i)}"></span><span class="lgn">${esc(et)}</span><span class="lgh">${fmtMoney(totalH?agg[et]/totalH*price:0)} <span class="lgsub">${Math.round(agg[et])}h · ${totalH?Math.round(agg[et]/totalH*100):0}%</span></span></div>`).join('');
   const distrib=stages.length?`<div class="card"><div class="clabel">${icon('rings',13)} Distribución de horas</div><div class="boda" style="margin-top:14px"><div class="donutwrap">${donut(stages)}<div class="donutpct"><div class="p">${totalH}h</div><div class="s">${stages.length} etapas</div></div></div><div class="binfo"><div class="lglist">${legend}</div></div></div></div>`:'';
   const allE=weds.flatMap(w=>editStages(w)),done=allE.filter(s=>s.estado==='done').length,total=allE.length,pct=total?Math.round(done/total*100):0;
   const live=weds.find(w=>editStages(w).some(s=>s.estado==='live')),del=live?projectDelivery(live):null,target=live||weds[0];
@@ -739,20 +775,21 @@ function weddingStats(w){
   const dts=E.flatMap(s=>[s.start,s.end]).filter(Boolean).map(parseD).filter(Boolean).map(d=>+d);
   const span=dts.length?Math.max(1,dayDiff(new Date(Math.min(...dts)),new Date(Math.max(...dts)))+1):null;
   const hPerScene=scenes?Math.round(hours/scenes*10)/10:null;
-  return {name:w.name,hours,scenes,span,hPerScene,rounds:corrRounds(w),lastEnd:dts.length?Math.max(...dts):0,complete:editComplete(w)};
+  return {name:w.name,hours,scenes,span,hPerScene,rounds:corrRounds(w),perHour:hours?Math.round(wedPrice(w)/hours):null,lastEnd:dts.length?Math.max(...dts):0,complete:editComplete(w)};
 }
 function weddingsByDate(){ return D.weddings.map(weddingStats).sort((a,b)=>a.lastEnd-b.lastEnd); }
 function chgChip(cur,prev,o){ o=o||{}; if(prev==null||cur==null) return ''; const d=cur-prev; if(Math.abs(d)<1e-9) return `<span class="evolchg flat">=</span>`; const up=d>0,arrow=up?'▲':'▼'; let cls='flat'; if(!o.neutral){const good=o.lowerBetter?!up:up; cls=good?'up':'down';} const val=o.pct?Math.round(Math.abs(d)/Math.abs(prev)*100)+'%':(Math.round(Math.abs(d)*10)/10)+(o.unit||''); return `<span class="evolchg ${cls}">${arrow} ${val}</span>`; }
-function evolLine(sts,val,unit){
+function evolLine(sts,val,unit,fmt){
   const pts=sts.map((s,i)=>({i,y:val(s),nm:s.name.split(' ')[0]})).filter(p=>p.y!=null);
   if(!pts.length) return `<div class="muted2" style="margin-top:8px">Aún sin datos.</div>`;
+  const L=p=>fmt?fmt(p.y):(p.y+unit);
   const W=560,H=148,padL=16,padR=16,padB=24,padT=24,n=pts.length;
   const maxY=(Math.max(...pts.map(p=>p.y))||1)*1.2;
   const X=i=>padL+(n<=1?0.5:i/(n-1))*(W-padL-padR),Y=v=>H-padB-(v/maxY)*(H-padB-padT);
   const ink=cv('--accent'),txt=cv('--txt'),dim=cv('--dim');
   const path=pts.map((p,k)=>(k?'L':'M')+X(p.i).toFixed(1)+' '+Y(p.y).toFixed(1)).join(' ');
-  const dots=pts.map(p=>`<circle cx="${X(p.i).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="4.2" fill="${ink}" stroke="${cv('--card2')}" stroke-width="2" data-tip="<b>${esc(p.nm)}</b><br>${p.y}${unit}"/>`).join('');
-  const labs=pts.map(p=>`<text x="${X(p.i).toFixed(1)}" y="${(Y(p.y)-11).toFixed(1)}" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="700" fill="${txt}" style="font-variant-numeric:tabular-nums">${p.y}${unit}</text>`).join('');
+  const dots=pts.map(p=>`<circle cx="${X(p.i).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="4.2" fill="${ink}" stroke="${cv('--card2')}" stroke-width="2" data-tip="<b>${esc(p.nm)}</b><br>${L(p)}"/>`).join('');
+  const labs=pts.map(p=>`<text x="${X(p.i).toFixed(1)}" y="${(Y(p.y)-11).toFixed(1)}" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="700" fill="${txt}" style="font-variant-numeric:tabular-nums">${L(p)}</text>`).join('');
   const xl=pts.map(p=>`<text x="${X(p.i).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="9" fill="${dim}">${esc(p.nm)}</text>`).join('');
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block"><path d="${path}" fill="none" stroke="${ink}" stroke-width="2.4" stroke-dasharray="2 5" stroke-linecap="round" stroke-linejoin="round"/>${dots}${labs}${xl}</svg>`;
 }
@@ -772,10 +809,11 @@ function renderEvol(){
   const cards=sts.map((s,i)=>{const p=i>0?sts[i-1]:null,parts=s.name.split('+');
     return `<div class="evolcard"><div class="top"><span class="nm">${esc(parts[0].trim())}${parts[1]?` <span style="color:var(--dim);font-weight:500">+${esc(parts[1])}</span>`:''}</span><span class="chip ${s.complete?'done':'live'}">${s.complete?'Completa':'En progreso'}</span></div>
       <div class="big">${s.hours}h ${p?chgChip(s.hours,p.hours,{neutral:true,pct:true}):''}</div>
-      <div class="mini"><div>Días <b>${s.span??'—'}</b> ${p?chgChip(s.span,p.span,{lowerBetter:true,unit:'d'}):''}</div><div>Escenas <b>${s.scenes||'—'}</b></div><div>h / escena <b>${s.hPerScene??'—'}</b> ${p?chgChip(s.hPerScene,p.hPerScene,{lowerBetter:true,unit:'h'}):''}</div><div>Cambios <b>${s.rounds||0}</b></div></div></div>`;}).join('');
+      <div class="mini"><div>Días <b>${s.span??'—'}</b> ${p?chgChip(s.span,p.span,{lowerBetter:true,unit:'d'}):''}</div><div>Escenas <b>${s.scenes||'—'}</b></div><div>h / escena <b>${s.hPerScene??'—'}</b> ${p?chgChip(s.hPerScene,p.hPerScene,{lowerBetter:true,unit:'h'}):''}</div><div>$ / hora <b>${s.perHour?fmtMoney(s.perHour):'—'}</b> ${p?chgChip(s.perHour,p.perHour,{pct:true}):''}</div></div></div>`;}).join('');
   const hb=sts.map((s,i)=>({value:s.hours,label:s.name.split(' ')[0],label2:s.hours+'h',color:stageColor('',i),tip:`<b>${esc(s.name)}</b><br>${s.hours}h totales`}));
   const charts=`<div class="evolcharts">
     <div class="evolchart"><div class="t">${icon('clock',11)} Horas por boda</div>${barsChart(hb)}</div>
+    <div class="evolchart"><div class="t">${icon('trend',11)} Rentabilidad · $/h <span style="color:var(--dim)">— más es mejor</span></div>${evolLine(sts,s=>s.perHour,'',v=>fmtMoney(v))}</div>
     <div class="evolchart"><div class="t">${icon('check',11)} Eficiencia · h / escena <span style="color:var(--dim)">— menos es mejor</span></div>${evolLine(sts,s=>s.hPerScene,'h')}</div>
     <div class="evolchart"><div class="t">${icon('hourglass',11)} Días para entregar <span style="color:var(--dim)">— menos es mejor</span></div>${evolLine(sts,s=>s.span,'d')}</div>
   </div>`;
@@ -806,7 +844,7 @@ const tip=document.createElement('div'); tip.id='tip'; document.body.appendChild
 document.addEventListener('mouseover',e=>{const t=e.target.closest&&e.target.closest('[data-tip]');if(t){tip.innerHTML=t.getAttribute('data-tip');tip.style.opacity='1';}});
 document.addEventListener('mousemove',e=>{if(tip.style.opacity==='1'){const x=Math.min(e.clientX+14,innerWidth-tip.offsetWidth-10),y=Math.min(e.clientY+16,innerHeight-tip.offsetHeight-10);tip.style.left=Math.max(8,x)+'px';tip.style.top=Math.max(8,y)+'px';}});
 document.addEventListener('mouseout',e=>{if(e.target.closest&&e.target.closest('[data-tip]'))tip.style.opacity='0';});
-function focusWedding(){ renderBodaSelector(); renderHero(); renderResumenGrid(); renderDaily(); renderBodas(); renderDrill(); renderSesHoy(); renderHoras(); renderLine(); renderGantt(); renderAlerts(); }
+function focusWedding(){ renderBodaSelector(); renderHero(); renderMoney(); renderResumenGrid(); renderDaily(); renderBodas(); renderDrill(); renderSesHoy(); renderHoras(); renderLine(); renderGantt(); renderAlerts(); }
 function setWed(v){ selWed=(v==='all'||v==null)?null:+v; if(selWed!=null&&D.weddings[selWed])drillView=editStages(D.weddings[selWed]).some(s=>(s.scenes||[]).length)?'escenas':'etapas'; focusWedding(); }
 document.addEventListener('change',e=>{ if(e.target.id==='bodaSelect') setWed(e.target.value); });
 document.addEventListener('click',e=>{
