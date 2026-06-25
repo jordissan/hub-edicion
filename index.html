@@ -525,7 +525,7 @@ function renderBodaSelector(){
   const order=D.weddings.map((w,i)=>i).sort((a,b)=>(wedInCorr(D.weddings[a])?1:0)-(wedInCorr(D.weddings[b])?1:0));
   const opt=(val,label,on)=>`<option value="${val}"${on?' selected':''}>${esc(label)}</option>`;
   let opts=opt('all','Todas las bodas',selWed==null);
-  order.forEach(i=>{const w=D.weddings[i];const tag=wedInCorr(w)?'  ·  correcciones':(editStages(w).some(s=>s.estado==='live')?'  ·  en curso':'');opts+=opt(i,w.name+tag,selWed===i);});
+  order.forEach(i=>{const w=D.weddings[i];const tag=wedInCorr(w)?'  ·  correcciones':(editStages(w).some(s=>s.estado==='live')?'  ·  en curso':(/hecho/i.test(w.status||'')?'  ·  finalizada':''));opts+=opt(i,w.name+tag,selWed===i);});
   el.innerHTML=`<div class="projsel">${icon('rings',14)}<span class="projsel-l">Proyecto</span><select id="bodaSelect" aria-label="Seleccionar proyecto">${opts}</select><span class="projsel-c">▾</span></div>`;
 }
 function renderHero(){
