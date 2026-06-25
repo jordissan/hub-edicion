@@ -70,11 +70,18 @@ con su `server.py` + launchd en el puerto 4599 — es **backup/dev** para probar
   → horas totales estimadas. Se afina conforme hay más bodas completas.
 - **Evolución (boda a boda):** records, deltas y tendencias ($/h, h/escena, días, horas) **solo de bodas COMPLETAS**.
   Las en progreso se muestran en tarjetas pero no entran a la comparación (no es justo comparar a medias vs terminadas).
-- **Bodas incluidas:** activas (Status ≠ Hecho) **+ finalizadas en los últimos `RECENT_DONE_DAYS` (45) días**
-  (`discover_wedding_pages`, filtro `last_edited_time`) — para no perder el tiempo de proyectos recién cerrados.
+- **Bodas incluidas:** todas (Tipo = Boda) **menos las finalizadas inactivas > `RECENT_DONE_DAYS` (45) días**
+  (`discover_wedding_pages`). El filtro de "finalizada" se hace en Python contra `DONE_STATUSES`
+  (`Finalizadas`/`Hecho`/`Complete`…), **no en la consulta a Notion** — así renombrar la opción de Status
+  ya no rompe el query (antes pedía `Status ≠ "Hecho"` y, al desaparecer esa opción, Notion devolvía 400).
 - **Proyectos de solo correcciones:** página con un DB **"Sesiones" directo** (sin "Tracking de Edición"/etapas).
   `build_wedding` los lee como una etapa **"Correcciones"** (`isCorrections`), así su tiempo cuenta en el log diario.
-- **Selector de proyecto:** etiqueta cada boda por estado — `en curso` · `correcciones` · `finalizada` (Status "Hecho").
+- **Pestaña Bodas:** agrupada en secciones **En curso · En corrección · Finalizadas** con chips de filtro;
+  las finalizadas se muestran como tarjetas compactas (overview). El selector de proyecto agrupa igual (optgroups).
+  El **drilldown + timeline siguen a la boda en vista** (`detailWedIdx`/`bodasEnVista`: selección → filtro → en curso).
+  Layout adaptable (`renderBodas` pone clase en `.cols`, `alignDrill` mide el offset): **browse** (Todas → 2 cols, detalle
+  sticky alineado a la 1ª tarjeta), **stack** (filtro de un grupo → apilado a lo ancho), **split** (boda elegida → 50/50).
+  En móvil todo se apila (sin scroll horizontal).
 
 ## Datos de referencia (Cloudflare)
 - Account ID: `3e5d3a65aa4f2a3819cdaacc1c92c6d9` · KV namespace "hub" ID: `c183c5e72d5e48a19d07fd6831ececeb`

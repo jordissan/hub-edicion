@@ -96,9 +96,24 @@ h1 .ic{color:var(--accent)}
 .lgsub{color:var(--dim);font-weight:400}
 #resumenGrid{display:flex;flex-direction:column;gap:14px}
 #resumenGrid:empty{display:none}
-.resgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.resgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:stretch}
 .resgrid>*{min-width:0}
 @media(max-width:860px){.resgrid{grid-template-columns:1fr}}
+/* Distribución de horas: el círculo es el protagonista — crece para llenar la tarjeta y se
+   adapta al ancho; la leyenda lo acompaña abajo en dos columnas. */
+.distrib{display:flex;flex-direction:column}
+.distrib-donut{flex:1;display:flex;align-items:center;justify-content:center;min-height:200px;margin:16px 0 20px}
+.distrib .donutwrap{position:relative;flex:0 0 auto;height:100%;width:auto;aspect-ratio:1/1;max-height:360px;max-width:100%}
+.distrib .donutwrap svg{width:100%;height:100%;display:block}
+.distrib .donutpct .p{font-size:48px}
+.distrib .donutpct .s{font-size:12px;margin-top:6px}
+.lglist.distrib-leg{display:grid;grid-template-columns:1fr 1fr;gap:9px 28px}
+/* Apilado (≤860px): el círculo pasa a regirse por el ancho de la tarjeta y crece a lo disponible */
+@media(max-width:860px){
+  .distrib-donut{min-height:0}
+  .distrib .donutwrap{height:auto;width:min(100%,320px);max-height:none}
+}
+@media(max-width:560px){.lglist.distrib-leg{grid-template-columns:1fr}}
 .aipill{display:flex;align-items:center;gap:14px;background:var(--accent-block);border-radius:20px;padding:15px 18px;color:var(--ink);box-shadow:0 18px 44px -28px color-mix(in srgb,var(--accent) 70%,transparent)}
 .aipill .ai-ic{flex:none;width:40px;height:40px;border-radius:13px;background:rgba(12,14,7,.14);display:flex;align-items:center;justify-content:center}
 .aipill .ai-ic .ic{color:var(--ink)}
@@ -160,7 +175,25 @@ h1 .ic{color:var(--accent)}
 .col{display:flex;flex-direction:column;gap:14px;min-width:0}
 .col-main{flex:1.45}
 .col-side{flex:1}
+/* Resumen: "Horas por día" y "Etapas completadas" igualan altura para cerrar a la misma línea
+   con la tarjeta de abajo; la gráfica de barras se centra y llena el alto sobrante. */
+@media(min-width:901px){
+  #v-resumen .cols{align-items:stretch}
+  #v-resumen .col>.card{flex:1}
+  #horas{display:flex;flex-direction:column}
+  .horas-chart{flex:1;display:flex;align-items:center;min-height:0;margin-top:4px}
+  .horas-chart svg{width:100%}
+}
 #bodas{display:flex;flex-direction:column;gap:14px}
+/* Browse ("Todas"): el detalle se queda fijo al hacer scroll por las secciones y arranca alineado a la 1ª tarjeta */
+@media(min-width:901px){#v-bodas .cols:not(.stack):not(.split) .col-side{position:sticky;top:14px}}
+/* Vista filtrada (pocas bodas): apila lista + detalle + timeline a lo ancho, sin columna lateral corta */
+#v-bodas .cols.stack{flex-direction:column}
+#v-bodas .cols.stack .col{width:100%;flex:1 1 auto}
+#v-bodas .cols.stack .col-side{position:static;top:auto}
+/* Boda seleccionada: gráfica y drilldown a 50/50 en el mismo renglón */
+#v-bodas .cols.split .col-main,#v-bodas .cols.split .col-side{flex:1 1 0;min-width:0}
+#v-bodas .cols.split .col-side{position:static;top:auto}
 @media(max-width:600px){body{padding:20px 13px 50px}}
 @media(max-width:900px){.cols{flex-direction:column}.col{flex:1 1 auto;width:100%}}
 @media(max-width:600px){.boda{flex-direction:column;align-items:center;gap:16px}.donutwrap{flex:0 0 auto;width:min(100%,380px);height:auto;aspect-ratio:1/1;margin:2px auto 4px}.donutwrap svg{width:100%;height:100%}.donutpct .p{font-size:60px;letter-spacing:-3px}.donutpct .s{font-size:14px;margin-top:6px}.binfo{width:100%;min-width:0}#dailyk{grid-template-columns:1fr 1fr;gap:12px}.hk{padding:14px 15px}.hk .v{font-size:26px}.hk .l{font-size:9.5px;letter-spacing:1px}}
@@ -190,6 +223,29 @@ h1 .ic{color:var(--accent)}
 .bodacard:active{transform:scale(.99)}
 .bodacard.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
 @media(hover:hover) and (pointer:fine){.bodacard:hover{border-color:var(--border2);transform:translateY(-2px)}}
+/* ── Bodas: filtros por estado + secciones agrupadas ── */
+.bfilters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.fchip{font-family:inherit;font-size:11px;font-weight:600;color:var(--muted);background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:6px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:border-color .14s ease,color .14s ease,background-color .14s ease}
+.fchip:hover{color:var(--txt);border-color:var(--border2)}
+.fchip.on{color:var(--fc,var(--accent));border-color:color-mix(in srgb,var(--fc,var(--accent)) 55%,transparent);background:color-mix(in srgb,var(--fc,var(--accent)) 12%,transparent)}
+.fchip-n{font-size:10px;font-weight:700;background:color-mix(in srgb,var(--ink) 8%,transparent);color:inherit;border-radius:10px;padding:1px 7px;min-width:18px;text-align:center}
+.fchip.on .fchip-n{background:color-mix(in srgb,var(--fc,var(--accent)) 18%,transparent)}
+.bsection{margin-bottom:26px}
+.bsection-h{display:flex;align-items:center;gap:8px;font-family:var(--font-d);font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--sc,var(--muted));margin-bottom:12px;padding-bottom:9px;border-bottom:1px solid var(--hair)}
+.bsection-h .ic{color:var(--sc,var(--muted))}
+.bsection-n{margin-left:auto;font-size:11px;font-weight:700;color:var(--muted);background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:1px 8px}
+.bcompgrid{display:grid;gap:10px}
+.bodacompact{cursor:pointer;display:flex;align-items:center;gap:16px;padding:13px 16px;flex-wrap:wrap;transition:border-color .15s ease,transform .2s var(--ease-out)}
+.bodacompact:active{transform:scale(.995)}
+@media(hover:hover) and (pointer:fine){.bodacompact:hover{border-color:var(--border2);transform:translateY(-1px)}}
+.bodacompact.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.bcomp-l{min-width:160px}
+.bcomp-name{font-family:var(--font-d);font-size:13.5px;font-weight:700;display:flex;align-items:center;gap:7px}
+.bcomp-name .ic{color:var(--done)}
+.bcomp-studio{font-size:10.5px;color:var(--dim);margin-top:2px;margin-left:22px}
+.bcomp-stats{display:flex;gap:14px;font-size:11px;color:var(--muted);flex-wrap:wrap;align-items:center;flex:1}
+.bcomp-stats b{color:var(--txt);font-weight:700}.bcomp-stats .ic{color:var(--muted);vertical-align:-.2em}
+.bcomp-r{display:flex;align-items:center;gap:8px;margin-left:auto}
 .bhead{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
 .bhead-r{display:flex;align-items:center;gap:8px}
 .bodaseg button{padding:4px 11px}
@@ -307,9 +363,11 @@ h1 .ic{color:var(--accent)}
 .sessrow .stk{height:16px;background:var(--track);border-radius:8px;overflow:hidden}
 .sessrow .sf{height:16px;border-radius:8px;display:flex;align-items:center;padding:0 8px;font-size:9px;font-weight:700;color:#0c0e07;white-space:nowrap}
 .sessrow .sv{font-size:10px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
-.hlegend{display:flex;gap:14px;flex-wrap:wrap;margin:2px 0 14px}
-.hlegend span{font-size:10.5px;color:var(--muted);display:flex;align-items:center;gap:5px}
-.hlegend i{width:9px;height:9px;border-radius:3px}
+.hlegend{display:flex;gap:12px 28px;flex-wrap:wrap;margin:15px 0 16px}
+.hlegend span{font-size:10.5px;color:var(--muted);display:flex;align-items:center;gap:8px}
+.hlegend i{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+/* En tarjetas en columna (Distribución, Horas/día) la píldora de título abraza su texto, no se estira */
+.distrib>.clabel,#horas>.clabel{align-self:flex-start}
 .hoygrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media(max-width:820px){.hoygrid{grid-template-columns:1fr}}
 .prog{margin-bottom:13px}
@@ -377,6 +435,7 @@ h1 .ic{color:var(--accent)}
 </div>
 
 <div class="view" id="v-bodas">
+  <div id="bodasFilters"></div>
   <div class="cols">
     <div class="col col-main"><div id="bodas"></div></div>
     <div class="col col-side"><div class="card" id="drill"></div></div>
@@ -405,7 +464,7 @@ window.SNAPSHOT_DATA = {
 <!-- ════════════════════════ DATA END ════════════════════════ -->
 
 <script>
-let D=window.SNAPSHOT_DATA, TODAY=parseD(D.today), selWed=null, drillView='auto', barsMetric='dias', bodaView='circulo';
+let D=window.SNAPSHOT_DATA, TODAY=parseD(D.today), selWed=null, drillView='auto', barsMetric='dias', bodaView='circulo', bodaFilter='all';
 const MES=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 const MESL=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const DIA=["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
@@ -452,7 +511,26 @@ function corrSessions(w){ return corrStages(w).reduce((a,s)=>a+(s.sessions||0),0
 function corrRounds(w){ const rs=new Set(); let any=false; corrStages(w).forEach(s=>(s.sessionLog||[]).forEach(x=>{any=true; if(x.ronda!=null) rs.add(x.ronda);})); return rs.size||(any?1:0); }
 function editComplete(w){ const e=editStages(w); return e.length>0&&e.every(s=>s.estado==='done'); }
 function wedInCorr(w){ return /correc/i.test(w.status||''); }   // estado de boda en Notion ("Correcciones")
+function wedDone(w){ return /finaliz|hecho|complet|done|entreg/i.test(w.status||''); }   // boda terminada/entregada
+// Bucket único por estado: en curso · en corrección · finalizada (Correcciones gana sobre finalizada)
+function wedBucket(w){ if(wedInCorr(w)) return 'correccion'; if(wedDone(w)) return 'finalizada'; return 'curso'; }
+const BUCKETS=[
+  {id:'curso',label:'En curso',color:'var(--live)',icon:'play'},
+  {id:'correccion',label:'En corrección',color:'#fb923c',icon:'refresh'},
+  {id:'finalizada',label:'Finalizadas',color:'var(--done)',icon:'check'},
+];
 function focusWeds(){ return (selWed!=null&&D.weddings[selWed])?[D.weddings[selWed]]:D.weddings; }
+// Boda que alimenta el detalle (drilldown + timeline) de la pestaña Bodas: la elegida,
+// si no la primera del filtro activo, si no la que está en curso. Así el panel de detalle
+// SIEMPRE corresponde a lo que estás mirando, no a una boda distinta.
+function detailWedIdx(){
+  if(selWed!=null) return selWed;
+  if(typeof bodaFilter!=='undefined'&&bodaFilter!=='all'){const i=D.weddings.findIndex(w=>wedBucket(w)===bodaFilter);if(i>=0)return i;}
+  const live=D.weddings.findIndex(w=>editStages(w).some(s=>s.estado==='live'));
+  return live>=0?live:0;
+}
+// Bodas que se ven en la pestaña Bodas según el filtro (para el timeline). Una sola si hay selección.
+function bodasEnVista(){ return selWed!=null?[D.weddings[selWed]]:(typeof bodaFilter!=='undefined'&&bodaFilter!=='all'?D.weddings.filter(w=>wedBucket(w)===bodaFilter):D.weddings); }
 function wedProg(w){ const e=editStages(w); return e.length?e.reduce((a,x)=>a+stageProg(x),0)/e.length:0; }
 function stageDays(st){ const s=parseD(st.start); if(!s) return null; const e=st.end?parseD(st.end):TODAY; return Math.max(1,dayDiff(s,e)+1); }
 function wedHours(w){ return editStages(w).reduce((a,s)=>a+(s.hours||0),0); }
@@ -522,10 +600,14 @@ function lineChart(points){
 function renderBodaSelector(){
   const el=document.getElementById('bodaSelector'); if(!el) return;
   if(!D.weddings||!D.weddings.length){el.innerHTML='';return;}
-  const order=D.weddings.map((w,i)=>i).sort((a,b)=>(wedInCorr(D.weddings[a])?1:0)-(wedInCorr(D.weddings[b])?1:0));
   const opt=(val,label,on)=>`<option value="${val}"${on?' selected':''}>${esc(label)}</option>`;
   let opts=opt('all','Todas las bodas',selWed==null);
-  order.forEach(i=>{const w=D.weddings[i];const tag=wedInCorr(w)?'  ·  correcciones':(editStages(w).some(s=>s.estado==='live')?'  ·  en curso':(/hecho/i.test(w.status||'')?'  ·  finalizada':''));opts+=opt(i,w.name+tag,selWed===i);});
+  // Agrupadas por estado para que el desplegable deje de estar emplastado
+  BUCKETS.forEach(b=>{
+    const idxs=D.weddings.map((w,i)=>i).filter(i=>wedBucket(D.weddings[i])===b.id);
+    if(!idxs.length) return;
+    opts+=`<optgroup label="${esc(b.label)} (${idxs.length})">`+idxs.map(i=>opt(i,D.weddings[i].name,selWed===i)).join('')+`</optgroup>`;
+  });
   el.innerHTML=`<div class="projsel">${icon('rings',14)}<span class="projsel-l">Proyecto</span><select id="bodaSelect" aria-label="Seleccionar proyecto">${opts}</select><span class="projsel-c">▾</span></div>`;
 }
 function renderHero(){
@@ -561,37 +643,82 @@ function bodaBarData(w){
     return {label:abbr(s.etapa),value:val,label2:horas?(h!=null?h+'h':'—'):String(d),color:stageColor(s.etapa,i),tip:`<b>${esc(s.etapa)}</b><br>${d}d${h!=null?' · '+h+'h efectivas':' · sin sesiones'}`};
   });
 }
+function bodaFullCard(wi,sel){
+  const w=D.weddings[wi],E=editStages(w),pct=Math.round(wedProg(w)*100),done=E.filter(s=>s.estado==='done').length,live=E.filter(s=>s.estado==='live').length,wait=E.filter(s=>s.estado==='wait').length;
+  const complete=editComplete(w),ordered=E.slice().sort((a,b)=>a.orden-b.orden),totH=Math.round(wedHours(w)),cH=Math.round(corrHours(w)),cN=corrSessions(w),cR=corrRounds(w);
+  const viewSeg=`<div class="seg2 bodaseg"><button class="${bodaView==='circulo'?'on':''}" data-bodaview="circulo">Círculo</button><button class="${bodaView==='barras'?'on':''}" data-bodaview="barras">Barras</button></div>`;
+  let body;
+  if(bodaView==='circulo'){
+    body=`<div class="boda"><div class="donutwrap">${donut(ordered)}<div class="donutpct">${totH>0?`<div class="p">${totH}h</div><div class="s">${pct}% · ${done}/${E.length} etapas</div>`:`<div class="p">${pct}%</div><div class="s">${done}/${E.length} etapas</div>`}</div></div>
+      <div class="binfo"><div class="lglist">${ordered.map((s,i)=>{const ic=s.estado==='done'?icon('check',11):s.estado==='live'?icon('play',11):'',cls=s.estado==='live'?'lg-live':s.estado==='wait'?'lg-wait':'';return `<div class="lgrow ${cls}" data-tip="${tipFor(s)}"><span class="lgd" style="background:${stageColor(s.etapa,i)}"></span><span class="lgn">${esc(s.etapa)}</span><span class="lgh">${s.hours>0?hrs(s.hours)+'h':''}</span><span class="lgs">${ic}</span></div>`;}).join('')}</div></div></div>`;
+  } else {
+    body=`<div style="margin-top:8px"><div style="display:flex;justify-content:flex-end;margin-bottom:8px"><div class="seg2"><button class="${barsMetric==='dias'?'on':''}" data-bars="dias">Días</button><button class="${barsMetric==='horas'?'on':''}" data-bars="horas">Horas</button></div></div>${barsChart(bodaBarData(w))}<div style="font-size:10px;color:var(--dim);text-align:center;margin-top:2px">${barsMetric==='horas'?'horas efectivas':'días'} por etapa</div></div>`;
+  }
+  const statChip=wedInCorr(w)?`<span class="chip" style="border-color:#fb923c;color:#fb923c">En correcciones</span>`:`<span class="chip ${complete?'done':'live'}">${complete?'Edición completa':esc(w.status||'En progreso')}</span>`;
+  return `<div class="card bodacard ${wi===sel?'sel':''}" data-wed="${wi}">
+    <div class="bhead">
+      <div class="bname">${icon('rings',18)}${esc(w.name)}</div>
+      <div class="bhead-r">${viewSeg}<a class="blink" href="${w.url}" target="_blank" rel="noopener" data-noselect="1">Notion ${icon('ext',11)}</a></div>
+    </div>
+    <div class="bmeta">${statChip}${w.studio?`<span class="chip">${esc(w.studio)}</span>`:''}</div>
+    <div class="bsum"><span><b>${done}</b> hechas</span><span><b>${live}</b> en curso</span><span><b>${wait}</b> pend.</span><span>${icon('clock',11)} <b>${totH}h</b></span>${(cN>0||cH>0)?`<span style="color:#fb923c">${icon('refresh',11)} <b>Cambios: ${cR?cR+' rnd · ':''}${cH}h · ${cN} ses</b></span>`:''}</div>
+    ${body}
+    <div style="margin-top:11px;font-size:10px;color:var(--dim)">${selWed!=null?'':(wi===sel?'● Mostrando en drilldown':'Clic para ver detalle →')}</div></div>`;
+}
+function bodaCompactCard(wi,sel){
+  const w=D.weddings[wi],E=editStages(w),pct=Math.round(wedProg(w)*100),done=E.filter(s=>s.estado==='done').length,totH=Math.round(wedHours(w)),cH=Math.round(corrHours(w)),cN=corrSessions(w),cR=corrRounds(w),sc=E.reduce((a,s)=>a+((s.scenes||[]).length),0);
+  return `<div class="card bodacompact ${wi===sel?'sel':''}" data-wed="${wi}">
+    <div class="bcomp-l"><div class="bcomp-name">${icon('rings',15)}${esc(w.name)}</div>${w.studio?`<div class="bcomp-studio">${esc(w.studio)}</div>`:''}</div>
+    <div class="bcomp-stats"><span><b>${pct}%</b> avance</span><span><b>${done}/${E.length}</b> etapas</span>${sc?`<span><b>${sc}</b> escenas</span>`:''}<span>${icon('clock',11)} <b>${totH}h</b></span>${(cN>0||cH>0)?`<span style="color:#fb923c">${icon('refresh',11)} <b>${cR?cR+' rnd · ':''}${cH}h</b></span>`:''}</div>
+    <div class="bcomp-r"><span class="chip done">Finalizada</span><a class="blink" href="${w.url}" target="_blank" rel="noopener" data-noselect="1">Notion ${icon('ext',11)}</a></div>
+  </div>`;
+}
 function renderBodas(){
-  const liveIdx=D.weddings.findIndex(w=>editStages(w).some(s=>s.estado==='live'));
-  const sel=selWed!=null?selWed:(liveIdx>=0?liveIdx:0);
-  const list=selWed!=null?[selWed]:D.weddings.map((w,i)=>i);   // una sola boda si está seleccionada
-  document.getElementById('bodas').innerHTML=list.map(wi=>{
-    const w=D.weddings[wi],E=editStages(w),pct=Math.round(wedProg(w)*100),done=E.filter(s=>s.estado==='done').length,live=E.filter(s=>s.estado==='live').length,wait=E.filter(s=>s.estado==='wait').length;
-    const complete=editComplete(w),ordered=E.slice().sort((a,b)=>a.orden-b.orden),totH=Math.round(wedHours(w)),cH=Math.round(corrHours(w)),cN=corrSessions(w),cR=corrRounds(w);
-    const viewSeg=`<div class="seg2 bodaseg"><button class="${bodaView==='circulo'?'on':''}" data-bodaview="circulo">Círculo</button><button class="${bodaView==='barras'?'on':''}" data-bodaview="barras">Barras</button></div>`;
-    let body;
-    if(bodaView==='circulo'){
-      body=`<div class="boda"><div class="donutwrap">${donut(ordered)}<div class="donutpct">${totH>0?`<div class="p">${totH}h</div><div class="s">${pct}% · ${done}/${E.length} etapas</div>`:`<div class="p">${pct}%</div><div class="s">${done}/${E.length} etapas</div>`}</div></div>
-        <div class="binfo"><div class="lglist">${ordered.map((s,i)=>{const ic=s.estado==='done'?icon('check',11):s.estado==='live'?icon('play',11):'',cls=s.estado==='live'?'lg-live':s.estado==='wait'?'lg-wait':'';return `<div class="lgrow ${cls}" data-tip="${tipFor(s)}"><span class="lgd" style="background:${stageColor(s.etapa,i)}"></span><span class="lgn">${esc(s.etapa)}</span><span class="lgh">${s.hours>0?hrs(s.hours)+'h':''}</span><span class="lgs">${ic}</span></div>`;}).join('')}</div></div></div>`;
-    } else {
-      body=`<div style="margin-top:8px"><div style="display:flex;justify-content:flex-end;margin-bottom:8px"><div class="seg2"><button class="${barsMetric==='dias'?'on':''}" data-bars="dias">Días</button><button class="${barsMetric==='horas'?'on':''}" data-bars="horas">Horas</button></div></div>${barsChart(bodaBarData(w))}<div style="font-size:10px;color:var(--dim);text-align:center;margin-top:2px">${barsMetric==='horas'?'horas efectivas':'días'} por etapa</div></div>`;
-    }
-    const statChip=wedInCorr(w)?`<span class="chip" style="border-color:#fb923c;color:#fb923c">En correcciones</span>`:`<span class="chip ${complete?'done':'live'}">${complete?'Edición completa':esc(w.status||'En progreso')}</span>`;
-    return `<div class="card bodacard ${wi===sel?'sel':''}" data-wed="${wi}">
-      <div class="bhead">
-        <div class="bname">${icon('rings',18)}${esc(w.name)}</div>
-        <div class="bhead-r">${viewSeg}<a class="blink" href="${w.url}" target="_blank" rel="noopener" data-noselect="1">Notion ${icon('ext',11)}</a></div>
-      </div>
-      <div class="bmeta">${statChip}${w.studio?`<span class="chip">${esc(w.studio)}</span>`:''}</div>
-      <div class="bsum"><span><b>${done}</b> hechas</span><span><b>${live}</b> en curso</span><span><b>${wait}</b> pend.</span><span>${icon('clock',11)} <b>${totH}h</b></span>${(cN>0||cH>0)?`<span style="color:#fb923c">${icon('refresh',11)} <b>Cambios: ${cR?cR+' rnd · ':''}${cH}h · ${cN} ses</b></span>`:''}</div>
-      ${body}
-      <div style="margin-top:11px;font-size:10px;color:var(--dim)">${selWed!=null?'':(wi===sel?'● Mostrando en drilldown':'Clic para ver detalle →')}</div></div>`;
-  }).join('');
+  const sel=detailWedIdx();
+  const el=document.getElementById('bodas');
+  const cols=document.querySelector('#v-bodas .cols');
+  const filtersEl=document.getElementById('bodasFilters');
+  // Modo de layout:
+  //  split  → boda elegida en el desplegable: gráfica + drilldown a 50/50 en el mismo renglón.
+  //  stack  → filtro de un grupo (pocas bodas): tarjeta, detalle y timeline apilados a lo ancho.
+  //  browse → "Todas": lista (izq) + detalle lateral fijo (der), alineado a la primera tarjeta.
+  const mode = selWed!=null ? 'split' : (bodaFilter!=='all' ? 'stack' : 'browse');
+  if(cols){ cols.classList.toggle('split',mode==='split'); cols.classList.toggle('stack',mode==='stack'); }
+  const drill=document.getElementById('drill'); if(drill&&mode!=='browse') drill.style.marginTop='';
+  // Vista enfocada: una sola boda elegida → tarjeta completa, sin chips ni secciones
+  if(selWed!=null){ el.innerHTML=bodaFullCard(selWed,sel); if(filtersEl) filtersEl.innerHTML=''; alignDrill(); return; }
+  // Chips de filtro por estado, a todo el ancho arriba de las columnas
+  const counts={}; BUCKETS.forEach(b=>counts[b.id]=0); D.weddings.forEach(w=>counts[wedBucket(w)]++);
+  const chip=(id,label,n,col)=>`<button class="fchip${bodaFilter===id?' on':''}" data-bfilter="${id}"${col?` style="--fc:${col}"`:''}>${esc(label)}<span class="fchip-n">${n}</span></button>`;
+  if(filtersEl) filtersEl.innerHTML=`<div class="bfilters">${chip('all','Todas',D.weddings.length,'')}${BUCKETS.filter(b=>counts[b.id]).map(b=>chip(b.id,b.label,counts[b.id],b.color)).join('')}</div>`;
+  // Secciones agrupadas por estado; finalizadas en formato overview compacto
+  let sections='';
+  BUCKETS.forEach(b=>{
+    if(bodaFilter!=='all'&&bodaFilter!==b.id) return;
+    const idxs=D.weddings.map((w,i)=>i).filter(i=>wedBucket(D.weddings[i])===b.id);
+    if(!idxs.length) return;
+    const compact=b.id==='finalizada';
+    const cards=idxs.map(i=>compact?bodaCompactCard(i,sel):bodaFullCard(i,sel)).join('');
+    sections+=`<div class="bsection"><div class="bsection-h" style="--sc:${b.color}">${icon(b.icon,13)}<span>${esc(b.label)}</span><span class="bsection-n">${idxs.length}</span></div>${compact?`<div class="bcompgrid">${cards}</div>`:cards}</div>`;
+  });
+  el.innerHTML=sections||`<div class="muted2" style="padding:20px;text-align:center">Sin bodas en este filtro.</div>`;
+  alignDrill();
+}
+// Alinea el tope del panel de detalle con la 1ª tarjeta (solo en modo browse de 2 columnas, en desktop).
+function alignDrill(){
+  const drill=document.getElementById('drill'), cols=document.querySelector('#v-bodas .cols');
+  if(!drill||!cols) return;
+  const browse=!cols.classList.contains('split')&&!cols.classList.contains('stack');
+  if(!browse||window.innerWidth<=900){ drill.style.marginTop=''; return; }
+  const firstCard=document.querySelector('#bodas .bsection > .card, #bodas > .card');
+  if(!firstCard){ drill.style.marginTop=''; return; }
+  drill.style.marginTop='0px';
+  const off=firstCard.getBoundingClientRect().top - drill.getBoundingClientRect().top;
+  drill.style.marginTop=(off>0?off:0)+'px';
 }
 function renderDrill(){
   const el=document.getElementById('drill');
-  const liveIdx=D.weddings.findIndex(w=>editStages(w).some(s=>s.estado==='live'));
-  const w=D.weddings[selWed!=null?selWed:(liveIdx>=0?liveIdx:0)];
+  const w=D.weddings[detailWedIdx()];
   const hasScenes=editStages(w).some(s=>(s.scenes||[]).length);
   let view=drillView; if(view==='auto') view=hasScenes?'escenas':'etapas';
   const toggle=`<div class="seg2"><button class="${view==='escenas'?'on':''}" data-view="escenas">Escenas</button><button class="${view==='etapas'?'on':''}" data-view="etapas">Etapas</button></div>`;
@@ -614,6 +741,7 @@ function renderDrill(){
     body=`<div style="margin-top:12px">${ordered.map((s,i)=>`<div class="stagerow" data-tip="${tipFor(s)}"><span class="sd" style="background:${stageColor(s.etapa,i)};opacity:${s.estado==='wait'?.35:1}"></span><span class="sn">${esc(s.etapa)}</span><span class="sb ${s.estado}">${estadoLabel(s.estado)}</span><span class="sdy">${stageDays(s)?stageDays(s)+'d':'—'}${s.hours!=null?' · '+hrs(s.hours)+'h':''}</span></div>`).join('')}</div>`;
   }
   el.innerHTML=`<div class="clabel">${icon('video',14)} Drilldown · ${esc(w.name)}</div><div class="drillhead">${toggle}</div>${body}`;
+  alignDrill();
 }
 function renderLine(){
   const comp=[];focusWeds().forEach(w=>editStages(w).forEach(s=>{if(s.estado==='done'&&s.end)comp.push({d:parseD(s.end),w:w.name,e:s.etapa});}));
@@ -623,7 +751,7 @@ function renderLine(){
 }
 function renderGantt(){
   const lightInk=document.documentElement.getAttribute('data-theme')==='light';
-  const wk=focusWeds().map(w=>{
+  const wk=bodasEnVista().map(w=>{
     const dated=w.stages.filter(s=>s.start);if(!dated.length)return'';
     const starts=dated.map(s=>parseD(s.start)),ends=dated.map(s=>s.end?parseD(s.end):TODAY);
     let mn=new Date(Math.min(...starts)),mx=new Date(Math.max(...ends)),span=Math.max(1,dayDiff(mn,mx));
@@ -677,18 +805,22 @@ function renderDaily(){
 }
 
 function weekChart(tot){
-  const W=560,H=190,padB=28,padT=24,padL=8;
+  const W=560,H=200,padB=30,padT=34,padL=8;
   const days=[],t=parseD(D.today);for(let i=6;i>=0;i--){const d=new Date(t);d.setDate(d.getDate()-i);days.push(keyOf(d));}
-  const vals=days.map(k=>(tot[k]||0)/60),maxRec=Math.max.apply(null,vals),maxY=Math.max(6,Math.ceil(maxRec)),n=days.length,gap=14,bw=(W-padL*2-gap*(n-1))/n,th=H-padB-padT;
-  const Y=v=>H-padB-(v/maxY)*th,DOW=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"],mut=cv('--muted'),dim=cv('--dim');
+  const vals=days.map(k=>(tot[k]||0)/60),maxRec=Math.max.apply(null,vals);
+  // Headroom: la barra más alta nunca llega al tope, así sus etiquetas no chocan con el borde.
+  const maxY=Math.max(6,Math.ceil(maxRec+0.7)),n=days.length,gap=14,bw=(W-padL*2-gap*(n-1))/n,th=H-padB-padT;
+  const Y=v=>H-padB-(v/maxY)*th,DOW=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"],mut=cv('--muted'),dim=cv('--dim'),card=cv('--card');
+  // Halo del color de la tarjeta detrás de las etiquetas: legibles aunque crucen la línea de meta.
+  const halo=`paint-order="stroke" stroke="${card}" stroke-width="3.6" stroke-linejoin="round"`;
   let bars='';
   days.forEach((k,i)=>{const v=vals[i],x=padL+i*(bw+gap),h=Math.max(v>0?3:0,(v/maxY)*th),y=H-padB-h,dw=dowKey(k),isToday=k===D.today,isRec=v>0&&v===maxRec&&!isToday,isSat=dw===6;
     const col=isToday?cv('--done'):isRec?'#fb923c':isSat?'#c4b5fd':'#8b7ff0';
     bars+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="7" fill="${col}" data-tip="<b>${DOW[dw]} ${k.slice(8)}</b><br>${fmtHM(v*60)}${metaMin(k)?' · meta '+fmtHM(metaMin(k)):' · descanso'}"/>`;
-    if(v>0)bars+=`<text x="${(x+bw/2).toFixed(1)}" y="${(y-5).toFixed(1)}" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="9.5" font-weight="700" fill="${mut}">${fmtHM(v*60)}</text>`;
-    bars+=`<text x="${(x+bw/2).toFixed(1)}" y="${H-padB+15}" text-anchor="middle" font-size="9" fill="${dim}">${DOW[dw]} ${k.slice(8)}</text>`;});
+    if(v>0)bars+=`<text x="${(x+bw/2).toFixed(1)}" y="${(y-8).toFixed(1)}" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="10" font-weight="700" fill="${mut}" ${halo}>${fmtHM(v*60)}</text>`;
+    bars+=`<text x="${(x+bw/2).toFixed(1)}" y="${H-padB+16}" text-anchor="middle" font-size="9.5" fill="${dim}">${DOW[dw]} ${k.slice(8)}</text>`;});
   const my=Y(5);
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block"><line x1="${padL}" x2="${W-padL}" y1="${my}" y2="${my}" stroke="${mut}" stroke-width="1" stroke-dasharray="4 4" opacity=".55"/><text x="${W-padL}" y="${(my-4).toFixed(1)}" text-anchor="end" font-size="9" fill="${mut}">meta 5h</text>${bars}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block"><line x1="${padL}" x2="${W-padL}" y1="${my.toFixed(1)}" y2="${my.toFixed(1)}" stroke="${mut}" stroke-width="1" stroke-dasharray="5 5" opacity=".4"/><text x="${(padL+3)}" y="${(my-6).toFixed(1)}" text-anchor="start" font-size="9.5" fill="${mut}" ${halo}>meta 5h</text>${bars}</svg>`;
 }
 
 function renderSesHoy(){
@@ -700,7 +832,7 @@ function renderSesHoy(){
 }
 function renderHoras(){
   const tot=dayTotalsOf(focusSessions());
-  document.getElementById('horas').innerHTML=`<div class="clabel">${icon('trend',14)} Horas por día — últimos 7 días</div><div class="hlegend"><span><i style="background:#8b7ff0"></i>Previos</span><span><i style="background:${cv('--done')}"></i>Hoy</span><span><i style="background:#fb923c"></i>Récord</span><span><i style="background:#c4b5fd"></i>Sábado</span></div>${weekChart(tot)}`;
+  document.getElementById('horas').innerHTML=`<div class="clabel">${icon('trend',14)} Horas por día — últimos 7 días</div><div class="hlegend"><span><i style="background:#8b7ff0"></i>Previos</span><span><i style="background:${cv('--done')}"></i>Hoy</span><span><i style="background:#fb923c"></i>Récord</span><span><i style="background:#c4b5fd"></i>Sábado</span></div><div class="horas-chart">${weekChart(tot)}</div>`;
 }
 
 function renderChrome(){
@@ -783,7 +915,7 @@ function renderResumenGrid(){
   const stages=order.map(et=>({etapa:et,hours:agg[et],estado:'done'}));
   const price=weds.reduce((a,w)=>a+wedPrice(w),0);
   const legend=order.map((et,i)=>`<div class="lgrow"><span class="lgd" style="background:${stageColor(et,i)}"></span><span class="lgn">${esc(et)}</span><span class="lgh">${fmtMoney(totalH?agg[et]/totalH*price:0)} <span class="lgsub">${Math.round(agg[et])}h · ${totalH?Math.round(agg[et]/totalH*100):0}%</span></span></div>`).join('');
-  const distrib=stages.length?`<div class="card"><div class="clabel">${icon('rings',13)} Distribución de horas</div><div class="boda" style="margin-top:14px"><div class="donutwrap">${donut(stages)}<div class="donutpct"><div class="p">${totalH}h</div><div class="s">${stages.length} etapas</div></div></div><div class="binfo"><div class="lglist">${legend}</div></div></div></div>`:'';
+  const distrib=stages.length?`<div class="card distrib"><div class="clabel">${icon('rings',13)} Distribución de horas</div><div class="distrib-donut"><div class="donutwrap">${donut(stages)}<div class="donutpct"><div class="p">${totalH}h</div><div class="s">${stages.length} etapas</div></div></div></div><div class="lglist distrib-leg">${legend}</div></div>`:'';
   const allE=weds.flatMap(w=>editStages(w)),done=allE.filter(s=>s.estado==='done').length,total=allE.length,pct=total?Math.round(done/total*100):0;
   const live=weds.find(w=>editStages(w).some(s=>s.estado==='live')),del=live?projectDelivery(live):null,target=live||weds[0];
   const trows=target?editStages(target).slice().sort((a,b)=>a.orden-b.orden).map((s,i)=>`<div class="stagerow" data-tip="${tipFor(s)}"><span class="sd" style="background:${stageColor(s.etapa,i)};opacity:${s.estado==='wait'?.4:1}"></span><span class="sn">${esc(s.etapa)}</span><span class="sb ${s.estado}">${estadoLabel(s.estado)}</span><span class="sdy">${s.hours>0?hrs(s.hours)+'h':'—'}</span></div>`).join(''):'';
@@ -886,6 +1018,7 @@ document.addEventListener('change',e=>{ if(e.target.id==='bodaSelect') setWed(e.
 document.addEventListener('click',e=>{
   if(e.target.closest('[data-noselect]'))return;
   const tb=e.target.closest('[data-tab]'); if(tb){setTab(tb.getAttribute('data-tab'));return;}
+  const bf=e.target.closest('[data-bfilter]'); if(bf){bodaFilter=bf.getAttribute('data-bfilter');renderBodas();return;}
   const dv=e.target.closest('[data-bodaview]'); if(dv){bodaView=dv.getAttribute('data-bodaview');renderBodas();return;}
   const bv=e.target.closest('[data-bars]'); if(bv){barsMetric=bv.getAttribute('data-bars');renderBodas();return;}
   const v=e.target.closest('[data-view]'); if(v){drillView=v.getAttribute('data-view');renderDrill();return;}
@@ -896,6 +1029,7 @@ applyTheme(document.documentElement.getAttribute('data-theme')||'dark');
 setTab(hubView);
 document.getElementById('themeBtn').addEventListener('click',toggleTheme);
 document.getElementById('refreshBtn').addEventListener('click',()=>load(true));
+let _alignRAF;window.addEventListener('resize',()=>{cancelAnimationFrame(_alignRAF);_alignRAF=requestAnimationFrame(alignDrill);});
 load(false);
 </script>
 </body>
