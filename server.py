@@ -363,24 +363,34 @@ def build_wedding(page):
     return wedding
 
 
-RECENT_DONE_DAYS = 45  # bodas "Hecho" editadas en los últimos N días siguen en el tablero
+RECENT_DONE_DAYS = 45  # bodas finalizadas editadas en los últimos N días siguen en el tablero
+
+# Estados de Notion que cuentan como "boda terminada/entregada". Se comparan en
+# minúsculas. OJO: las opciones del estado en Notion se han renombrado en el
+# pasado ("Hecho" → "Finalizadas"), así que filtramos en Python por este conjunto
+# en vez de codificar un nombre exacto en la consulta (que reventaba con un 400
+# cuando la opción dejaba de existir y tiraba todo a las bodas de respaldo).
+DONE_STATUSES = {"hecho", "finalizadas", "finalizada", "complete", "completado", "done"}
 
 def discover_wedding_pages():
-    """Bodas activas (Tipo=Boda, Status≠Hecho) + finalizadas hace poco (editadas en
-    los últimos RECENT_DONE_DAYS días) — para no perder el tiempo de proyectos recién
-    cerrados (p.ej. correcciones post-entrega que acabas hoy)."""
+    """Trae TODAS las páginas Tipo=Boda y descarta solo las finalizadas que llevan
+    inactivas más de RECENT_DONE_DAYS días — para no perder proyectos recién
+    cerrados (p.ej. correcciones post-entrega que acabas hoy) ni las que siguen en
+    curso o en correcciones. Robusto ante renombrados del estado en Notion."""
     cutoff = (datetime.date.today() - datetime.timedelta(days=RECENT_DONE_DAYS)).isoformat()
-    filt = {"and": [
-        {"property": "Tipo", "select": {"equals": "Boda"}},
-        {"or": [
-            {"property": "Status", "status": {"does_not_equal": "Hecho"}},
-            {"timestamp": "last_edited_time", "last_edited_time": {"on_or_after": cutoff}},
-        ]},
-    ]}
+    filt = {"property": "Tipo", "select": {"equals": "Boda"}}
     try:
         pages = query_db(TRABAJO_DB_ID, filt)
         if pages:
-            return pages
+            kept = []
+            for p in pages:
+                status = (p_select(p.get("properties", {}), "Status") or "").strip().lower()
+                edited = (p.get("last_edited_time") or "")[:10]
+                if status in DONE_STATUSES and edited < cutoff:
+                    continue  # finalizada y sin actividad reciente → fuera del tablero
+                kept.append(p)
+            if kept:
+                return kept
     except Exception as e:
         sys.stderr.write("[aviso] consulta a DB raíz falló (%s); usando bodas conocidas\n" % e)
     # Respaldo: traer las páginas conocidas directamente
