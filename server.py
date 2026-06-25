@@ -243,6 +243,30 @@ def parse_day(title):
 
 
 # ── Construcción del modelo del dashboard ────────────────────────────────────
+def read_session_db(sb_id):
+    """Lee una DB de 'Sesiones' -> (sessionLog, horas_totales, n_sesiones)."""
+    log = []; total_h = 0.0; nsess = 0
+    for ses in query_db(sb_id):
+        pp = ses.get("properties", {})
+        ini = p_date(pp, "Inicio"); fin = p_date(pp, "Fin")
+        if not ini:  # fallback: primer prop date con rango
+            for k, v in pp.items():
+                if v.get("type") == "date" and v.get("date"):
+                    ini = v["date"].get("start"); fin = fin or v["date"].get("end"); break
+        h = hours_between(ini, fin)
+        if h:
+            total_h += h; nsess += 1
+            ini_local = parse_iso_local(ini)
+            log.append({
+                "name": p_title(pp, "Sesion") or title_any(pp),
+                "inicio": ini_local.strftime("%Y-%m-%dT%H:%M") if ini_local else ini,
+                "min": int(round(h * 60)),
+                "tipo": p_select(pp, "Tipo"),
+                "ronda": p_number(pp, "Ronda"),
+            })
+    return log, total_h, nsess
+
+
 def build_wedding(page):
     props = page.get("properties", {})
     name = p_title(props, "Nombre") or title_any(props)
@@ -267,6 +291,26 @@ def build_wedding(page):
                 tracking_db = blk["id"]
                 break
     if not tracking_db:
+        # Bodas de SOLO correcciones / sesiones sueltas: un "Sesiones" directo bajo la
+        # página (sin etapas). Capturamos sus sesiones como una etapa "Correcciones".
+        for blk in children(page["id"]):
+            if blk.get("type") != "child_database":
+                continue
+            bid = blk["id"]; title = blk["child_database"].get("title", "")
+            try:
+                is_ses = (db_title_prop(bid) == "Sesión") or ("sesi" in title.lower())
+            except Exception:
+                is_ses = "sesi" in title.lower()
+            if is_ses:
+                log, th, ns = read_session_db(bid)
+                if ns:
+                    wedding["stages"].append({
+                        "etapa": "Correcciones", "fase": None,
+                        "estado": "done", "orden": 99,
+                        "start": None, "end": None,
+                        "isCorrections": True,
+                        "scenes": [], "hours": round(th, 1), "sessions": ns, "sessionLog": log,
+                    })
         return wedding
 
     for st in query_db(tracking_db):
@@ -308,28 +352,8 @@ def build_wedding(page):
                         "dia": day, "start": c_start, "end": c_end,
                     })
             elif title_prop == "Sesion" or "sesion" in sb_title.lower():
-                for ses in query_db(sb_id):
-                    pp = ses.get("properties", {})
-                    ini = p_date(pp, "Inicio")
-                    fin = p_date(pp, "Fin")
-                    if not ini:  # fallback: primer prop date con rango
-                        for k, v in pp.items():
-                            if v.get("type") == "date" and v.get("date"):
-                                ini = v["date"].get("start")
-                                fin = fin or v["date"].get("end")
-                                break
-                    h = hours_between(ini, fin)
-                    if h:
-                        total_h += h
-                        nsess += 1
-                        ini_local = parse_iso_local(ini)
-                        stage["sessionLog"].append({
-                            "name": p_title(pp, "Sesion") or title_any(pp),
-                            "inicio": ini_local.strftime("%Y-%m-%dT%H:%M") if ini_local else ini,
-                            "min": int(round(h * 60)),
-                            "tipo": p_select(pp, "Tipo"),
-                            "ronda": p_number(pp, "Ronda"),   # para contar rondas de cambios
-                        })
+                log, th, ns = read_session_db(sb_id)
+                stage["sessionLog"].extend(log); total_h += th; nsess += ns
         if nsess:
             stage["hours"] = round(total_h, 1)
             stage["sessions"] = nsess
