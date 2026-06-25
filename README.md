@@ -38,17 +38,21 @@ con su `server.py` + launchd en el puerto 4599 — es **backup/dev** para probar
 - **A mano / ya:** `gh workflow run "Publicar dashboard" -R jordissan/hub-edicion` (o Actions → Run workflow).
 
 ## Cómo cambiar el dashboard (mantenimiento)
-1. Editar **`cloud/index.html`** (y `cloud/server.py` si toca la extracción de Notion).
-2. **Espejar a la copia local** `/Users/jordi/HubEdicion/index.html`: `cp cloud/index.html ../index.html`
-   y restaurar las 2 diferencias del local — el `fetch` debe ser `/api/data` (no `/api/edicion`) y el bloque
-   `window.SNAPSHOT_DATA` debe ser el real (el cloud lo tiene scrubbeado). (Se hace con un mini-script Python.)
+**Se edita el LOCAL primero, luego se porta al cloud** (no al revés). El local
+(`/Users/jordi/HubEdicion/index.html`) es la fuente: tiene `fetch('/api/data')` + el
+`window.SNAPSHOT_DATA` real, y se prueba con datos reales vía el server (puerto 4599).
+1. Editar `/Users/jordi/HubEdicion/index.html` (y `server.py` si toca la extracción de Notion).
+2. **Portar a `cloud/index.html`** con un mini-script Python que copia el local pero **preserva
+   2 cosas del cloud**: su bloque `window.SNAPSHOT_DATA` (scrubbeado) y el `fetch('/api/edicion')`
+   (el local usa `/api/data`). Revisar `git diff` antes de commitear.
 3. `git -C cloud add -A && git -C cloud commit && git -C cloud push` → **Cloudflare Pages auto-despliega (~1-2 min).**
-4. Si cambiaste `server.py`: además `gh workflow run "Publicar dashboard"` para republicar KV.
-5. Tras editar el local: `launchctl kickstart -k gui/$(id -u)/com.jordi.hub-edicion` (server.py se carga una vez).
+4. Si cambiaste `server.py`: edita **ambos** (raíz + `cloud/server.py`), pushea el del cloud, y
+   `gh workflow run "Publicar dashboard"` para republicar KV. Reinicia el local:
+   `launchctl kickstart -k gui/$(id -u)/com.jordi.hub-edicion`.
 
-**Verificación sin navegador** (no hay node; las preview tools chocan con el sandbox): `osascript -l JavaScript`
-(JavaScriptCore) con stubs de DOM + datos reales (`curl localhost:4599/api/data`), corriendo `renderAll()` por cada
-`selWed`. Cortar el JS en `applyTheme(...||'dark');` para quitar el auto-arranque. `new Function(code)` valida sintaxis.
+**Verificación**: Claude Preview MCP funciona — `python3 -m http.server` (vía `.claude/launch.json`) +
+`preview_screenshot`/`preview_eval`. Para datos reales: `curl localhost:4599/api/data` (server local).
+`gh` se instala bajando el binario oficial si falta (auth en keychain). `python3 -m py_compile` valida `server.py`.
 
 ## Modelo y comportamiento (decisiones de Jordi)
 - **El 100% = terminar el montaje de HL/SF** (última etapa de edición). Una etapa marcada **'done' cuenta 100%**
@@ -59,6 +63,18 @@ con su `server.py` + launchd en el puerto 4599 — es **backup/dev** para probar
 - **Selector de proyecto = menú desplegable.** Al elegir una boda, **todas las gráficas filtran a ese proyecto**
   (hero, donut, drilldown, KPIs Hoy/Sesiones, alertas, timeline, acumulado, horas/día). **Racha siempre global.**
 - **Widgets** (`HubEdicion/widgets/`): iPhone (Scriptable) y Mac (SwiftBar) leen `/api/summary` con el Service Token.
+- **Nav por pestañas:** Resumen · Bodas · Evolución (estado en `localStorage`). "Hoy" se fusionó en Resumen.
+- **Rentabilidad:** `$/h`, `$/escena`, `$/etapa` sobre el **precio cobrado** = propiedad **Total** (MXN) de cada
+  boda en Notion (`build_wedding` la lee como `price`; el dashboard prioriza `w.price`, con default si falta). En
+  proyectos en curso, **`$/h proyectado`** = (tasa histórica `horas/escena` de bodas completas) × escenas de la boda
+  → horas totales estimadas. Se afina conforme hay más bodas completas.
+- **Evolución (boda a boda):** records, deltas y tendencias ($/h, h/escena, días, horas) **solo de bodas COMPLETAS**.
+  Las en progreso se muestran en tarjetas pero no entran a la comparación (no es justo comparar a medias vs terminadas).
+- **Bodas incluidas:** activas (Status ≠ Hecho) **+ finalizadas en los últimos `RECENT_DONE_DAYS` (45) días**
+  (`discover_wedding_pages`, filtro `last_edited_time`) — para no perder el tiempo de proyectos recién cerrados.
+- **Proyectos de solo correcciones:** página con un DB **"Sesiones" directo** (sin "Tracking de Edición"/etapas).
+  `build_wedding` los lee como una etapa **"Correcciones"** (`isCorrections`), así su tiempo cuenta en el log diario.
+- **Selector de proyecto:** etiqueta cada boda por estado — `en curso` · `correcciones` · `finalizada` (Status "Hecho").
 
 ## Datos de referencia (Cloudflare)
 - Account ID: `3e5d3a65aa4f2a3819cdaacc1c92c6d9` · KV namespace "hub" ID: `c183c5e72d5e48a19d07fd6831ececeb`
