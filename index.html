@@ -784,6 +784,7 @@ function keyOf(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'
 function dowKey(k){return new Date(k+'T00:00:00').getDay();}            // 0 Dom..6 Sáb
 function metaMin(k){const d=dowKey(k);return d===0?0:(d===6?120:300);} // 5h L-V · 2h Sáb · Dom descanso
 function fmtHM(min){min=Math.round(min);const h=Math.floor(min/60),m=min%60;return h?(m?`${h}h ${m}min`:`${h}h`):`${m}min`;}
+function fmtHMshort(min){min=Math.round(min);const h=Math.floor(min/60),m=min%60;return h?(m?`${h}h ${m}m`:`${h}h`):`${m}m`;}
 function shortStage(et){const m={"Importación y Organización":"IO","Separación por Escenas":"SE","Limpieza":"LP","Sincronización":"SN","Musicalización":"MU","Edición Musical":"EM","Corrección de Color y Finalización":"CC","Selección de Material (HL/SF)":"SM","Selección Musical (HL/SF)":"SL","Montaje (HL/SF)":"MT"};return m[et]||(et||'').slice(0,2).toUpperCase();}
 function allSessions(){const o=[];D.weddings.forEach(w=>w.stages.forEach(s=>(s.sessionLog||[]).forEach(x=>{if(x.inicio)o.push({name:x.name,inicio:x.inicio,key:x.inicio.slice(0,10),min:x.min||0,tipo:x.tipo,etapa:s.etapa,color:stageColor(s.etapa),wedding:w.name});})));return o;}
 function focusSessions(){ const a=allSessions(); return (selWed!=null&&D.weddings[selWed])?a.filter(s=>s.wedding===D.weddings[selWed].name):a; }
@@ -809,22 +810,31 @@ function weekChart(tot){
   // tamaño real (el viewBox ancho de escritorio, encogido al ancho del móvil, se veía diminuto).
   const narrow=(typeof window!=='undefined')&&window.innerWidth<=620;
   const W=narrow?360:560, H=narrow?300:200, padB=narrow?40:30, padT=narrow?46:34, padL=narrow?10:8;
-  const fVal=narrow?15:10, fDay=narrow?13:9.5, fMeta=narrow?12.5:9.5, valGap=narrow?11:8, rx=narrow?9:7;
+  const fVal=narrow?12:10, fDay=narrow?11.5:9.5, fMeta=narrow?11:9.5, valGap=narrow?9:8, rx=narrow?9:7;
+  const lbl=m=>narrow?fmtHMshort(m):fmtHM(m);
   const days=[],t=parseD(D.today);for(let i=6;i>=0;i--){const d=new Date(t);d.setDate(d.getDate()-i);days.push(keyOf(d));}
   const vals=days.map(k=>(tot[k]||0)/60),maxRec=Math.max.apply(null,vals);
-  // Headroom: la barra más alta nunca llega al tope, así sus etiquetas no chocan con el borde.
-  const maxY=Math.max(6,Math.ceil(maxRec+0.7)),n=days.length,gap=narrow?10:14,bw=(W-padL*2-gap*(n-1))/n,th=H-padB-padT;
-  const Y=v=>H-padB-(v/maxY)*th,DOW=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"],mut=cv('--muted'),dim=cv('--dim'),card=cv('--card');
-  // Halo del color de la tarjeta detrás de las etiquetas: legibles aunque crucen la línea de meta.
-  const halo=`paint-order="stroke" stroke="${card}" stroke-width="${narrow?4.4:3.6}" stroke-linejoin="round"`;
+  // Headroom proporcional (como el widget): la barra más alta deja aire para su etiqueta.
+  const maxY=Math.max(6,Math.ceil(maxRec*1.16)),n=days.length,gap=narrow?9:14,bw=(W-padL*2-gap*(n-1))/n,th=H-padB-padT;
+  const Y=v=>H-padB-(v/maxY)*th,DOW=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"],mut=cv('--muted'),dim=cv('--dim');
+  const my=Y(5);
+  // La línea de meta se ABRE con un hueco donde una etiqueta la cruza (en vez de encimar texto y línea).
+  const skips=[];
   let bars='';
-  days.forEach((k,i)=>{const v=vals[i],x=padL+i*(bw+gap),h=Math.max(v>0?3:0,(v/maxY)*th),y=H-padB-h,dw=dowKey(k),isToday=k===D.today,isRec=v>0&&v===maxRec&&!isToday,isSat=dw===6;
+  days.forEach((k,i)=>{const v=vals[i],x=padL+i*(bw+gap),cx=x+bw/2,h=Math.max(v>0?3:0,(v/maxY)*th),y=H-padB-h,dw=dowKey(k),isToday=k===D.today,isRec=v>0&&v===maxRec&&!isToday,isSat=dw===6;
     const col=isToday?cv('--done'):isRec?'#fb923c':isSat?'#c4b5fd':'#8b7ff0';
     bars+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="${rx}" fill="${col}" data-tip="<b>${DOW[dw]} ${k.slice(8)}</b><br>${fmtHM(v*60)}${metaMin(k)?' · meta '+fmtHM(metaMin(k)):' · descanso'}"/>`;
-    if(v>0)bars+=`<text x="${(x+bw/2).toFixed(1)}" y="${(y-valGap).toFixed(1)}" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fVal}" font-weight="700" fill="${mut}" ${halo}>${fmtHM(v*60)}</text>`;
-    bars+=`<text x="${(x+bw/2).toFixed(1)}" y="${H-padB+(narrow?20:16)}" text-anchor="middle" font-size="${fDay}" fill="${dim}">${DOW[dw]} ${k.slice(8)}</text>`;});
-  const my=Y(5);
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block"><line x1="${padL}" x2="${W-padL}" y1="${my.toFixed(1)}" y2="${my.toFixed(1)}" stroke="${mut}" stroke-width="1" stroke-dasharray="5 5" opacity=".4"/><text x="${(padL+3)}" y="${(my-6).toFixed(1)}" text-anchor="start" font-size="${fMeta}" fill="${mut}" ${halo}>meta 5h</text>${bars}</svg>`;
+    if(v>0){const s=lbl(v*60),ly=y-valGap,lw=s.length*fVal*0.62+6;
+      if(my>=ly-fVal-1&&my<=ly+4) skips.push([cx-lw/2,cx+lw/2]);   // su etiqueta cruza la meta
+      bars+=`<text x="${cx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fVal}" font-weight="700" fill="${mut}">${s}</text>`;}
+    bars+=`<text x="${cx.toFixed(1)}" y="${H-padB+(narrow?20:16)}" text-anchor="middle" font-size="${fDay}" fill="${dim}">${DOW[dw]} ${k.slice(8)}</text>`;});
+  // Segmentos de la línea punteada evitando los huecos de las etiquetas que la cruzan.
+  skips.sort((a,b)=>a[0]-b[0]);
+  const merged=[];skips.forEach(s=>{const last=merged[merged.length-1];if(last&&s[0]<=last[1]+2)last[1]=Math.max(last[1],s[1]);else merged.push(s.slice());});
+  const seg=(a,b)=>`<line x1="${a.toFixed(1)}" x2="${b.toFixed(1)}" y1="${my.toFixed(1)}" y2="${my.toFixed(1)}" stroke="${mut}" stroke-width="1" stroke-dasharray="5 5" opacity=".4"/>`;
+  let line='',cur=padL;merged.forEach(([a,b])=>{if(a>cur)line+=seg(cur,a);cur=Math.max(cur,b);});if(cur<W-padL)line+=seg(cur,W-padL);
+  const meta=`<text x="${(padL+3)}" y="${(my-6).toFixed(1)}" text-anchor="start" font-size="${fMeta}" fill="${mut}">meta 5h</text>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${line}${meta}${bars}</svg>`;
 }
 
 function renderSesHoy(){
