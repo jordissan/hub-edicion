@@ -805,22 +805,26 @@ function renderDaily(){
 }
 
 function weekChart(tot){
-  const W=560,H=200,padB=30,padT=34,padL=8;
+  // En pantallas angostas usamos un viewBox más alto y angosto: barras grandes y texto a
+  // tamaño real (el viewBox ancho de escritorio, encogido al ancho del móvil, se veía diminuto).
+  const narrow=(typeof window!=='undefined')&&window.innerWidth<=620;
+  const W=narrow?360:560, H=narrow?300:200, padB=narrow?40:30, padT=narrow?46:34, padL=narrow?10:8;
+  const fVal=narrow?15:10, fDay=narrow?13:9.5, fMeta=narrow?12.5:9.5, valGap=narrow?11:8, rx=narrow?9:7;
   const days=[],t=parseD(D.today);for(let i=6;i>=0;i--){const d=new Date(t);d.setDate(d.getDate()-i);days.push(keyOf(d));}
   const vals=days.map(k=>(tot[k]||0)/60),maxRec=Math.max.apply(null,vals);
   // Headroom: la barra más alta nunca llega al tope, así sus etiquetas no chocan con el borde.
-  const maxY=Math.max(6,Math.ceil(maxRec+0.7)),n=days.length,gap=14,bw=(W-padL*2-gap*(n-1))/n,th=H-padB-padT;
+  const maxY=Math.max(6,Math.ceil(maxRec+0.7)),n=days.length,gap=narrow?10:14,bw=(W-padL*2-gap*(n-1))/n,th=H-padB-padT;
   const Y=v=>H-padB-(v/maxY)*th,DOW=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"],mut=cv('--muted'),dim=cv('--dim'),card=cv('--card');
   // Halo del color de la tarjeta detrás de las etiquetas: legibles aunque crucen la línea de meta.
-  const halo=`paint-order="stroke" stroke="${card}" stroke-width="3.6" stroke-linejoin="round"`;
+  const halo=`paint-order="stroke" stroke="${card}" stroke-width="${narrow?4.4:3.6}" stroke-linejoin="round"`;
   let bars='';
   days.forEach((k,i)=>{const v=vals[i],x=padL+i*(bw+gap),h=Math.max(v>0?3:0,(v/maxY)*th),y=H-padB-h,dw=dowKey(k),isToday=k===D.today,isRec=v>0&&v===maxRec&&!isToday,isSat=dw===6;
     const col=isToday?cv('--done'):isRec?'#fb923c':isSat?'#c4b5fd':'#8b7ff0';
-    bars+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="7" fill="${col}" data-tip="<b>${DOW[dw]} ${k.slice(8)}</b><br>${fmtHM(v*60)}${metaMin(k)?' · meta '+fmtHM(metaMin(k)):' · descanso'}"/>`;
-    if(v>0)bars+=`<text x="${(x+bw/2).toFixed(1)}" y="${(y-8).toFixed(1)}" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="10" font-weight="700" fill="${mut}" ${halo}>${fmtHM(v*60)}</text>`;
-    bars+=`<text x="${(x+bw/2).toFixed(1)}" y="${H-padB+16}" text-anchor="middle" font-size="9.5" fill="${dim}">${DOW[dw]} ${k.slice(8)}</text>`;});
+    bars+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="${rx}" fill="${col}" data-tip="<b>${DOW[dw]} ${k.slice(8)}</b><br>${fmtHM(v*60)}${metaMin(k)?' · meta '+fmtHM(metaMin(k)):' · descanso'}"/>`;
+    if(v>0)bars+=`<text x="${(x+bw/2).toFixed(1)}" y="${(y-valGap).toFixed(1)}" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fVal}" font-weight="700" fill="${mut}" ${halo}>${fmtHM(v*60)}</text>`;
+    bars+=`<text x="${(x+bw/2).toFixed(1)}" y="${H-padB+(narrow?20:16)}" text-anchor="middle" font-size="${fDay}" fill="${dim}">${DOW[dw]} ${k.slice(8)}</text>`;});
   const my=Y(5);
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block"><line x1="${padL}" x2="${W-padL}" y1="${my.toFixed(1)}" y2="${my.toFixed(1)}" stroke="${mut}" stroke-width="1" stroke-dasharray="5 5" opacity=".4"/><text x="${(padL+3)}" y="${(my-6).toFixed(1)}" text-anchor="start" font-size="9.5" fill="${mut}" ${halo}>meta 5h</text>${bars}</svg>`;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block"><line x1="${padL}" x2="${W-padL}" y1="${my.toFixed(1)}" y2="${my.toFixed(1)}" stroke="${mut}" stroke-width="1" stroke-dasharray="5 5" opacity=".4"/><text x="${(padL+3)}" y="${(my-6).toFixed(1)}" text-anchor="start" font-size="${fMeta}" fill="${mut}" ${halo}>meta 5h</text>${bars}</svg>`;
 }
 
 function renderSesHoy(){
@@ -1029,7 +1033,7 @@ applyTheme(document.documentElement.getAttribute('data-theme')||'dark');
 setTab(hubView);
 document.getElementById('themeBtn').addEventListener('click',toggleTheme);
 document.getElementById('refreshBtn').addEventListener('click',()=>load(true));
-let _alignRAF;window.addEventListener('resize',()=>{cancelAnimationFrame(_alignRAF);_alignRAF=requestAnimationFrame(alignDrill);});
+let _alignRAF,_lastNarrow=window.innerWidth<=620;window.addEventListener('resize',()=>{cancelAnimationFrame(_alignRAF);_alignRAF=requestAnimationFrame(()=>{alignDrill();const nw=window.innerWidth<=620;if(nw!==_lastNarrow){_lastNarrow=nw;try{renderHoras();}catch(e){}}});});
 load(false);
 </script>
 </body>
