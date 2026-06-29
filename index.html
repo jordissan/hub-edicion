@@ -107,7 +107,14 @@ h1 .ic{color:var(--accent)}
 .distrib .donutwrap svg{width:100%;height:100%;display:block}
 .distrib .donutpct .p{font-size:48px}
 .distrib .donutpct .s{font-size:12px;margin-top:6px}
-.lglist.distrib-leg{display:grid;grid-template-columns:1fr 1fr;gap:9px 28px}
+.lglist.distrib-leg{display:grid;grid-template-columns:1fr 1fr;gap:9px 30px}
+/* Cada valor en su propia columna (tabular, alineada a la derecha) → sin "diagonales" */
+.distrib-leg .lgrow{gap:7px}
+.distrib-leg .lgn{flex:1;min-width:0}
+.distrib-leg .lgv{flex:0 0 auto;font-size:10px;color:var(--dim);text-align:right;font-variant-numeric:tabular-nums}
+.distrib-leg .lgv-m{min-width:48px;color:var(--muted);font-weight:600}
+.distrib-leg .lgv-h{min-width:24px}
+.distrib-leg .lgv-p{min-width:30px}
 /* Apilado (≤860px): el círculo pasa a regirse por el ancho de la tarjeta y crece a lo disponible */
 @media(max-width:860px){
   .distrib-donut{min-height:0}
@@ -818,22 +825,32 @@ function weekChart(tot){
   const maxY=Math.max(6,Math.ceil(maxRec*1.16)),n=days.length,gap=narrow?9:14,bw=(W-padL*2-gap*(n-1))/n,th=H-padB-padT;
   const Y=v=>H-padB-(v/maxY)*th,DOW=["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"],mut=cv('--muted'),dim=cv('--dim');
   const my=Y(5);
-  // La línea de meta se ABRE con un hueco donde una etiqueta la cruza (en vez de encimar texto y línea).
-  const skips=[];
+  const skips=[],upper=[];   // skips: cruces de la línea; upper: etiquetas en la zona alta (para colocar "meta 5h")
   let bars='';
   days.forEach((k,i)=>{const v=vals[i],x=padL+i*(bw+gap),cx=x+bw/2,h=Math.max(v>0?3:0,(v/maxY)*th),y=H-padB-h,dw=dowKey(k),isToday=k===D.today,isRec=v>0&&v===maxRec&&!isToday,isSat=dw===6;
     const col=isToday?cv('--done'):isRec?'#fb923c':isSat?'#c4b5fd':'#8b7ff0';
     bars+=`<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="${rx}" fill="${col}" data-tip="<b>${DOW[dw]} ${k.slice(8)}</b><br>${fmtHM(v*60)}${metaMin(k)?' · meta '+fmtHM(metaMin(k)):' · descanso'}"/>`;
-    if(v>0){const s=lbl(v*60),ly=y-valGap,lw=s.length*fVal*0.62+6;
-      if(my>=ly-fVal-1&&my<=ly+4) skips.push([cx-lw/2,cx+lw/2]);   // su etiqueta cruza la meta
+    if(v>0){const s=lbl(v*60),ly=y-valGap,lw=s.length*fVal*0.62+6,a=cx-lw/2,b=cx+lw/2;
+      if(my>=ly-fVal-1&&my<=ly+4) skips.push([a,b]);   // su etiqueta cruza la línea de meta
+      if(ly<=my+7) upper.push([a,b]);                  // etiqueta en la banda alta (donde iría "meta 5h")
       bars+=`<text x="${cx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="${fVal}" font-weight="700" fill="${mut}">${s}</text>`;}
     bars+=`<text x="${cx.toFixed(1)}" y="${H-padB+(narrow?20:16)}" text-anchor="middle" font-size="${fDay}" fill="${dim}">${DOW[dw]} ${k.slice(8)}</text>`;});
-  // Segmentos de la línea punteada evitando los huecos de las etiquetas que la cruzan.
+  // "meta 5h" se coloca donde NO choque con ninguna etiqueta de la zona alta: izquierda → derecha → hueco más ancho.
+  const metaW='meta 5h'.length*fMeta*0.6+6;
+  const fits=(a,b)=>!upper.some(s=>!(b<=s[0]||a>=s[1]));
+  let mX,mAnchor,mRange;
+  if(fits(padL,padL+metaW)){mX=padL+3;mAnchor='start';mRange=[padL,padL+metaW];}
+  else if(fits(W-padL-metaW,W-padL)){mX=W-padL-3;mAnchor='end';mRange=[W-padL-metaW,W-padL];}
+  else{const us=upper.slice().sort((p,q)=>p[0]-q[0]),um=[];us.forEach(s=>{const l=um[um.length-1];if(l&&s[0]<=l[1]+2)l[1]=Math.max(l[1],s[1]);else um.push(s.slice());});
+    let gaps=[],c=padL;um.forEach(([a,b])=>{if(a-c>=metaW)gaps.push([c,a]);c=Math.max(c,b);});if(W-padL-c>=metaW)gaps.push([c,W-padL]);
+    gaps.sort((p,q)=>(q[1]-q[0])-(p[1]-p[0]));const g=gaps[0]||[padL,padL+metaW],gc=(g[0]+g[1])/2;mX=gc;mAnchor='middle';mRange=[gc-metaW/2,gc+metaW/2];}
+  skips.push(mRange);
+  // Segmentos de la línea punteada, abriendo hueco en cada cruce de etiqueta y bajo "meta 5h".
   skips.sort((a,b)=>a[0]-b[0]);
   const merged=[];skips.forEach(s=>{const last=merged[merged.length-1];if(last&&s[0]<=last[1]+2)last[1]=Math.max(last[1],s[1]);else merged.push(s.slice());});
   const seg=(a,b)=>`<line x1="${a.toFixed(1)}" x2="${b.toFixed(1)}" y1="${my.toFixed(1)}" y2="${my.toFixed(1)}" stroke="${mut}" stroke-width="1" stroke-dasharray="5 5" opacity=".4"/>`;
   let line='',cur=padL;merged.forEach(([a,b])=>{if(a>cur)line+=seg(cur,a);cur=Math.max(cur,b);});if(cur<W-padL)line+=seg(cur,W-padL);
-  const meta=`<text x="${(padL+3)}" y="${(my-6).toFixed(1)}" text-anchor="start" font-size="${fMeta}" fill="${mut}">meta 5h</text>`;
+  const meta=`<text x="${mX.toFixed(1)}" y="${(my-6).toFixed(1)}" text-anchor="${mAnchor}" font-size="${fMeta}" fill="${mut}">meta 5h</text>`;
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block">${line}${meta}${bars}</svg>`;
 }
 
@@ -928,7 +945,7 @@ function renderResumenGrid(){
   const order=Object.keys(agg).sort((a,b)=>agg[b]-agg[a]),totalH=Math.round(order.reduce((a,et)=>a+agg[et],0));
   const stages=order.map(et=>({etapa:et,hours:agg[et],estado:'done'}));
   const price=weds.reduce((a,w)=>a+wedPrice(w),0);
-  const legend=order.map((et,i)=>`<div class="lgrow"><span class="lgd" style="background:${stageColor(et,i)}"></span><span class="lgn">${esc(et)}</span><span class="lgh">${fmtMoney(totalH?agg[et]/totalH*price:0)} <span class="lgsub">${Math.round(agg[et])}h · ${totalH?Math.round(agg[et]/totalH*100):0}%</span></span></div>`).join('');
+  const legend=order.map((et,i)=>`<div class="lgrow"><span class="lgd" style="background:${stageColor(et,i)}"></span><span class="lgn">${esc(et)}</span><span class="lgv lgv-m">${fmtMoney(totalH?agg[et]/totalH*price:0)}</span><span class="lgv lgv-h">${Math.round(agg[et])}h</span><span class="lgv lgv-p">${totalH?Math.round(agg[et]/totalH*100):0}%</span></div>`).join('');
   const distrib=stages.length?`<div class="card distrib"><div class="clabel">${icon('rings',13)} Distribución de horas</div><div class="distrib-donut"><div class="donutwrap">${donut(stages)}<div class="donutpct"><div class="p">${totalH}h</div><div class="s">${stages.length} etapas</div></div></div></div><div class="lglist distrib-leg">${legend}</div></div>`:'';
   const allE=weds.flatMap(w=>editStages(w)),done=allE.filter(s=>s.estado==='done').length,total=allE.length,pct=total?Math.round(done/total*100):0;
   const live=weds.find(w=>editStages(w).some(s=>s.estado==='live')),del=live?projectDelivery(live):null,target=live||weds[0];
