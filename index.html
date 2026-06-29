@@ -107,8 +107,9 @@ h1 .ic{color:var(--accent)}
 .distrib .donutwrap svg{width:100%;height:100%;display:block}
 .distrib .donutpct .p{font-size:48px}
 .distrib .donutpct .s{font-size:12px;margin-top:6px}
-.lglist.distrib-leg{display:grid;grid-template-columns:1fr 1fr;gap:9px 30px}
-/* Cada valor en su propia columna (tabular, alineada a la derecha) → sin "diagonales" */
+.lglist.distrib-leg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px 30px}
+/* Cada valor en su propia columna (tabular, alineada a la derecha) → sin "diagonales".
+   minmax(0,1fr) fuerza columnas iguales: los nombres largos se recortan en vez de desbordar el %. */
 .distrib-leg .lgrow{gap:7px}
 .distrib-leg .lgn{flex:1;min-width:0}
 .distrib-leg .lgv{flex:0 0 auto;font-size:10px;color:var(--dim);text-align:right;font-variant-numeric:tabular-nums}
@@ -120,7 +121,7 @@ h1 .ic{color:var(--accent)}
   .distrib-donut{min-height:0}
   .distrib .donutwrap{height:auto;width:min(100%,320px);max-height:none}
 }
-@media(max-width:560px){.lglist.distrib-leg{grid-template-columns:1fr}}
+@media(max-width:560px){.lglist.distrib-leg{grid-template-columns:minmax(0,1fr)}}
 .aipill{display:flex;align-items:center;gap:14px;background:var(--accent-block);border-radius:20px;padding:15px 18px;color:var(--ink);box-shadow:0 18px 44px -28px color-mix(in srgb,var(--accent) 70%,transparent)}
 .aipill .ai-ic{flex:none;width:40px;height:40px;border-radius:13px;background:rgba(12,14,7,.14);display:flex;align-items:center;justify-content:center}
 .aipill .ai-ic .ic{color:var(--ink)}
