@@ -76,6 +76,11 @@ con su `server.py` + launchd en el puerto 4599 — es **backup/dev** para probar
   ya no rompe el query (antes pedía `Status ≠ "Hecho"` y, al desaparecer esa opción, Notion devolvía 400).
 - **Proyectos de solo correcciones:** página con un DB **"Sesiones" directo** (sin "Tracking de Edición"/etapas).
   `build_wedding` los lee como una etapa **"Correcciones"** (`isCorrections`), así su tiempo cuenta en el log diario.
+- **Nav móvil:** barra inferior flotante (`#tabbar`, se renderiza en `renderChrome`, ≤760px) con blur y
+  safe-area; en desktop sigue el `hubnav` de arriba. `setTab` sincroniza ambos. Header con fecha del día.
+- **Gráficas vivas (desktop):** hover en segmentos/barras (CSS `:has` + `transform-box:fill-box`) crece el
+  elemento y atenúa el resto; el **centro del donut reacciona** (handlers delegados sobre `circle[data-eta]`,
+  clase `.peek`) mostrando la etapa señalada y restaurando el total al salir.
 - **Pestaña Bodas:** agrupada en secciones **En curso · En corrección · Finalizadas** con chips de filtro;
   las finalizadas se muestran como tarjetas compactas (overview). El selector de proyecto agrupa igual (optgroups).
   El **drilldown + timeline siguen a la boda en vista** (`detailWedIdx`/`bodasEnVista`: selección → filtro → en curso).

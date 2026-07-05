@@ -15,14 +15,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#0a0a0b; --card:#141416; --card2:#191a1d; --border:#26262b; --border2:#34343b; --hair:#1d1d22;
-  --txt:#f3f3f5; --muted:#8b8b94; --dim:#56565f;
+  --bg:#070708; --card:#121214; --card2:#18181c; --border:#232329; --border2:#33333b; --hair:#1c1c21;
+  --txt:#f4f4f6; --muted:#8f8f99; --dim:#585862;
   --accent:#c8f24e; --accent-block:#c8f24e; --ink:#0c0e07;
   --done:#c8f24e; --live:#5b9dff; --wait:#3a3a42;
-  --track:#23232a; --gauge-dim:#2c2c33; --tile:#1b1c20; --accent2:#8b7ff0; --accent3:#fb923c;
-  --body-bg:radial-gradient(1100px 560px at 78% -12%, #17170f 0%, #0a0a0b 52%);
-  --btn-bg:linear-gradient(180deg,#1d1e22,#141416); --ease-out:cubic-bezier(.23,1,.32,1);
-  --shadow:0 1px 0 rgba(255,255,255,.02), 0 18px 40px -28px rgba(0,0,0,.8);
+  --track:#212127; --gauge-dim:#2b2b32; --tile:#191a1e; --accent2:#8b7ff0; --accent3:#fb923c;
+  --body-bg:radial-gradient(1200px 600px at 78% -14%, #15160e 0%, #070708 54%);
+  --btn-bg:linear-gradient(180deg,#1c1d21,#121214); --ease-out:cubic-bezier(.23,1,.32,1);
+  --ease-in-out:cubic-bezier(.77,0,.175,1);
+  --shadow:0 1px 0 rgba(255,255,255,.025), 0 20px 44px -30px rgba(0,0,0,.85);
   --font-d:'Space Grotesk','Inter',-apple-system,sans-serif;
   --font-b:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 }
@@ -39,7 +40,12 @@
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 body{font-family:var(--font-b);background:var(--body-bg) fixed;color:var(--txt);line-height:1.4;
-  padding:30px 24px 60px;max-width:1280px;margin:0 auto;-webkit-font-smoothing:antialiased;transition:background-color .25s,color .25s}
+  padding:30px 24px 60px;max-width:1280px;margin:0 auto;-webkit-font-smoothing:antialiased;transition:background-color .25s,color .25s;
+  -webkit-tap-highlight-color:transparent}
+::selection{background:color-mix(in srgb,var(--accent) 30%,transparent);color:var(--txt)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:8px;border:2px solid var(--bg)}
+::-webkit-scrollbar-track{background:transparent}
 .d{font-family:var(--font-d)}
 .card,.kpi,.stamp,.refresh{transition:background-color .25s,border-color .25s,color .25s}
 .ic{display:inline-block;vertical-align:-0.18em;flex-shrink:0}
@@ -75,7 +81,7 @@ h1 .ic{color:var(--accent)}
 .moneycard{background:var(--card);border:1px solid var(--border);border-radius:24px;padding:20px;box-shadow:var(--shadow)}
 .moneyrow{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px}
 .moneyrow>div{flex:1;min-width:96px;background:var(--tile);border:1px solid var(--border);border-radius:16px;padding:14px 16px}
-.moneyrow .mh{background:var(--accent-block);border-color:transparent}
+.moneyrow .mh{background:var(--accent-block);border-color:transparent;box-shadow:0 16px 40px -26px color-mix(in srgb,var(--accent) 70%,transparent)}
 .moneycard .mv{font-family:var(--font-d);font-size:28px;font-weight:700;letter-spacing:-1px;line-height:1;font-variant-numeric:tabular-nums;white-space:nowrap}
 .moneyrow .mh .mv{font-size:34px;color:var(--ink)}
 .moneycard .mv span{font-size:15px;color:var(--muted);font-weight:600}
@@ -164,7 +170,25 @@ h1 .ic{color:var(--accent)}
 /* Cap de altura para gráficas full-width: compactas en desktop, fluidas en móvil */
 #horas svg,#bodas svg,#evol svg{max-height:270px}
 @media(max-width:760px){#horas svg,#bodas svg,#evol svg{max-height:none}}
-@media(max-width:760px){.hubnav{order:3;width:100%;justify-content:space-between}.hubnav button{flex:1;padding:12px 6px;text-align:center}}
+/* ── Nav inferior flotante (móvil): pill con blur, iconos + labels, safe-area aware ── */
+.tabbar{display:none}
+@media(max-width:760px){
+  .hubnav{display:none}
+  .tabbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:100;
+    display:flex;gap:4px;padding:5px;border-radius:26px;
+    background:color-mix(in srgb,var(--card) 78%,transparent);
+    -webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);
+    border:1px solid var(--border2);box-shadow:0 18px 44px -12px rgba(0,0,0,.65),0 1px 0 rgba(255,255,255,.04) inset}
+  .tabbar button{font-family:var(--font-b);display:flex;flex-direction:column;align-items:center;gap:3px;
+    min-width:86px;min-height:52px;justify-content:center;padding:7px 14px;border:none;border-radius:21px;
+    background:none;color:var(--muted);cursor:pointer;
+    transition:background-color .18s ease,color .18s ease,transform .16s var(--ease-out)}
+  .tabbar button:active{transform:scale(.95)}
+  .tabbar button .tbl{font-size:10px;font-weight:600;letter-spacing:.2px}
+  .tabbar button .tbi{display:flex;line-height:0}
+  .tabbar button.on{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
+  body{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+}
 @media(max-width:600px){
   .topbar{flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px 8px;margin-bottom:14px}
   h1{font-size:19px;flex:0 1 auto;min-width:0}
@@ -202,7 +226,7 @@ h1 .ic{color:var(--accent)}
 /* Boda seleccionada: gráfica y drilldown a 50/50 en el mismo renglón */
 #v-bodas .cols.split .col-main,#v-bodas .cols.split .col-side{flex:1 1 0;min-width:0}
 #v-bodas .cols.split .col-side{position:static;top:auto}
-@media(max-width:600px){body{padding:20px 13px 50px}}
+@media(max-width:600px){body{padding:20px 13px calc(96px + env(safe-area-inset-bottom,0px))}}
 @media(max-width:900px){.cols{flex-direction:column}.col{flex:1 1 auto;width:100%}}
 @media(max-width:600px){.boda{flex-direction:column;align-items:center;gap:16px}.donutwrap{flex:0 0 auto;width:min(100%,380px);height:auto;aspect-ratio:1/1;margin:2px auto 4px}.donutwrap svg{width:100%;height:100%}.donutpct .p{font-size:60px;letter-spacing:-3px}.donutpct .s{font-size:14px;margin-top:6px}.binfo{width:100%;min-width:0}#dailyk{grid-template-columns:1fr 1fr;gap:12px}.hk{padding:14px 15px}.hk .v{font-size:26px}.hk .l{font-size:9.5px;letter-spacing:1px}}
 
@@ -220,11 +244,11 @@ h1 .ic{color:var(--accent)}
 .gauge{flex:0 0 290px;max-width:310px;margin:0 auto}
 .herobody{flex:1;min-width:260px}
 .kpirow{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:12px}
-.kpi{cursor:default;background:var(--tile);border:1px solid var(--border);border-radius:16px;padding:14px 15px;transition:border-color .16s}
-@media(hover:hover) and (pointer:fine){.kpi[data-tip]:hover{border-color:var(--border2)}}
-.kpi .v{font-family:var(--font-d);font-size:30px;font-weight:700;letter-spacing:-1.2px;line-height:1}
-.kpi .l{font-size:10.5px;color:var(--muted);margin-top:7px}
-.focus{margin-top:18px;font-size:13px;background:var(--card2);border:1px solid var(--border);border-radius:12px;padding:11px 14px;display:flex;align-items:center;gap:8px}
+.kpi{cursor:default;background:var(--tile);border:1px solid var(--border);border-radius:18px;padding:15px 16px;transition:border-color .18s ease,background-color .18s ease}
+@media(hover:hover) and (pointer:fine){.kpi[data-tip]:hover{border-color:var(--border2);background:var(--card2)}}
+.kpi .v{font-family:var(--font-d);font-size:31px;font-weight:700;letter-spacing:-1.3px;line-height:1}
+.kpi .l{font-size:10.5px;color:var(--muted);margin-top:8px}
+.focus{margin-top:18px;font-size:13px;background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:11px 14px;display:flex;align-items:center;gap:8px 10px;flex-wrap:wrap;line-height:1.5}
 .focus .ic{color:var(--live)}.focus b{color:var(--accent);font-weight:700}
 
 .bodacard{cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease,transform .2s var(--ease-out)}
@@ -233,8 +257,9 @@ h1 .ic{color:var(--accent)}
 @media(hover:hover) and (pointer:fine){.bodacard:hover{border-color:var(--border2);transform:translateY(-2px)}}
 /* ── Bodas: filtros por estado + secciones agrupadas ── */
 .bfilters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
-.fchip{font-family:inherit;font-size:11px;font-weight:600;color:var(--muted);background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:6px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;transition:border-color .14s ease,color .14s ease,background-color .14s ease}
-.fchip:hover{color:var(--txt);border-color:var(--border2)}
+.fchip{font-family:inherit;font-size:11px;font-weight:600;color:var(--muted);background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:7px 13px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;min-height:32px;transition:border-color .14s ease,color .14s ease,background-color .14s ease,transform .14s var(--ease-out)}
+@media(hover:hover) and (pointer:fine){.fchip:hover{color:var(--txt);border-color:var(--border2)}}
+.fchip:active{transform:scale(.96)}
 .fchip.on{color:var(--fc,var(--accent));border-color:color-mix(in srgb,var(--fc,var(--accent)) 55%,transparent);background:color-mix(in srgb,var(--fc,var(--accent)) 12%,transparent)}
 .fchip-n{font-size:10px;font-weight:700;background:color-mix(in srgb,var(--ink) 8%,transparent);color:inherit;border-radius:10px;padding:1px 7px;min-width:18px;text-align:center}
 .fchip.on .fchip-n{background:color-mix(in srgb,var(--fc,var(--accent)) 18%,transparent)}
@@ -262,7 +287,8 @@ h1 .ic{color:var(--accent)}
 .bmeta{font-size:11px;color:var(--muted);margin-top:3px;display:flex;gap:7px;flex-wrap:wrap;align-items:center}
 .boda{display:flex;gap:18px;align-items:center;margin-top:14px;flex-wrap:wrap}
 .donutwrap{position:relative;flex:0 0 220px;width:220px;height:220px}
-.donutpct{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+/* pointer-events:none → el centro no tapa el anillo: los segmentos reciben hover/tooltip */
+.donutpct{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
 .donutpct .p{font-family:var(--font-d);font-size:42px;font-weight:700;letter-spacing:-2px;line-height:1}
 .donutpct .s{font-size:11px;color:var(--muted);margin-top:4px}
 .binfo{flex:1;min-width:200px}
@@ -381,11 +407,17 @@ h1 .ic{color:var(--accent)}
 .prog{margin-bottom:13px}
 .prog .pl{display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px;gap:10px}
 .prog .pl .pr{color:var(--muted);font-variant-numeric:tabular-nums}
-.progbar{height:12px;background:var(--track);border-radius:8px;overflow:hidden}
-.progbar i{display:block;height:100%;border-radius:8px}
+/* Track con rayado diagonal sutil: lo pendiente se "raya", lo hecho es sólido (lenguaje Finpath/gantt) */
+.progbar{height:12px;border-radius:8px;overflow:hidden;
+  background:repeating-linear-gradient(135deg,var(--track) 0 5px,color-mix(in srgb,var(--track) 45%,transparent) 5px 9px)}
+.progbar i{display:block;height:100%;border-radius:8px;transition:width .5s var(--ease-in-out)}
 
-#tip{position:fixed;z-index:200;pointer-events:none;background:var(--card);border:1px solid var(--border2);border-radius:9px;
-  padding:7px 10px;font-size:11.5px;color:var(--txt);box-shadow:0 10px 30px rgba(0,0,0,.55);opacity:0;transition:opacity .12s;max-width:250px;line-height:1.45}
+#tip{position:fixed;z-index:200;pointer-events:none;background:color-mix(in srgb,var(--card) 88%,transparent);
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);border:1px solid var(--border2);border-radius:11px;
+  padding:8px 11px;font-size:11.5px;color:var(--txt);box-shadow:0 12px 34px rgba(0,0,0,.55);opacity:0;
+  transform:scale(.96) translateY(2px);transform-origin:bottom center;
+  transition:opacity .14s var(--ease-out),transform .14s var(--ease-out);max-width:250px;line-height:1.45}
+#tip.show{opacity:1;transform:scale(1) translateY(0)}
 #tip b{font-weight:700}
 [data-tip]{cursor:pointer}.kpi[data-tip],.pill[data-tip],.stagerow[data-tip]{cursor:help}
 /* Cifras tabulares: los números grandes no "bailan" al cambiar de valor */
@@ -393,6 +425,51 @@ h1 .ic{color:var(--accent)}
 /* Piso de calidad: foco visible para teclado + respeto a reduce-motion */
 *:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
 .refresh:focus-visible{border-color:var(--accent)}
+/* ── Interfaz viva · bases compartidas (desktop y táctil): transiciones GPU ── */
+svg circle[data-tip]{transition:stroke-width .22s var(--ease-out),stroke-opacity .22s ease;cursor:pointer}
+svg rect[data-tip]{transform-box:fill-box;transform-origin:50% 100%;transition:transform .22s var(--ease-out),opacity .22s ease;cursor:pointer}
+.g-bar,.sessrow .sf{transition:filter .2s ease}
+.kpi[data-tip]{transition:border-color .18s ease,background-color .18s ease,transform .18s var(--ease-out)}
+.moneyrow>div{transition:transform .2s var(--ease-out),border-color .2s ease}
+.evolrec .r{transition:transform .2s var(--ease-out),border-color .2s ease}
+.lgrow .lgd,.stagerow .sd{transition:transform .18s var(--ease-out)}
+.lgrow .lgn,.stagerow .sn,.sessrow .sl,.sessrow .sv{transition:color .16s ease}
+.g-row{transition:background-color .16s ease;border-radius:8px}
+.pill{transition:transform .16s var(--ease-out),border-color .16s ease}
+.projsel{transition:border-color .18s ease}
+#lineCard svg circle[data-tip]{transition:r .2s var(--ease-out)}
+/* Feedback al presionar — también en táctil (el dedo recibe respuesta inmediata) */
+svg circle[data-tip]:active{stroke-width:18}
+svg rect[data-tip]:active{transform:scale(1.045)}
+.pill:active,.kpi[data-tip]:active,.moneyrow>div:active,.evolrec .r:active{transform:scale(.97)}
+/* ── Hover (solo cursor fino): el elemento bajo el cursor crece, el resto se atenúa ── */
+@media(hover:hover) and (pointer:fine){
+  svg:has(circle[data-tip]:hover) circle[data-tip]:not(:hover){stroke-opacity:.22}
+  svg circle[data-tip]:hover{stroke-width:18}
+  svg:has(rect[data-tip]:hover) rect[data-tip]:not(:hover){opacity:.4}
+  svg rect[data-tip]:hover{transform:scale(1.045)}
+  .g-bar:hover{filter:brightness(1.18)}
+  .sessrow:hover .sf{filter:brightness(1.12)}
+  /* Superficies: toda tarjeta reconoce al cursor con el borde (sin moverse: son contenedores) */
+  .card:not(.accent):hover{border-color:var(--border2)}
+  /* Tiles informativos con tooltip: micro-elevación */
+  .kpi[data-tip]:hover{transform:translateY(-1px)}
+  .moneyrow>div:hover{transform:translateY(-2px)}
+  .evolrec .r:hover{transform:translateY(-2px);border-color:var(--border2)}
+  /* Filas informativas: el renglón bajo el cursor toma foco (texto se aviva, punto crece) */
+  .lgrow:hover .lgn,.stagerow:hover .sn,.sessrow:hover .sl,.sessrow:hover .sv{color:var(--txt)}
+  .lgrow:hover .lgd,.stagerow:hover .sd{transform:scale(1.35)}
+  .g-row:hover{background:color-mix(in srgb,var(--tile) 65%,transparent)}
+  /* Píldoras de escenas y controles */
+  .pill:hover{transform:translateY(-1px)}
+  .projsel:hover{border-color:var(--border2)}
+  /* Puntos de la gráfica de línea (tarjeta lima): crecen bajo el cursor */
+  #lineCard svg circle[data-tip]:hover{r:5.5}
+}
+/* Centro del donut reactivo: pop suave al mostrar la etapa bajo el cursor */
+@keyframes donutPeek{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+.donutpct.peek>*{animation:donutPeek .18s var(--ease-out)}
+.donutpct .s{max-width:76%;text-align:center}
 /* Entrada orquestada: corre una sola vez por carga (los wrappers no se recrean al Actualizar) */
 @keyframes hubRise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .view.on>*{animation:hubRise .42s var(--ease-out) both}
@@ -402,7 +479,8 @@ h1 .ic{color:var(--accent)}
 .view.on>*:nth-child(5){animation-delay:.2s}
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important;animation-iteration-count:1!important}
-  .hk:hover,.bodacard:hover,.kpi[data-tip]:hover{transform:none}
+  .hk:hover,.bodacard:hover,.kpi[data-tip]:hover,.moneyrow>div:hover,.evolrec .r:hover,.pill:hover,
+  .lgrow:hover .lgd,.stagerow:hover .sd,svg rect[data-tip]:hover{transform:none}
 }
 </style>
 <script>
@@ -412,7 +490,7 @@ h1 .ic{color:var(--accent)}
 <body>
 
 <div class="topbar">
-  <div><h1 id="h1"></h1></div>
+  <div><h1 id="h1"></h1><div class="subtitle" id="subtitle"></div></div>
   <nav class="hubnav" id="hubnav" role="tablist" aria-label="Secciones">
     <button class="on" data-tab="resumen" role="tab" aria-selected="true">Resumen</button>
     <button data-tab="bodas" role="tab" aria-selected="false">Bodas</button>
@@ -456,6 +534,9 @@ h1 .ic{color:var(--accent)}
 </div>
 
 <div class="footer" id="footer"></div>
+
+<!-- Nav inferior flotante (solo móvil): tabs con icono + label, estilo app nativa -->
+<nav class="tabbar" id="tabbar" role="tablist" aria-label="Secciones"></nav>
 
 <!-- ╔════════════════════════ DATA START ════════════════════════╗ -->
 <script>
@@ -572,7 +653,7 @@ function donut(stages){
     const slot=weights[i]/wsum*c, len=Math.max(2,slot-gapPx), col=stageColor(s.etapa,i), op=s.estado==='wait'?0.24:1;
     const pctT=(totalH&&s.hours>0)?Math.round(s.hours/totalH*100):0;
     const tip=`<b>${esc(s.etapa)}</b><br>${estadoLabel(s.estado)}${s.hours>0?` · ${hrs(s.hours)}h (${pctT}% del tiempo)`:' · sin horas'}`;
-    a+=`<circle cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="${col}" stroke-opacity="${op}" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${len.toFixed(2)} ${(c-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" data-tip="${tip}"/>`;
+    a+=`<circle cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="${col}" stroke-opacity="${op}" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${len.toFixed(2)} ${(c-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" data-tip="${tip}" data-eta="${esc(abbr(s.etapa))}" data-col="${col}"${s.hours>0?` data-h="${hrs(s.hours)}" data-p="${pctT}"`:''}/>`;
     off+=slot;
   });
   return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" style="transform:rotate(-90deg)"><circle cx="${cx}" cy="${cx}" r="${r}" fill="none" stroke="${cv('--track')}" stroke-width="${sw}"/>${a}</svg>`;
@@ -640,7 +721,7 @@ function renderHero(){
   if(liveStage) focus=`${icon('play',13)} <span>En curso: <b>${esc(liveW.name)}</b> · ${esc(liveStage.etapa)}${liveScene?` · ${esc(liveScene.escena)}`:''}</span>`;
   else if(liveW&&editComplete(liveW)) focus=`${icon('check',13)} <span>Edición terminada${one?` · <b>${esc(liveW.name)}</b>`:''}${corrH>0?' · en correcciones':''}</span>`;
   else focus=`${icon('check',13)} <span>Sin etapas en progreso</span>`;
-  if(corrN>0||corrH>0) focus+=`<span class="chip" style="border-color:#fb923c;color:#fb923c;margin-left:8px">${icon('refresh',10)} Cambios: ${corrR?corrR+' ronda'+(corrR>1?'s':'')+' · ':''}${corrH}h · ${corrN} ses</span>`;
+  if(corrN>0||corrH>0) focus+=`<span class="chip" style="border-color:#fb923c;color:#fb923c">${icon('refresh',10)} Cambios: ${corrR?corrR+' ronda'+(corrR>1?'s':'')+' · ':''}${corrH}h · ${corrN} ses</span>`;
   const gtip=one&&liveW?`Avance de ${esc(liveW.name)}: ${gp}%`:`Avance global: ${gp}%`;
   document.getElementById('hero').innerHTML=`<div class="gauge" data-tip="${gtip}">${semiGauge(gp)}</div><div class="herobody"><div class="kpirow">${kpis.map(k=>`<div class="kpi" data-tip="${esc(k.t)}"><div class="v">${k.v}</div><div class="l">${k.l}</div></div>`).join('')}</div><div class="focus">${focus}</div></div>`;
 }
@@ -869,6 +950,13 @@ function renderHoras(){
 
 function renderChrome(){
   document.getElementById('h1').innerHTML=`${icon('logo',20)} Hub de Edición`;
+  const sub=document.getElementById('subtitle');
+  if(sub){const f=TODAY.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});sub.textContent=f.charAt(0).toUpperCase()+f.slice(1);}
+  const tb=document.getElementById('tabbar');
+  if(tb&&!tb.childElementCount){
+    const tabs=[['resumen','Resumen','spark'],['bodas','Bodas','rings'],['evolucion','Evolución','trend']];
+    tb.innerHTML=tabs.map(([id,l,ic])=>`<button data-tab="${id}" role="tab" aria-selected="${hubView===id}" class="${hubView===id?'on':''}"><span class="tbi">${icon(ic,19)}</span><span class="tbl">${l}</span></button>`).join('');
+  }
   const gen=new Date(D.generatedAt),live=!!D.__live;
   document.getElementById('stamp').innerHTML=`<span class="dot ${live?'':'warn'}"></span>${live?'En vivo':'Snapshot'}<span class="st-date"> · <b>${gen.toLocaleString('es-MX',{dateStyle:'medium',timeStyle:'short'})}</b></span>`;
   document.getElementById('footer').innerHTML=`<span>Hub de Edición · datos ${live?'en vivo':'de respaldo'} desde Notion (workspace "Trabajo")</span><span>${live?'Recarga o pica Actualizar para refrescar':'Servidor local no conectado — mostrando último snapshot'}</span>`;
@@ -884,7 +972,7 @@ function setTab(t){
   if(!HUB_TABS.includes(t)) t='resumen';
   hubView=t; try{localStorage.setItem('hubView',t);}catch(e){}
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+t));
-  document.querySelectorAll('#hubnav button').forEach(b=>{const on=b.getAttribute('data-tab')===t;b.classList.toggle('on',on);b.setAttribute('aria-selected',on?'true':'false');});
+  document.querySelectorAll('#hubnav button,#tabbar button').forEach(b=>{const on=b.getAttribute('data-tab')===t;b.classList.toggle('on',on);b.setAttribute('aria-selected',on?'true':'false');});
 }
 /* ───── Rentabilidad: $/hora, $/escena, $/etapa ───── */
 const DEFAULT_PRICE = 15000;                          // precio por defecto si no hay dato
@@ -1041,9 +1129,24 @@ async function load(fresh){
 
 /* ───── Tooltip + interacción ───── */
 const tip=document.createElement('div'); tip.id='tip'; document.body.appendChild(tip);
-document.addEventListener('mouseover',e=>{const t=e.target.closest&&e.target.closest('[data-tip]');if(t){tip.innerHTML=t.getAttribute('data-tip');tip.style.opacity='1';}});
-document.addEventListener('mousemove',e=>{if(tip.style.opacity==='1'){const x=Math.min(e.clientX+14,innerWidth-tip.offsetWidth-10),y=Math.min(e.clientY+16,innerHeight-tip.offsetHeight-10);tip.style.left=Math.max(8,x)+'px';tip.style.top=Math.max(8,y)+'px';}});
-document.addEventListener('mouseout',e=>{if(e.target.closest&&e.target.closest('[data-tip]'))tip.style.opacity='0';});
+document.addEventListener('mouseover',e=>{const t=e.target.closest&&e.target.closest('[data-tip]');if(t){tip.innerHTML=t.getAttribute('data-tip');tip.classList.add('show');}});
+document.addEventListener('mousemove',e=>{if(tip.classList.contains('show')){const x=Math.min(e.clientX+14,innerWidth-tip.offsetWidth-10),y=Math.min(e.clientY+16,innerHeight-tip.offsetHeight-10);tip.style.left=Math.max(8,x)+'px';tip.style.top=Math.max(8,y)+'px';}});
+document.addEventListener('mouseout',e=>{if(e.target.closest&&e.target.closest('[data-tip]'))tip.classList.remove('show');});
+/* Centro del donut reactivo: al pasar el cursor por un segmento, el centro muestra ESA etapa */
+document.addEventListener('mouseover',e=>{
+  const c=e.target.closest&&e.target.closest('.donutwrap circle[data-eta]'); if(!c)return;
+  const pct=c.closest('.donutwrap')?.querySelector('.donutpct'); if(!pct)return;
+  if(pct._orig==null)pct._orig=pct.innerHTML;
+  const h=c.getAttribute('data-h'),p=c.getAttribute('data-p'),eta=c.getAttribute('data-eta'),col=c.getAttribute('data-col');
+  pct.classList.add('peek');
+  pct.innerHTML=h?`<div class="p" style="color:${col}">${h}h</div><div class="s">${eta} · ${p}%</div>`
+               :`<div class="p" style="color:${col};opacity:.55">—</div><div class="s">${eta} · pendiente</div>`;
+});
+document.addEventListener('mouseout',e=>{
+  const c=e.target.closest&&e.target.closest('.donutwrap circle[data-eta]'); if(!c)return;
+  const pct=c.closest('.donutwrap')?.querySelector('.donutpct');
+  if(pct&&pct._orig!=null){pct.classList.remove('peek');pct.innerHTML=pct._orig;pct._orig=null;}
+});
 function focusWedding(){ renderBodaSelector(); renderHero(); renderMoney(); renderResumenGrid(); renderDaily(); renderBodas(); renderDrill(); renderSesHoy(); renderHoras(); renderLine(); renderGantt(); renderAlerts(); }
 function setWed(v){ selWed=(v==='all'||v==null)?null:+v; if(selWed!=null&&D.weddings[selWed])drillView=editStages(D.weddings[selWed]).some(s=>(s.scenes||[]).length)?'escenas':'etapas'; focusWedding(); }
 document.addEventListener('change',e=>{ if(e.target.id==='bodaSelect') setWed(e.target.value); });
