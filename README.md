@@ -54,6 +54,20 @@ con su `server.py` + launchd en el puerto 4599 — es **backup/dev** para probar
 `preview_screenshot`/`preview_eval`. Para datos reales: `curl localhost:4599/api/data` (server local).
 `gh` se instala bajando el binario oficial si falta (auth en keychain). `python3 -m py_compile` valida `server.py`.
 
+**Limitaciones del panel de preview** (del entorno, no de la app): no scrollea programáticamente
+(verificar posiciones con `getBoundingClientRect`/`elementFromPoint` ocultando lo de arriba); no
+bombea frames durante evals — `requestAnimationFrame` no dispara y las transiciones CSS no avanzan
+(para leer el estado final de una clase: desactivar transición, aplicar, leer, restaurar); ojo con
+`applyTheme()` que NO re-renderiza (usar `toggleTheme()` o `applyTheme(t);renderAll()`), y con la
+pestaña activa persistida en `localStorage` (`hubView`) — hacer `setTab(...)` antes de medir vistas.
+
+**Gotchas iOS (PWA):** `backdrop-filter` + animación de `transform` exige `will-change:transform`
+y animar solo transform (si no, WebKit descarta el blur → "se esfuma"); `:active` solo se activa
+con un listener `touchstart` registrado (hay uno vacío global); el hover emulado del tap se queda
+pegado — hay limpieza en `click` fuera de las gráficas; para ver una versión nueva hay que **matar
+la PWA desde el app switcher** (recargar no basta). El deploy de Pages NO se reporta a la API de
+GitHub — verificación solo visual (señal de versión nueva: la barra de navegación flotante inferior).
+
 ## Modelo y comportamiento (decisiones de Jordi)
 - **El 100% = terminar el montaje de HL/SF** (última etapa de edición). Una etapa marcada **'done' cuenta 100%**
   y sus escenas como completas — la marca de "hecho" a nivel etapa manda sobre el detalle de escenas.
