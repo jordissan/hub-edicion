@@ -22,7 +22,7 @@
   --track:#212127; --gauge-dim:#2b2b32; --tile:#191a1e; --accent2:#8b7ff0; --accent3:#fb923c;
   --body-bg:radial-gradient(1200px 600px at 78% -14%, #15160e 0%, #070708 54%);
   --btn-bg:linear-gradient(180deg,#1c1d21,#121214); --ease-out:cubic-bezier(.23,1,.32,1);
-  --ease-in-out:cubic-bezier(.77,0,.175,1);
+  --ease-in:cubic-bezier(.68,0,.77,0); --ease-in-out:cubic-bezier(.77,0,.175,1);
   --shadow:0 1px 0 rgba(255,255,255,.025), 0 20px 44px -30px rgba(0,0,0,.85);
   --font-d:'Space Grotesk','Inter',-apple-system,sans-serif;
   --font-b:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
@@ -189,9 +189,14 @@ h1 .ic{color:var(--accent)}
   .tabbar button.on{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
   /* Se esconde al scrollear hacia abajo y reaparece al subir (como toolbar nativa).
      Solo transform (sin fade) + will-change: iOS descarta el backdrop-filter al animar
-     transform si el elemento no vive en su propia capa → parpadeo/"esfumado" al ocultar. */
+     transform si el elemento no vive en su propia capa → parpadeo/"esfumado" al ocultar.
+     Curvas distintas por dirección (como una toolbar nativa): al reaparecer decelera
+     (ease-out, llega y frena) y al ocultarse acelera (ease-in, arranca despacio para que
+     se alcance a ver el deslizamiento y gana velocidad ya fuera de pantalla). Usar la misma
+     curva de salida (ease-out) para ocultar hacía que el tramo visible fuera casi todo el
+     recorrido rápido inicial → se sentía como un salto/desvanecido en vez de un deslizamiento. */
   .tabbar{transition:transform .32s var(--ease-out);will-change:transform}
-  .tabbar.hide{transform:translateX(-50%) translateY(240%);pointer-events:none}
+  .tabbar.hide{transition-duration:.26s;transition-timing-function:var(--ease-in);transform:translateX(-50%) translateY(240%);pointer-events:none}
   body{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 }
 @media(max-width:600px){
