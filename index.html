@@ -442,12 +442,13 @@ svg rect[data-tip]{transform-box:fill-box;transform-origin:50% 100%;transition:t
 svg circle[data-tip]:active{stroke-width:18}
 svg rect[data-tip]:active{transform:scale(1.045)}
 .pill:active,.kpi[data-tip]:active,.moneyrow>div:active,.evolrec .r:active{transform:scale(.97)}
-/* ── Hover (solo cursor fino): el elemento bajo el cursor crece, el resto se atenúa ── */
+/* Efecto foco por clases (las pone JS): idéntico con cursor (hover) y con dedo (tap) */
+svg.focus circle[data-tip]:not(.hot){stroke-opacity:.22}
+svg circle[data-tip].hot{stroke-width:18}
+svg.focus rect[data-tip]:not(.hot){opacity:.4}
+svg rect[data-tip].hot{transform:scale(1.045)}
+/* ── Hover (solo cursor fino): refuerzos que no aplican en táctil ── */
 @media(hover:hover) and (pointer:fine){
-  svg:has(circle[data-tip]:hover) circle[data-tip]:not(:hover){stroke-opacity:.22}
-  svg circle[data-tip]:hover{stroke-width:18}
-  svg:has(rect[data-tip]:hover) rect[data-tip]:not(:hover){opacity:.4}
-  svg rect[data-tip]:hover{transform:scale(1.045)}
   .g-bar:hover{filter:brightness(1.18)}
   .sessrow:hover .sf{filter:brightness(1.12)}
   /* Superficies: toda tarjeta reconoce al cursor con el borde (sin moverse: son contenedores) */
@@ -1147,6 +1148,25 @@ document.addEventListener('mouseout',e=>{
   const pct=c.closest('.donutwrap')?.querySelector('.donutpct');
   if(pct&&pct._orig!=null){pct.classList.remove('peek');pct.innerHTML=pct._orig;pct._orig=null;}
 });
+/* Efecto foco (clases .hot/.focus): mouseover real en desktop y el emulado del tap en móvil */
+document.addEventListener('mouseover',e=>{
+  const el=e.target.closest&&e.target.closest('svg circle[data-tip],svg rect[data-tip]'); if(!el)return;
+  el.classList.add('hot'); const s=el.closest('svg'); if(s)s.classList.add('focus');
+});
+document.addEventListener('mouseout',e=>{
+  const el=e.target.closest&&e.target.closest('svg circle[data-tip],svg rect[data-tip]'); if(!el)return;
+  el.classList.remove('hot'); const s=el.closest('svg'); if(s)s.classList.remove('focus');
+});
+/* Tap fuera (móvil): iOS deja el hover emulado "pegado" — al tocar fuera de una gráfica, se limpia todo */
+document.addEventListener('click',e=>{
+  if(e.target.closest&&e.target.closest('svg circle[data-tip],svg rect[data-tip]'))return;
+  document.querySelectorAll('svg.focus').forEach(s=>s.classList.remove('focus'));
+  document.querySelectorAll('.hot').forEach(el=>el.classList.remove('hot'));
+  document.querySelectorAll('.donutpct').forEach(p=>{if(p._orig!=null){p.classList.remove('peek');p.innerHTML=p._orig;p._orig=null;}});
+  tip.classList.remove('show');
+});
+/* iOS: sin un listener táctil, Safari no activa :active al tocar — este vacío lo habilita */
+document.addEventListener('touchstart',function(){},{passive:true});
 function focusWedding(){ renderBodaSelector(); renderHero(); renderMoney(); renderResumenGrid(); renderDaily(); renderBodas(); renderDrill(); renderSesHoy(); renderHoras(); renderLine(); renderGantt(); renderAlerts(); }
 function setWed(v){ selWed=(v==='all'||v==null)?null:+v; if(selWed!=null&&D.weddings[selWed])drillView=editStages(D.weddings[selWed]).some(s=>(s.scenes||[]).length)?'escenas':'etapas'; focusWedding(); }
 document.addEventListener('change',e=>{ if(e.target.id==='bodaSelect') setWed(e.target.value); });
