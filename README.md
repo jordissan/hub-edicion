@@ -62,11 +62,15 @@ bombea frames durante evals — `requestAnimationFrame` no dispara y las transic
 pestaña activa persistida en `localStorage` (`hubView`) — hacer `setTab(...)` antes de medir vistas.
 
 **Gotchas iOS (PWA):** `backdrop-filter` + animación de `transform` exige `will-change:transform`
-y animar solo transform (si no, WebKit descarta el blur → "se esfuma"); `:active` solo se activa
-con un listener `touchstart` registrado (hay uno vacío global); el hover emulado del tap se queda
-pegado — hay limpieza en `click` fuera de las gráficas; para ver una versión nueva hay que **matar
-la PWA desde el app switcher** (recargar no basta). El deploy de Pages NO se reporta a la API de
-GitHub — verificación solo visual (señal de versión nueva: la barra de navegación flotante inferior).
+y animar solo transform (si no, WebKit descarta el blur → "se esfuma"); además el tabbar usa
+**curvas de easing distintas por dirección** — reaparecer decelera (`--ease-out`) y ocultarse
+acelera (`--ease-in`, `cubic-bezier(.68,0,.77,0)`, mirror del ease-out) — usar la misma curva
+para ambas hacía que el ocultado se sintiera como un salto/desvanecido en vez de un deslizamiento;
+`:active` solo se activa con un listener `touchstart` registrado (hay uno vacío global); el hover
+emulado del tap se queda pegado — hay limpieza en `click` fuera de las gráficas; para ver una
+versión nueva hay que **matar la PWA desde el app switcher** (recargar no basta). El deploy de
+Pages NO se reporta a la API de GitHub — verificación solo visual (señal de versión nueva: la
+barra de navegación flotante inferior).
 
 ## Modelo y comportamiento (decisiones de Jordi)
 - **El 100% = terminar el montaje de HL/SF** (última etapa de edición). Una etapa marcada **'done' cuenta 100%**
