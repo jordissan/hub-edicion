@@ -187,6 +187,9 @@ h1 .ic{color:var(--accent)}
   .tabbar button .tbl{font-size:10px;font-weight:600;letter-spacing:.2px}
   .tabbar button .tbi{display:flex;line-height:0}
   .tabbar button.on{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
+  /* Se esconde al scrollear hacia abajo y reaparece al subir (como toolbar nativa) */
+  .tabbar{transition:transform .32s var(--ease-out),opacity .26s ease}
+  .tabbar.hide{transform:translateX(-50%) translateY(190%);opacity:0;pointer-events:none}
   body{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 }
 @media(max-width:600px){
@@ -1185,6 +1188,20 @@ setTab(hubView);
 document.getElementById('themeBtn').addEventListener('click',toggleTheme);
 document.getElementById('refreshBtn').addEventListener('click',()=>load(true));
 let _alignRAF,_lastNarrow=window.innerWidth<=620;window.addEventListener('resize',()=>{cancelAnimationFrame(_alignRAF);_alignRAF=requestAnimationFrame(()=>{alignDrill();const nw=window.innerWidth<=620;if(nw!==_lastNarrow){_lastNarrow=nw;try{renderHoras();}catch(e){}}});});
+/* Nav inferior (móvil): se esconde al bajar, reaparece al subir; siempre visible cerca del tope y del final */
+let _tbY=window.scrollY,_tbRAF=false;
+window.addEventListener('scroll',()=>{
+  if(_tbRAF)return;_tbRAF=true;
+  requestAnimationFrame(()=>{
+    _tbRAF=false;
+    const tb=document.getElementById('tabbar'); if(!tb||!tb.childElementCount)return;
+    const y=Math.max(0,window.scrollY),dy=y-_tbY;
+    const atBottom=innerHeight+y>=document.documentElement.scrollHeight-40;
+    if(y<80||dy<-6||atBottom)tb.classList.remove('hide');
+    else if(dy>6)tb.classList.add('hide');
+    if(Math.abs(dy)>6)_tbY=y;
+  });
+},{passive:true});
 load(false);
 </script>
 </body>
