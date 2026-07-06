@@ -187,9 +187,11 @@ h1 .ic{color:var(--accent)}
   .tabbar button .tbl{font-size:10px;font-weight:600;letter-spacing:.2px}
   .tabbar button .tbi{display:flex;line-height:0}
   .tabbar button.on{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
-  /* Se esconde al scrollear hacia abajo y reaparece al subir (como toolbar nativa) */
-  .tabbar{transition:transform .32s var(--ease-out),opacity .26s ease}
-  .tabbar.hide{transform:translateX(-50%) translateY(190%);opacity:0;pointer-events:none}
+  /* Se esconde al scrollear hacia abajo y reaparece al subir (como toolbar nativa).
+     Solo transform (sin fade) + will-change: iOS descarta el backdrop-filter al animar
+     transform si el elemento no vive en su propia capa → parpadeo/"esfumado" al ocultar. */
+  .tabbar{transition:transform .32s var(--ease-out);will-change:transform}
+  .tabbar.hide{transform:translateX(-50%) translateY(240%);pointer-events:none}
   body{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 }
 @media(max-width:600px){
