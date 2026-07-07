@@ -602,6 +602,7 @@ function clamp(n,a,b){ return Math.max(a,Math.min(b,n)); }
 function esc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 function estadoLabel(e){ return e==='done'?'Completado':e==='live'?'En progreso':'Pendiente'; }
 function hrs(h){ return h==null?null:Math.round(h); }
+function hrs1(h){ if(h==null) return null; const r=Math.round(h*10)/10; return r%1===0?String(r):r.toFixed(1); }   // 1 decimal, sin ".0" de más (para horas cortas tipo 0.5h)
 function stageProg(st){ if(st.estado==='done') return 1; if(st.scenes&&st.scenes.length){const d=st.scenes.filter(x=>x.estado==='done').length,l=st.scenes.filter(x=>x.estado==='live').length;return (d+l*0.5)/st.scenes.length;} return st.estado==='live'?0.5:0; }
 // ── Correcciones: trackean pero NO cuentan como tiempo de edición ──
 function editStages(w){ return w.stages.filter(s=>!s.isCorrections); }
@@ -721,7 +722,7 @@ function renderHero(){
   const liveStage=liveW&&editStages(liveW).find(s=>s.estado==='live');
   const liveScene=liveStage&&(liveStage.scenes||[]).find(s=>s.estado==='live');
   const proj=liveW?projectDelivery(liveW):null,liveDays=liveStage?stageDays(liveStage):null;
-  const corrH=Math.round(weds.reduce((a,w)=>a+corrHours(w),0)),corrN=weds.reduce((a,w)=>a+corrSessions(w),0),corrR=weds.reduce((a,w)=>a+corrRounds(w),0);
+  const corrH=hrs1(weds.reduce((a,w)=>a+corrHours(w),0)),corrN=weds.reduce((a,w)=>a+corrSessions(w),0),corrR=weds.reduce((a,w)=>a+corrRounds(w),0);
   const kpis=[
     {v:`${sd}/${all.length}`,l:'Etapas completadas',t:`${sd} hechas · ${all.filter(s=>s.estado==='live').length} en curso · ${all.filter(s=>s.estado==='wait').length} pendientes`},
     {v:scenes.length?`${scd}/${scenes.length}`:'—',l:'Escenas completadas',t:`${scd} de ${scenes.length} escenas (etapas hechas cuentan completas)`},
@@ -745,7 +746,7 @@ function bodaBarData(w){
 }
 function bodaFullCard(wi,sel){
   const w=D.weddings[wi],E=editStages(w),pct=Math.round(wedProg(w)*100),done=E.filter(s=>s.estado==='done').length,live=E.filter(s=>s.estado==='live').length,wait=E.filter(s=>s.estado==='wait').length;
-  const complete=editComplete(w),ordered=E.slice().sort((a,b)=>a.orden-b.orden),totH=Math.round(wedHours(w)),cH=Math.round(corrHours(w)),cN=corrSessions(w),cR=corrRounds(w);
+  const complete=editComplete(w),ordered=E.slice().sort((a,b)=>a.orden-b.orden),totH=Math.round(wedHours(w)),cH=hrs1(corrHours(w)),cN=corrSessions(w),cR=corrRounds(w);
   const viewSeg=`<div class="seg2 bodaseg"><button class="${bodaView==='circulo'?'on':''}" data-bodaview="circulo">Círculo</button><button class="${bodaView==='barras'?'on':''}" data-bodaview="barras">Barras</button></div>`;
   let body;
   if(bodaView==='circulo'){
@@ -766,7 +767,7 @@ function bodaFullCard(wi,sel){
     <div style="margin-top:11px;font-size:10px;color:var(--dim)">${selWed!=null?'':(wi===sel?'● Mostrando en drilldown':'Clic para ver detalle →')}</div></div>`;
 }
 function bodaCompactCard(wi,sel){
-  const w=D.weddings[wi],E=editStages(w),pct=Math.round(wedProg(w)*100),done=E.filter(s=>s.estado==='done').length,totH=Math.round(wedHours(w)),cH=Math.round(corrHours(w)),cN=corrSessions(w),cR=corrRounds(w),sc=E.reduce((a,s)=>a+((s.scenes||[]).length),0);
+  const w=D.weddings[wi],E=editStages(w),pct=Math.round(wedProg(w)*100),done=E.filter(s=>s.estado==='done').length,totH=Math.round(wedHours(w)),cH=hrs1(corrHours(w)),cN=corrSessions(w),cR=corrRounds(w),sc=E.reduce((a,s)=>a+((s.scenes||[]).length),0);
   return `<div class="card bodacompact ${wi===sel?'sel':''}" data-wed="${wi}">
     <div class="bcomp-l"><div class="bcomp-name">${icon('rings',15)}${esc(w.name)}</div>${w.studio?`<div class="bcomp-studio">${esc(w.studio)}</div>`:''}</div>
     <div class="bcomp-stats"><span><b>${pct}%</b> avance</span><span><b>${done}/${E.length}</b> etapas</span>${sc?`<span><b>${sc}</b> escenas</span>`:''}<span>${icon('clock',11)} <b>${totH}h</b></span>${(cN>0||cH>0)?`<span style="color:#fb923c">${icon('refresh',11)} <b>${cR?cR+' rnd · ':''}${cH}h</b></span>`:''}</div>
@@ -869,7 +870,7 @@ function renderGantt(){
 }
 function renderAlerts(){
   const out=[];
-  focusWeds().forEach(w=>{const E=editStages(w),live=E.find(s=>s.estado==='live'),complete=editComplete(w),cR=corrRounds(w),cH=Math.round(corrHours(w));
+  focusWeds().forEach(w=>{const E=editStages(w),live=E.find(s=>s.estado==='live'),complete=editComplete(w),cR=corrRounds(w),cH=hrs1(corrHours(w));
     if(live){const ls=(live.scenes||[]).find(s=>s.estado==='live'),pct=Math.round(stageProg(live)*100);
       out.push({c:'live',i:'play',t:`${esc(w.name)} · ${esc(live.etapa)} (${pct}%)`,d:`${stageDays(live)} día(s)${live.hours!=null?' · '+hrs(live.hours)+'h':''} en esta etapa.${ls?` Escena activa: <b>${esc(ls.escena)}</b>.`:''}`});
       const rem=E.filter(s=>s.estado==='wait');if(rem.length)out.push({c:'warn',i:'hourglass',t:`${rem.length} etapa(s) por iniciar`,d:`${esc(w.name)}: ${rem.map(s=>esc(s.etapa)).join(', ')}. Entrega est. <b>${fmtShort(projectDelivery(w))}</b>.`});
