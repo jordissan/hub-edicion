@@ -88,6 +88,9 @@ barra de navegación flotante inferior).
   → horas totales estimadas. Se afina conforme hay más bodas completas.
 - **Evolución (boda a boda):** records, deltas y tendencias ($/h, h/escena, días, horas) **solo de bodas COMPLETAS**.
   Las en progreso se muestran en tarjetas pero no entran a la comparación (no es justo comparar a medias vs terminadas).
+  Además, **toda la pestaña Evolución excluye las bodas con `0h` de edición efectiva trackeada** (`weddingsByDate` filtra
+  `wedHours(w)>0`): bodas viejas sin trackeo de sesiones o de **solo correcciones** no son referencia válida para medir
+  mejora en el tiempo → fuera de récords, tarjetas, barras y tendencias. Siguen normal en Resumen y Bodas.
 - **Bodas incluidas:** todas (Tipo = Boda) **menos las finalizadas inactivas > `RECENT_DONE_DAYS` (45) días**
   (`discover_wedding_pages`). El filtro de "finalizada" se hace en Python contra `DONE_STATUSES`
   (`Finalizadas`/`Hecho`/`Complete`…), **no en la consulta a Notion** — así renombrar la opción de Status
