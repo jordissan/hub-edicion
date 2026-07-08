@@ -1070,7 +1070,11 @@ function weddingStats(w){
   const hPerScene=scenes?Math.round(hours/scenes*10)/10:null;
   return {name:w.name,hours,scenes,span,hPerScene,rounds:corrRounds(w),perHour:hours?Math.round(wedPrice(w)/hours):null,lastEnd:dts.length?Math.max(...dts):0,complete:editComplete(w)};
 }
-function weddingsByDate(){ return D.weddings.map(weddingStats).sort((a,b)=>a.lastEnd-b.lastEnd); }
+// Evolución/insight SOLO con bodas que tienen horas de edición realmente trackeadas.
+// Las de 0h efectivas (viejas sin trackeo de sesiones, o "solo correcciones") no son referencia
+// válida para comparar eficiencia/mejora en el tiempo → fuera de récords, tarjetas, barras y tendencias.
+// (Siguen apareciendo normal en Resumen y en la pestaña Bodas; esto solo afecta la comparación evolutiva.)
+function weddingsByDate(){ return D.weddings.filter(w=>wedHours(w)>0).map(weddingStats).sort((a,b)=>a.lastEnd-b.lastEnd); }
 function chgChip(cur,prev,o){ o=o||{}; if(prev==null||cur==null) return ''; if(o.pct&&Math.abs(prev)<1e-9) return ''; const d=cur-prev; if(Math.abs(d)<1e-9) return `<span class="evolchg flat">=</span>`; const up=d>0,arrow=up?'▲':'▼'; let cls='flat'; if(!o.neutral){const good=o.lowerBetter?!up:up; cls=good?'up':'down';} const val=o.pct?Math.round(Math.abs(d)/Math.abs(prev)*100)+'%':(Math.round(Math.abs(d)*10)/10)+(o.unit||''); return `<span class="evolchg ${cls}">${arrow} ${val}</span>`; }
 function evolLine(sts,val,unit,fmt){
   const pts=sts.map(s=>({y:val(s),nm:s.name.split(' ')[0]})).filter(p=>p.y!=null);
