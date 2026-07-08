@@ -452,10 +452,13 @@ svg rect[data-tip]{transform-box:fill-box;transform-origin:50% 100%;transition:t
 svg circle[data-tip]:active{stroke-width:18}
 svg rect[data-tip]:active{transform:scale(1.045)}
 .pill:active,.kpi[data-tip]:active,.moneyrow>div:active,.evolrec .r:active{transform:scale(.97)}
-/* Efecto foco por clases (las pone JS): idéntico con cursor (hover) y con dedo (tap) */
-svg.focus circle[data-tip]:not(.hot){stroke-opacity:.4}
+/* Efecto foco por clases (las pone JS): idéntico con cursor (hover) y con dedo (tap).
+   OJO: la clase va en el <svg> y DEBE ser distinta de .focus (componente visual del hero,
+   con fondo/borde/radio) — si se llamara igual, ese fondo se le pegaría al SVG y pintaría
+   un recuadro fantasma alrededor de cada gráfica al hacer hover. */
+svg.chartfocus circle[data-tip]:not(.hot){stroke-opacity:.4}
 svg circle[data-tip].hot{stroke-width:18}
-svg.focus rect[data-tip]:not(.hot){opacity:.4}
+svg.chartfocus rect[data-tip]:not(.hot){opacity:.4}
 svg rect[data-tip].hot{transform:scale(1.045)}
 /* ── Hover (solo cursor fino): refuerzos que no aplican en táctil ── */
 @media(hover:hover) and (pointer:fine){
@@ -1159,19 +1162,19 @@ document.addEventListener('mouseout',e=>{
   const pct=c.closest('.donutwrap')?.querySelector('.donutpct');
   if(pct&&pct._orig!=null){pct.classList.remove('peek');pct.innerHTML=pct._orig;pct._orig=null;}
 });
-/* Efecto foco (clases .hot/.focus): mouseover real en desktop y el emulado del tap en móvil */
+/* Efecto foco (clases .hot en el elemento / .chartfocus en el svg): mouseover real en desktop y el emulado del tap en móvil */
 document.addEventListener('mouseover',e=>{
   const el=e.target.closest&&e.target.closest('svg circle[data-tip],svg rect[data-tip]'); if(!el)return;
-  el.classList.add('hot'); const s=el.closest('svg'); if(s)s.classList.add('focus');
+  el.classList.add('hot'); const s=el.closest('svg'); if(s)s.classList.add('chartfocus');
 });
 document.addEventListener('mouseout',e=>{
   const el=e.target.closest&&e.target.closest('svg circle[data-tip],svg rect[data-tip]'); if(!el)return;
-  el.classList.remove('hot'); const s=el.closest('svg'); if(s)s.classList.remove('focus');
+  el.classList.remove('hot'); const s=el.closest('svg'); if(s)s.classList.remove('chartfocus');
 });
 /* Tap fuera (móvil): iOS deja el hover emulado "pegado" — al tocar fuera de una gráfica, se limpia todo */
 document.addEventListener('click',e=>{
   if(e.target.closest&&e.target.closest('svg circle[data-tip],svg rect[data-tip]'))return;
-  document.querySelectorAll('svg.focus').forEach(s=>s.classList.remove('focus'));
+  document.querySelectorAll('svg.chartfocus').forEach(s=>s.classList.remove('chartfocus'));
   document.querySelectorAll('.hot').forEach(el=>el.classList.remove('hot'));
   document.querySelectorAll('.donutpct').forEach(p=>{if(p._orig!=null){p.classList.remove('peek');p.innerHTML=p._orig;p._orig=null;}});
   tip.classList.remove('show');
