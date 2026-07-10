@@ -12,6 +12,8 @@ apagada, detrás de login, **100% gratis**.
 ```
 GitHub Actions (cron cada 30 min · TZ America/Mexico_City)
   publish.py → server.py extrae Notion → escribe data.json + summary.json en Cloudflare KV (namespace "hub")
+  (+ archivo histórico: lee edicion:archive de KV, server.merge_archive lo actualiza con las
+   bodas entregadas con horas trackeadas, y lo re-publica — viaja embebido en data.json como "archive")
         │
 Cloudflare Pages  (siempre encendido, gratis)
   index.html              → el dashboard
@@ -26,8 +28,12 @@ La Mac no participa: el extractor vive en GitHub Actions. (Existe una copia loca
 con su `server.py` + launchd en el puerto 4599 — es **backup/dev** para probar con datos reales.)
 
 ## Archivos
-- `server.py` — extracción de Notion (mismo que el local). Devuelve el modelo del dashboard.
-- `publish.py` — corre en Actions: `build_data` + `build_summary` → escribe a KV vía API REST.
+- `server.py` — extracción de Notion (mismo que el local). Devuelve el modelo del dashboard
+  (incluye `archive`: stats compactas de bodas entregadas — el estado persistente vive en KV
+  `edicion:archive`; el `.archive.json` local que escribe en Actions es descartable).
+- `publish.py` — corre en Actions: lee `edicion:archive` de KV (`prev_archive`), llama
+  `build_data(prev_archive=...)` + `build_summary` → escribe `edicion:data`, `edicion:summary`
+  y `edicion:archive` a KV vía API REST.
 - `functions/api/edicion.js`, `functions/api/summary.js` — leen de KV (binding `HUB_KV`).
 - `.github/workflows/publish.yml` — cron + `workflow_dispatch`. Secretos: `NOTION_TOKEN`, `CF_API_TOKEN`,
   `CF_ACCOUNT_ID`, `CF_KV_NAMESPACE_ID`. Lleva `env: TZ: America/Mexico_City` (el runner es UTC).
@@ -80,6 +86,9 @@ barra de navegación flotante inferior).
   Detección: nombre de etapa contiene "cambios" o "correcciones" (≠ "Corrección de Color y Finalización", singular).
 - **Selector de proyecto = menú desplegable.** Al elegir una boda, **todas las gráficas filtran a ese proyecto**
   (hero, donut, drilldown, KPIs Hoy/Sesiones, alertas, timeline, acumulado, horas/día). **Racha siempre global.**
+  **Solo lista bodas que "miden"** (`wedTracked`: horas trackeadas > 0, o en curso): las finalizadas/en corrección
+  sin sesiones no aparecen ni entran a los agregados de Resumen (`metricWeds`/`focusWeds`) — siguen en la pestaña
+  Bodas marcadas "sin sesiones trackeadas". **Se oculta en Evolución** (ahí no filtra nada; lo hace `setTab`).
 - **Widgets** (`HubEdicion/widgets/`): iPhone (Scriptable) y Mac (SwiftBar) leen `/api/summary` con el Service Token.
 - **Nav por pestañas:** Resumen · Bodas · Evolución (estado en `localStorage`). "Hoy" se fusionó en Resumen.
 - **Rentabilidad:** `$/h`, `$/escena`, `$/etapa` sobre el **precio cobrado** = propiedad **Total** (MXN) de cada
@@ -90,7 +99,13 @@ barra de navegación flotante inferior).
   Las en progreso se muestran en tarjetas pero no entran a la comparación (no es justo comparar a medias vs terminadas).
   Además, **toda la pestaña Evolución excluye las bodas con `0h` de edición efectiva trackeada** (`weddingsByDate` filtra
   `wedHours(w)>0`): bodas viejas sin trackeo de sesiones o de **solo correcciones** no son referencia válida para medir
-  mejora en el tiempo → fuera de récords, tarjetas, barras y tendencias. Siguen normal en Resumen y Bodas.
+  mejora en el tiempo → fuera de récords, tarjetas, barras y tendencias (tampoco se archivan). Siguen en la pestaña Bodas.
+  **Historia a largo plazo:** `weddingsByDate` fusiona las bodas del tablero con el **archivo histórico** (`D.archive`,
+  stats compactas vía `statsFromArchive`, dedupe por nombre) — la Evolución no pierde bodas cuando salen del tablero
+  a los 45 días. **Rango visible:** con >5 bodas aparecen chips **Últimas 5 · 10 · Todas** (`evolRange`, en localStorage)
+  que limitan tarjetas y curvas; los récords miran siempre TODA la historia y la cadena de deltas se calcula completa
+  (la 1ª tarjeta visible compara contra su antecesora real). `evolLine` rotula cada K puntos si hay muchos.
+  La tasa `horas/escena` del `$/h proyectado` también incluye el archivo (`avgHoursPerScene`).
 - **Bodas incluidas:** todas (Tipo = Boda) **menos las finalizadas inactivas > `RECENT_DONE_DAYS` (45) días**
   (`discover_wedding_pages`). El filtro de "finalizada" se hace en Python contra `DONE_STATUSES`
   (`Finalizadas`/`Hecho`/`Complete`…), **no en la consulta a Notion** — así renombrar la opción de Status
@@ -98,10 +113,16 @@ barra de navegación flotante inferior).
 - **Proyectos de solo correcciones:** página con un DB **"Sesiones" directo** (sin "Tracking de Edición"/etapas).
   `build_wedding` los lee como una etapa **"Correcciones"** (`isCorrections`), así su tiempo cuenta en el log diario.
 - **Nav móvil:** barra inferior flotante (`#tabbar`, se renderiza en `renderChrome`, ≤760px) con blur y
-  safe-area; en desktop sigue el `hubnav` de arriba. `setTab` sincroniza ambos. Header con fecha del día.
+  safe-area; en tablet/ventana media sigue el `hubnav` de arriba; en **desktop ancho (≥1080px) hay un rail
+  lateral flotante** (`#siderail`, mismo lenguaje visual que el tabbar: pill con blur, activo = tinte lima 16%)
+  anclado al borde del body con `left:max(18px, calc(50vw - 674px))` — el body pasa a `max-width:1384px` +
+  `padding-left:128px` para ceder el espacio sin perder ancho útil. `setTab` sincroniza los tres. Header con fecha.
 - **Gráficas vivas (desktop):** hover en segmentos/barras (CSS `:has` + `transform-box:fill-box`) crece el
   elemento y atenúa el resto; el **centro del donut reacciona** (handlers delegados sobre `circle[data-eta]`,
-  clase `.peek`) mostrando la etapa señalada y restaurando el total al salir.
+  clase `.peek`) mostrando la etapa señalada y restaurando el total al salir. Además el **hueco del donut
+  revela el tiempo exacto** (`.donuthole`: círculo invisible del 64% con `data-hx`, p. ej. `55h 42m` vía
+  `fmtHMshort`) al hover/tap; `.donutpct` sigue `pointer-events:none`, y el `.donuthole` está **excluido de la
+  limpieza de tap-fuera** (si no, en iOS el click emulado restauraría el centro justo tras el tap).
 - **Pestaña Bodas:** agrupada en secciones **En curso · En corrección · Finalizadas** con chips de filtro;
   las finalizadas se muestran como tarjetas compactas (overview). El selector de proyecto agrupa igual (optgroups).
   El **drilldown + timeline siguen a la boda en vista** (`detailWedIdx`/`bodasEnVista`: selección → filtro → en curso).

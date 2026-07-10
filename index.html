@@ -199,6 +199,33 @@ h1 .ic{color:var(--accent)}
   .tabbar.hide{transition-duration:.26s;transition-timing-function:var(--ease-in);transform:translateX(-50%) translateY(240%);pointer-events:none}
   body{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
 }
+/* ── Rail lateral flotante (desktop ancho): la nav vive a la izquierda, como el tabbar
+   en móvil — misma pill con blur, mismo estado activo. El body se ensancha lo del rail
+   (1280 + 104) para que el contenido conserve su ancho útil, y el rail se ancla al borde
+   del body (no del viewport) para no descolgarse en pantallas ultra anchas. ── */
+.siderail{display:none}
+@media(min-width:1080px){
+  .hubnav{display:none}
+  body{max-width:1384px;padding-left:128px}
+  .siderail{position:fixed;left:max(18px,calc(50vw - 674px));top:50%;transform:translateY(-50%);z-index:90;
+    display:flex;flex-direction:column;align-items:center;gap:5px;padding:12px 8px;border-radius:26px;
+    background:color-mix(in srgb,var(--card) 78%,transparent);
+    -webkit-backdrop-filter:blur(18px) saturate(1.4);backdrop-filter:blur(18px) saturate(1.4);
+    border:1px solid var(--border2);box-shadow:0 18px 44px -12px rgba(0,0,0,.45),0 1px 0 rgba(255,255,255,.04) inset}
+  .siderail .sr-logo{color:var(--accent);display:flex;align-items:center;justify-content:center;width:54px;padding:7px 0 13px;margin-bottom:5px;border-bottom:1px solid var(--hair)}
+  .siderail button{font-family:var(--font-b);display:flex;flex-direction:column;align-items:center;gap:4px;
+    width:56px;min-height:54px;justify-content:center;padding:8px 2px;border:none;border-radius:18px;
+    background:none;color:var(--muted);cursor:pointer;
+    transition:background-color .18s ease,color .18s ease,transform .16s var(--ease-out)}
+  .siderail button .srl{font-size:8.5px;font-weight:700;letter-spacing:.3px}
+  .siderail button .sri{display:flex;line-height:0}
+  .siderail button:active{transform:scale(.94)}
+  .siderail button.on{background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent)}
+}
+@media(min-width:1080px) and (hover:hover) and (pointer:fine){
+  .siderail button:not(.on):hover{color:var(--txt);background:var(--card2)}
+}
+:root[data-theme="light"] .siderail{box-shadow:0 18px 44px -18px rgba(20,30,60,.35),0 1px 0 rgba(255,255,255,.5) inset}
 @media(max-width:600px){
   .topbar{flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px 8px;margin-bottom:14px}
   h1{font-size:19px;flex:0 1 auto;min-width:0}
@@ -226,7 +253,6 @@ h1 .ic{color:var(--accent)}
   .horas-chart{flex:1;display:flex;align-items:center;min-height:0;margin-top:4px}
   .horas-chart svg{width:100%}
 }
-#bodas{display:flex;flex-direction:column;gap:14px}
 /* Browse ("Todas"): el detalle se queda fijo al hacer scroll por las secciones y arranca alineado a la 1ª tarjeta */
 @media(min-width:901px){#v-bodas .cols:not(.stack):not(.split) .col-side{position:sticky;top:14px}}
 /* Vista filtrada (pocas bodas): apila lista + detalle + timeline a lo ancho, sin columna lateral corta */
@@ -484,6 +510,15 @@ svg rect[data-tip].hot{transform:scale(1.045)}
 @keyframes donutPeek{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
 .donutpct.peek>*{animation:donutPeek .18s var(--ease-out)}
 .donutpct .s{max-width:76%;text-align:center}
+/* Catcher del hueco del donut: círculo invisible SOLO sobre el hueco (64% < diámetro
+   interno del anillo) que sí recibe el cursor; al hover/tap el centro muestra el tiempo
+   exacto. cursor:pointer además hace al tap "clickable" para el mouseover emulado de iOS. */
+.donuthole{position:absolute;left:50%;top:50%;width:64%;height:64%;transform:translate(-50%,-50%);border-radius:50%;cursor:pointer;-webkit-tap-highlight-color:transparent}
+/* El tiempo exacto ("55h 42m") es más largo que el total ("56h"): baja de cuerpo para caber en el hueco */
+.donutpct .p.hx{font-size:31px;letter-spacing:-1px}
+.distrib .donutpct .p.hx{font-size:37px}
+/* Cabecera de Evolución: título + control de rango en el mismo renglón */
+.evolhead{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
 /* Entrada orquestada: corre una sola vez por carga (los wrappers no se recrean al Actualizar) */
 @keyframes hubRise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .view.on>*{animation:hubRise .42s var(--ease-out) both}
@@ -552,6 +587,9 @@ svg rect[data-tip].hot{transform:scale(1.045)}
 <!-- Nav inferior flotante (solo móvil): tabs con icono + label, estilo app nativa -->
 <nav class="tabbar" id="tabbar" role="tablist" aria-label="Secciones"></nav>
 
+<!-- Rail lateral flotante (solo desktop ancho): hermano del tabbar móvil -->
+<nav class="siderail" id="siderail" role="tablist" aria-label="Secciones"></nav>
+
 <!-- ╔════════════════════════ DATA START ════════════════════════╗ -->
 <script>
 window.SNAPSHOT_DATA = {
@@ -568,6 +606,8 @@ window.SNAPSHOT_DATA = {
 
 <script>
 let D=window.SNAPSHOT_DATA, TODAY=parseD(D.today), selWed=null, drillView='auto', barsMetric='dias', bodaView='circulo', bodaFilter='all';
+// Rango de la pestaña Evolución (últimas 5 · 10 · todas); recuerda la preferencia.
+let evolRange=(()=>{try{const v=parseInt(localStorage.getItem('evolRange'),10);return [0,5,10].includes(v)?v:5;}catch(e){return 5;}})();
 const MES=["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 const MESL=["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
 const DIA=["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
@@ -623,7 +663,15 @@ const BUCKETS=[
   {id:'correccion',label:'En corrección',color:'#fb923c',icon:'refresh'},
   {id:'finalizada',label:'Finalizadas',color:'var(--done)',icon:'check'},
 ];
-function focusWeds(){ return (selWed!=null&&D.weddings[selWed])?[D.weddings[selWed]]:D.weddings; }
+// ── Calidad de datos: una boda "mide" si tiene horas de edición trackeadas, o si sigue
+// en curso (las recién arrancadas parten de 0h y sí deben verse). Las finalizadas / en
+// corrección SIN sesiones trackeadas (bodas viejas, o de solo correcciones) no son
+// referencia válida: fuera del selector de proyecto y de los agregados de Resumen.
+// Siguen listadas en la pestaña Bodas como registro.
+function wedTracked(w){ return wedHours(w)>0 || wedBucket(w)==='curso'; }
+function metricWeds(){ return D.weddings.filter(wedTracked); }
+function normName(n){ return (n||'').trim().toLowerCase(); }
+function focusWeds(){ return (selWed!=null&&D.weddings[selWed])?[D.weddings[selWed]]:metricWeds(); }
 // Boda que alimenta el detalle (drilldown + timeline) de la pestaña Bodas: la elegida,
 // si no la primera del filtro activo, si no la que está en curso. Así el panel de detalle
 // SIEMPRE corresponde a lo que estás mirando, no a una boda distinta.
@@ -706,9 +754,13 @@ function renderBodaSelector(){
   if(!D.weddings||!D.weddings.length){el.innerHTML='';return;}
   const opt=(val,label,on)=>`<option value="${val}"${on?' selected':''}>${esc(label)}</option>`;
   let opts=opt('all','Todas las bodas',selWed==null);
-  // Agrupadas por estado para que el desplegable deje de estar emplastado
+  // Agrupadas por estado para que el desplegable deje de estar emplastado.
+  // Solo bodas que "miden" (wedTracked): las sin trackeo no aparecen — no aportan
+  // métricas y el desplegable se autolimpia (las finalizadas salen del tablero a los
+  // 45 días y quedan en el archivo histórico de Evolución). La seleccionada se
+  // conserva aunque no mida (se puede llegar a ella tocando su tarjeta en Bodas).
   BUCKETS.forEach(b=>{
-    const idxs=D.weddings.map((w,i)=>i).filter(i=>wedBucket(D.weddings[i])===b.id);
+    const idxs=D.weddings.map((w,i)=>i).filter(i=>wedBucket(D.weddings[i])===b.id&&(wedTracked(D.weddings[i])||selWed===i));
     if(!idxs.length) return;
     opts+=`<optgroup label="${esc(b.label)} (${idxs.length})">`+idxs.map(i=>opt(i,D.weddings[i].name,selWed===i)).join('')+`</optgroup>`;
   });
@@ -753,7 +805,7 @@ function bodaFullCard(wi,sel){
   const viewSeg=`<div class="seg2 bodaseg"><button class="${bodaView==='circulo'?'on':''}" data-bodaview="circulo">Círculo</button><button class="${bodaView==='barras'?'on':''}" data-bodaview="barras">Barras</button></div>`;
   let body;
   if(bodaView==='circulo'){
-    body=`<div class="boda"><div class="donutwrap">${donut(ordered)}<div class="donutpct">${totH>0?`<div class="p">${totH}h</div><div class="s">${pct}% · ${done}/${E.length} etapas</div>`:`<div class="p">${pct}%</div><div class="s">${done}/${E.length} etapas</div>`}</div></div>
+    body=`<div class="boda"><div class="donutwrap">${donut(ordered)}${totH>0?`<span class="donuthole" data-noselect="1" data-hx="${fmtHMshort(wedHours(w)*60)}"></span>`:''}<div class="donutpct">${totH>0?`<div class="p">${totH}h</div><div class="s">${pct}% · ${done}/${E.length} etapas</div>`:`<div class="p">${pct}%</div><div class="s">${done}/${E.length} etapas</div>`}</div></div>
       <div class="binfo"><div class="lglist">${ordered.map((s,i)=>{const ic=s.estado==='done'?icon('check',11):s.estado==='live'?icon('play',11):'',cls=s.estado==='live'?'lg-live':s.estado==='wait'?'lg-wait':'';return `<div class="lgrow ${cls}" data-tip="${tipFor(s)}"><span class="lgd" style="background:${stageColor(s.etapa,i)}"></span><span class="lgn">${esc(s.etapa)}</span><span class="lgh">${s.hours>0?hrs(s.hours)+'h':''}</span><span class="lgs">${ic}</span></div>`;}).join('')}</div></div></div>`;
   } else {
     body=`<div style="margin-top:8px"><div style="display:flex;justify-content:flex-end;margin-bottom:8px"><div class="seg2"><button class="${barsMetric==='dias'?'on':''}" data-bars="dias">Días</button><button class="${barsMetric==='horas'?'on':''}" data-bars="horas">Horas</button></div></div>${barsChart(bodaBarData(w))}<div style="font-size:10px;color:var(--dim);text-align:center;margin-top:2px">${barsMetric==='horas'?'horas efectivas':'días'} por etapa</div></div>`;
@@ -773,7 +825,7 @@ function bodaCompactCard(wi,sel){
   const w=D.weddings[wi],E=editStages(w),pct=Math.round(wedProg(w)*100),done=E.filter(s=>s.estado==='done').length,totH=Math.round(wedHours(w)),cH=hrs1(corrHours(w)),cN=corrSessions(w),cR=corrRounds(w),sc=E.reduce((a,s)=>a+((s.scenes||[]).length),0);
   return `<div class="card bodacompact ${wi===sel?'sel':''}" data-wed="${wi}">
     <div class="bcomp-l"><div class="bcomp-name">${icon('rings',15)}${esc(w.name)}</div>${w.studio?`<div class="bcomp-studio">${esc(w.studio)}</div>`:''}</div>
-    <div class="bcomp-stats"><span><b>${pct}%</b> avance</span><span><b>${done}/${E.length}</b> etapas</span>${sc?`<span><b>${sc}</b> escenas</span>`:''}<span>${icon('clock',11)} <b>${totH}h</b></span>${(cN>0||cH>0)?`<span style="color:#fb923c">${icon('refresh',11)} <b>${cR?cR+' rnd · ':''}${cH}h</b></span>`:''}</div>
+    <div class="bcomp-stats"><span><b>${pct}%</b> avance</span><span><b>${done}/${E.length}</b> etapas</span>${sc?`<span><b>${sc}</b> escenas</span>`:''}${totH>0?`<span>${icon('clock',11)} <b>${totH}h</b></span>`:`<span style="color:var(--dim)" data-tip="Sin sesiones de edición registradas en Notion — esta boda no entra al selector ni a las métricas comparativas">${icon('clock',11)} sin sesiones trackeadas</span>`}${(cN>0||cH>0)?`<span style="color:#fb923c">${icon('refresh',11)} <b>${cR?cR+' rnd · ':''}${cH}h</b></span>`:''}</div>
     <div class="bcomp-r"><span class="chip done">Finalizada</span><a class="blink" href="${w.url}" target="_blank" rel="noopener" data-noselect="1">Notion ${icon('ext',11)}</a></div>
   </div>`;
 }
@@ -788,6 +840,7 @@ function renderBodas(){
   //  browse → "Todas": lista (izq) + detalle lateral fijo (der), alineado a la primera tarjeta.
   const mode = selWed!=null ? 'split' : (bodaFilter!=='all' ? 'stack' : 'browse');
   if(cols){ cols.classList.toggle('split',mode==='split'); cols.classList.toggle('stack',mode==='stack'); }
+  // El drilldown solo se desfasa para alinearse con la 1ª tarjeta en modo browse; en otros, sin desfase.
   const drill=document.getElementById('drill'); if(drill&&mode!=='browse') drill.style.marginTop='';
   // Vista enfocada: una sola boda elegida → tarjeta completa, sin chips ni secciones
   if(selWed!=null){ el.innerHTML=bodaFullCard(selWed,sel); if(filtersEl) filtersEl.innerHTML=''; alignDrill(); return; }
@@ -967,10 +1020,14 @@ function renderChrome(){
   document.getElementById('h1').innerHTML=`${icon('logo',20)} Hub de Edición`;
   const sub=document.getElementById('subtitle');
   if(sub){const f=TODAY.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'});sub.textContent=f.charAt(0).toUpperCase()+f.slice(1);}
+  const tabs=[['resumen','Resumen','spark'],['bodas','Bodas','rings'],['evolucion','Evolución','trend']];
   const tb=document.getElementById('tabbar');
   if(tb&&!tb.childElementCount){
-    const tabs=[['resumen','Resumen','spark'],['bodas','Bodas','rings'],['evolucion','Evolución','trend']];
     tb.innerHTML=tabs.map(([id,l,ic])=>`<button data-tab="${id}" role="tab" aria-selected="${hubView===id}" class="${hubView===id?'on':''}"><span class="tbi">${icon(ic,19)}</span><span class="tbl">${l}</span></button>`).join('');
+  }
+  const sr=document.getElementById('siderail');
+  if(sr&&!sr.childElementCount){
+    sr.innerHTML=`<div class="sr-logo" title="Hub de Edición">${icon('logo',22)}</div>`+tabs.map(([id,l,ic])=>`<button data-tab="${id}" role="tab" aria-selected="${hubView===id}" class="${hubView===id?'on':''}"><span class="sri">${icon(ic,20)}</span><span class="srl">${l}</span></button>`).join('');
   }
   const gen=new Date(D.generatedAt),live=!!D.__live;
   document.getElementById('stamp').innerHTML=`<span class="dot ${live?'':'warn'}"></span>${live?'En vivo':'Snapshot'}<span class="st-date"> · <b>${gen.toLocaleString('es-MX',{dateStyle:'medium',timeStyle:'short'})}</b></span>`;
@@ -987,17 +1044,24 @@ function setTab(t){
   if(!HUB_TABS.includes(t)) t='resumen';
   hubView=t; try{localStorage.setItem('hubView',t);}catch(e){}
   document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+t));
-  document.querySelectorAll('#hubnav button,#tabbar button').forEach(b=>{const on=b.getAttribute('data-tab')===t;b.classList.toggle('on',on);b.setAttribute('aria-selected',on?'true':'false');});
+  document.querySelectorAll('#hubnav button,#tabbar button,#siderail button').forEach(b=>{const on=b.getAttribute('data-tab')===t;b.classList.toggle('on',on);b.setAttribute('aria-selected',on?'true':'false');});
+  // El selector de proyecto no filtra la Evolución (compara siempre toda la historia):
+  // ahí sobra, así que se esconde.
+  const bs=document.getElementById('bodaSelector'); if(bs) bs.style.display=(t==='evolucion')?'none':'';
 }
 /* ───── Rentabilidad: $/hora, $/escena, $/etapa ───── */
 const DEFAULT_PRICE = 15000;                          // precio por defecto si no hay dato
 const PRICE_BY_WEDDING = { "Camila + Andrés": 15000 }; // ← edita aquí lo cobrado por boda (o llega como w.price desde Notion)
 function wedPrice(w){ if(!w) return DEFAULT_PRICE; if(w.price!=null) return +w.price; if(PRICE_BY_WEDDING[w.name]!=null) return PRICE_BY_WEDDING[w.name]; return DEFAULT_PRICE; }
 function fmtMoney(n){ return '$'+Math.round(n||0).toLocaleString('es-MX'); }
-// Tasa histórica horas/escena de tus bodas COMPLETAS (se afina conforme entregas más)
+// Tasa histórica horas/escena de tus bodas COMPLETAS con horas trackeadas (una completa
+// a 0h — sin sesiones registradas — arrastraría la tasa a cero). Se afina conforme
+// entregas más: incluye las bodas del archivo histórico que ya salieron del tablero.
 function avgHoursPerScene(){
-  const rated=D.weddings.filter(editComplete).map(w=>{const sc=editStages(w).reduce((a,s)=>a+((s.scenes||[]).length),0);return sc>0?wedHours(w)/sc:null;}).filter(x=>x!=null);
-  return rated.length?rated.reduce((a,b)=>a+b,0)/rated.length:null;
+  const rates=D.weddings.filter(w=>editComplete(w)&&wedHours(w)>0).map(w=>{const sc=editStages(w).reduce((a,s)=>a+((s.scenes||[]).length),0);return sc>0?wedHours(w)/sc:null;}).filter(x=>x!=null);
+  const names=new Set(D.weddings.map(w=>normName(w.name)));
+  (D.archive||[]).forEach(a=>{ if(a.hours>0&&a.scenes>0&&!names.has(normName(a.name))) rates.push(a.hours/a.scenes); });
+  return rates.length?rates.reduce((a,b)=>a+b,0)/rates.length:null;
 }
 // Horas totales estimadas para terminar una boda = tasa histórica × sus escenas (mín. lo ya hecho)
 function estTotalHours(w){
@@ -1050,7 +1114,8 @@ function renderResumenGrid(){
   const stages=order.map(et=>({etapa:et,hours:agg[et],estado:'done'}));
   const price=weds.reduce((a,w)=>a+wedPrice(w),0);
   const legend=order.map((et,i)=>`<div class="lgrow"><span class="lgd" style="background:${stageColor(et,i)}"></span><span class="lgn">${esc(et)}</span><span class="lgv lgv-m">${fmtMoney(totalH?agg[et]/totalH*price:0)}</span><span class="lgv lgv-h">${Math.round(agg[et])}h</span><span class="lgv lgv-p">${totalH?Math.round(agg[et]/totalH*100):0}%</span></div>`).join('');
-  const distrib=stages.length?`<div class="card distrib"><div class="clabel">${icon('rings',13)} Distribución de horas</div><div class="distrib-donut"><div class="donutwrap">${donut(stages)}<div class="donutpct"><div class="p">${totalH}h</div><div class="s">${stages.length} etapas</div></div></div></div><div class="lglist distrib-leg">${legend}</div></div>`:'';
+  const exactH=order.reduce((a,et)=>a+agg[et],0);
+  const distrib=stages.length?`<div class="card distrib"><div class="clabel">${icon('rings',13)} Distribución de horas</div><div class="distrib-donut"><div class="donutwrap">${donut(stages)}${totalH>0?`<span class="donuthole" data-hx="${fmtHMshort(exactH*60)}"></span>`:''}<div class="donutpct"><div class="p">${totalH}h</div><div class="s">${stages.length} etapas</div></div></div></div><div class="lglist distrib-leg">${legend}</div></div>`:'';
   const allE=weds.flatMap(w=>editStages(w)),done=allE.filter(s=>s.estado==='done').length,total=allE.length,pct=total?Math.round(done/total*100):0;
   const live=weds.find(w=>editStages(w).some(s=>s.estado==='live')),del=live?projectDelivery(live):null,target=live||weds[0];
   const trows=target?editStages(target).slice().sort((a,b)=>a.orden-b.orden).map((s,i)=>`<div class="stagerow" data-tip="${tipFor(s)}"><span class="sd" style="background:${stageColor(s.etapa,i)};opacity:${s.estado==='wait'?.4:1}"></span><span class="sn">${esc(s.etapa)}</span><span class="sb ${s.estado}">${estadoLabel(s.estado)}</span><span class="sdy">${s.hours>0?hrs(s.hours)+'h':'—'}</span></div>`).join(''):'';
@@ -1073,8 +1138,21 @@ function weddingStats(w){
 // Evolución/insight SOLO con bodas que tienen horas de edición realmente trackeadas.
 // Las de 0h efectivas (viejas sin trackeo de sesiones, o "solo correcciones") no son referencia
 // válida para comparar eficiencia/mejora en el tiempo → fuera de récords, tarjetas, barras y tendencias.
-// (Siguen apareciendo normal en Resumen y en la pestaña Bodas; esto solo afecta la comparación evolutiva.)
-function weddingsByDate(){ return D.weddings.filter(w=>wedHours(w)>0).map(weddingStats).sort((a,b)=>a.lastEnd-b.lastEnd); }
+// La historia completa viene del ARCHIVO (D.archive): stats compactas que el server guarda de
+// cada boda entregada, para que Evolución no la pierda cuando sale del tablero a los 45 días.
+function statsFromArchive(a){
+  const hours=Math.round(a.hours||0);
+  return {name:a.name,hours,scenes:a.scenes||0,span:a.span??null,
+    hPerScene:(a.scenes>0&&a.hours>0)?Math.round(a.hours/a.scenes*10)/10:null,
+    rounds:a.rounds||0,perHour:hours?Math.round(wedPrice({name:a.name,price:a.price!=null?+a.price:null})/hours):null,
+    lastEnd:a.lastEnd?+parseD(a.lastEnd):0,complete:true,archived:true};
+}
+function weddingsByDate(){
+  const cur=D.weddings.filter(w=>wedHours(w)>0).map(weddingStats);
+  const names=new Set(cur.map(s=>normName(s.name)));
+  const arc=(D.archive||[]).filter(a=>(a.hours||0)>0&&!names.has(normName(a.name))).map(statsFromArchive);
+  return arc.concat(cur).sort((a,b)=>a.lastEnd-b.lastEnd);
+}
 function chgChip(cur,prev,o){ o=o||{}; if(prev==null||cur==null) return ''; if(o.pct&&Math.abs(prev)<1e-9) return ''; const d=cur-prev; if(Math.abs(d)<1e-9) return `<span class="evolchg flat">=</span>`; const up=d>0,arrow=up?'▲':'▼'; let cls='flat'; if(!o.neutral){const good=o.lowerBetter?!up:up; cls=good?'up':'down';} const val=o.pct?Math.round(Math.abs(d)/Math.abs(prev)*100)+'%':(Math.round(Math.abs(d)*10)/10)+(o.unit||''); return `<span class="evolchg ${cls}">${arrow} ${val}</span>`; }
 function evolLine(sts,val,unit,fmt){
   const pts=sts.map(s=>({y:val(s),nm:s.name.split(' ')[0]})).filter(p=>p.y!=null);
@@ -1084,10 +1162,13 @@ function evolLine(sts,val,unit,fmt){
   const maxY=(Math.max(...pts.map(p=>p.y))||1)*1.2;
   const X=k=>padL+(n<=1?0.5:k/(n-1))*(W-padL-padR),Y=v=>H-padB-(v/maxY)*(H-padB-padT);
   const ink=cv('--accent'),txt=cv('--txt'),dim=cv('--dim');
+  // Con muchas bodas las etiquetas se encimarían: se rotulan solo cada K puntos (y el
+  // último siempre); todos los puntos conservan su tooltip al hover.
+  const step=Math.max(1,Math.ceil(n/8)),lab=k=>(k===n-1)||(k%step===0&&k<n-1-(step>1?1:0));
   const path=pts.map((p,k)=>(k?'L':'M')+X(k).toFixed(1)+' '+Y(p.y).toFixed(1)).join(' ');
   const dots=pts.map((p,k)=>`<circle cx="${X(k).toFixed(1)}" cy="${Y(p.y).toFixed(1)}" r="4.2" fill="${ink}" stroke="${cv('--card2')}" stroke-width="2" data-tip="<b>${esc(p.nm)}</b><br>${L(p)}"/>`).join('');
-  const labs=pts.map((p,k)=>`<text x="${X(k).toFixed(1)}" y="${(Y(p.y)-11).toFixed(1)}" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="700" fill="${txt}" style="font-variant-numeric:tabular-nums">${L(p)}</text>`).join('');
-  const xl=pts.map((p,k)=>`<text x="${X(k).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="9" fill="${dim}">${esc(p.nm)}</text>`).join('');
+  const labs=pts.map((p,k)=>lab(k)?`<text x="${X(k).toFixed(1)}" y="${(Y(p.y)-11).toFixed(1)}" text-anchor="middle" font-family="Space Grotesk,sans-serif" font-size="11" font-weight="700" fill="${txt}" style="font-variant-numeric:tabular-nums">${L(p)}</text>`:'').join('');
+  const xl=pts.map((p,k)=>lab(k)?`<text x="${X(k).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="9" fill="${dim}">${esc(p.nm)}</text>`:'').join('');
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="display:block"><path d="${path}" fill="none" stroke="${ink}" stroke-width="2.4" stroke-dasharray="2 5" stroke-linecap="round" stroke-linejoin="round"/>${dots}${labs}${xl}</svg>`;
 }
 function renderEvol(){
@@ -1105,27 +1186,38 @@ function renderEvol(){
     ${eff?`<div class="r"><div class="l">${icon('check',11)} Mejor eficiencia</div><div class="v">${eff.hPerScene}h<span style="font-size:11px;color:var(--dim)"> / escena</span></div><div class="s">${esc(eff.name)}</div></div>`:''}
     ${most?`<div class="r"><div class="l">${icon('clock',11)} Más horas</div><div class="v">${most.hours}h</div><div class="s">${esc(most.name)}</div></div>`:''}
   </div>`:'';
-  // Tarjetas: todas las bodas; deltas y métricas derivadas ($/h, h/escena) solo en completas
+  // Rango visible: conforme se entregan bodas la historia crece sin fin — tarjetas y
+  // curvas muestran solo las últimas N (elegible; recuerda la preferencia). Los récords
+  // de arriba sí miran SIEMPRE toda la historia, incluido el archivo.
+  const range=evolRange>0?Math.min(evolRange,n):n;
+  const shown=sts.slice(-range),shownSet=new Set(shown);
+  const rangeCtl=n>5?`<div class="seg2 evolrange" role="group" aria-label="Rango de bodas">${[[5,'Últimas 5'],[10,'Últimas 10'],[0,'Todas']].map(([v,l])=>`<button class="${evolRange===v?'on':''}" data-evrange="${v}">${l}</button>`).join('')}</div>`:'';
+  // Tarjetas: solo las del rango; deltas y métricas derivadas ($/h, h/escena) solo en
+  // completas. La cadena de deltas se calcula sobre TODA la historia para que la primera
+  // tarjeta visible compare contra su antecesora real aunque quede fuera del rango.
   let prevDone=null;
   const cards=sts.map((s)=>{const parts=s.name.split('+'),dn=s.complete,p=dn?prevDone:null;
-    const html=`<div class="evolcard${dn?'':' partial'}"><div class="top"><span class="nm">${esc(parts[0].trim())}${parts[1]?` <span style="color:var(--dim);font-weight:500">+${esc(parts[1])}</span>`:''}</span><span class="chip ${dn?'done':'live'}">${dn?'Completa':'En progreso'}</span></div>
+    const html=shownSet.has(s)?`<div class="evolcard${dn?'':' partial'}"><div class="top"><span class="nm">${esc(parts[0].trim())}${parts[1]?` <span style="color:var(--dim);font-weight:500">+${esc(parts[1])}</span>`:''}</span><span class="chip ${dn?'done':'live'}">${dn?'Completa':'En progreso'}</span></div>
       <div class="big">${s.hours}h ${p?chgChip(s.hours,p.hours,{neutral:true,pct:true}):''}</div>
       <div class="mini"><div>Días <b>${s.span??'—'}</b> ${p?chgChip(s.span,p.span,{lowerBetter:true,unit:'d'}):''}</div><div>Escenas <b>${s.scenes||'—'}</b></div><div>h / escena <b>${dn?(s.hPerScene??'—'):'—'}</b> ${p?chgChip(s.hPerScene,p.hPerScene,{lowerBetter:true,unit:'h'}):''}</div><div>$ / hora <b>${dn&&s.perHour?fmtMoney(s.perHour):'—'}</b> ${p?chgChip(s.perHour,p.perHour,{pct:true}):''}</div></div>
-      ${dn?'':'<div class="evolpartial">En progreso · entra a la comparación al completarse</div>'}</div>`;
+      ${dn?'':'<div class="evolpartial">En progreso · entra a la comparación al completarse</div>'}</div>`:'';
     if(dn) prevDone=s;
     return html;}).join('');
-  // Horas por boda = factual (todas). Tendencias derivadas = solo completas.
-  const hb=sts.map((s,i)=>({value:s.hours,label:s.name.split(' ')[0],label2:s.hours+'h',color:stageColor('',i),tip:`<b>${esc(s.name)}</b><br>${s.hours}h totales`}));
-  const trend=done.length>=2
-    ? `<div class="evolchart"><div class="t">${icon('trend',11)} Rentabilidad · $/h <span style="color:var(--dim)">— más es mejor</span></div>${evolLine(done,s=>s.perHour,'',v=>fmtMoney(v))}</div>
-       <div class="evolchart"><div class="t">${icon('check',11)} Eficiencia · h / escena <span style="color:var(--dim)">— menos es mejor</span></div>${evolLine(done,s=>s.hPerScene,'h')}</div>
-       <div class="evolchart"><div class="t">${icon('hourglass',11)} Días para entregar <span style="color:var(--dim)">— menos es mejor</span></div>${evolLine(done,s=>s.span,'d')}</div>`
-    : `<div class="evolchart" style="grid-column:1/-1"><div class="t">${icon('trend',11)} Tendencias de rentabilidad y eficiencia</div><div class="muted2" style="margin-top:8px">Con ${done.length} boda${done.length===1?'':'s'} completa${done.length===1?'':'s'} aún no hay tendencia — aparece al terminar 2+. Las curvas comparan solo proyectos completos para que sea justo.</div></div>`;
+  // Horas por boda = factual (las del rango). Tendencias derivadas = solo completas del rango.
+  const doneShown=shown.filter(s=>s.complete);
+  const hb=shown.map((s,i)=>({value:s.hours,label:s.name.split(' ')[0],label2:s.hours+'h',color:stageColor('',i),tip:`<b>${esc(s.name)}</b><br>${s.hours}h totales`}));
+  const trend=doneShown.length>=2
+    ? `<div class="evolchart"><div class="t">${icon('trend',11)} Rentabilidad · $/h <span style="color:var(--dim)">— más es mejor</span></div>${evolLine(doneShown,s=>s.perHour,'',v=>fmtMoney(v))}</div>
+       <div class="evolchart"><div class="t">${icon('check',11)} Eficiencia · h / escena <span style="color:var(--dim)">— menos es mejor</span></div>${evolLine(doneShown,s=>s.hPerScene,'h')}</div>
+       <div class="evolchart"><div class="t">${icon('hourglass',11)} Días para entregar <span style="color:var(--dim)">— menos es mejor</span></div>${evolLine(doneShown,s=>s.span,'d')}</div>`
+    : `<div class="evolchart" style="grid-column:1/-1"><div class="t">${icon('trend',11)} Tendencias de rentabilidad y eficiencia</div><div class="muted2" style="margin-top:8px">Con ${doneShown.length} boda${doneShown.length===1?'':'s'} completa${doneShown.length===1?'':'s'} aún no hay tendencia — aparece al terminar 2+. Las curvas comparan solo proyectos completos para que sea justo.</div></div>`;
   const charts=`<div class="evolcharts"><div class="evolchart"><div class="t">${icon('clock',11)} Horas por boda</div>${barsChart(hb)}</div>${trend}</div>`;
-  const note=done.length>=2
-    ? `Tendencias sobre ${done.length} bodas completas, ordenadas por entrega.${inprog.length?` ${inprog.length} en progreso aún no entran.`:''}`
-    : `Comparación justa = solo bodas completas (${done.length} de ${n}).${inprog.length?` En progreso: ${inprog.map(s=>s.name.split(' ')[0]).join(', ')} — entran al terminar.`:''}`;
-  el.innerHTML=`<div class="clabel">${icon('trend',13)} Evolución · boda a boda</div><div class="evol-sub">${note}</div>${rec}<div class="evolcards">${cards}</div>${charts}`;
+  const arch=sts.filter(s=>s.archived).length;
+  const note=(doneShown.length>=2
+    ? `Tendencias sobre ${doneShown.length===done.length?`tus ${done.length} bodas completas`:`las últimas ${doneShown.length} de ${done.length} bodas completas`}, ordenadas por entrega.${inprog.length?` ${inprog.length} en progreso aún no entran.`:''}`
+    : `Comparación justa = solo bodas completas (${done.length} de ${n}).${inprog.length?` En progreso: ${inprog.map(s=>s.name.split(' ')[0]).join(', ')} — entran al terminar.`:''}`)
+    +(arch?` Las entregadas hace más de 45 días viven en el archivo histórico (${arch}).`:'');
+  el.innerHTML=`<div class="evolhead"><div class="clabel">${icon('trend',13)} Evolución · boda a boda</div>${rangeCtl}</div><div class="evol-sub">${note}</div>${rec}<div class="evolcards">${cards}</div>${charts}`;
 }
 function showErr(e){ document.body.insertAdjacentHTML('beforeend',`<div style="color:#f87171;border:1px solid #5a1a1a;background:#1a0a0a;padding:14px;border-radius:10px;margin-top:20px;font-size:12px">Error: ${e.message}<br><pre style="white-space:pre-wrap;font-size:10px">${e.stack||''}</pre></div>`); console.error(e); }
 function applyTheme(t){ document.documentElement.setAttribute('data-theme',t); try{localStorage.setItem('hubTheme',t);}catch(e){} const b=document.getElementById('themeBtn'); if(b)b.innerHTML=icon(t==='light'?'sun':'moon',15); }
@@ -1166,6 +1258,21 @@ document.addEventListener('mouseout',e=>{
   const pct=c.closest('.donutwrap')?.querySelector('.donutpct');
   if(pct&&pct._orig!=null){pct.classList.remove('peek');pct.innerHTML=pct._orig;pct._orig=null;}
 });
+/* Centro del donut: el total redondeado revela el tiempo EXACTO invertido al pasar el
+   cursor (o tocar, en móvil) por el hueco. El "catcher" es un círculo invisible que solo
+   cubre el hueco — .donutpct sigue con pointer-events:none para no tapar el anillo. */
+document.addEventListener('mouseover',e=>{
+  const h=e.target.closest&&e.target.closest('.donuthole[data-hx]'); if(!h)return;
+  const pct=h.closest('.donutwrap')?.querySelector('.donutpct'); if(!pct)return;
+  if(pct._orig==null)pct._orig=pct.innerHTML;
+  pct.classList.add('peek');
+  pct.innerHTML=`<div class="p hx">${h.getAttribute('data-hx')}</div><div class="s">tiempo exacto invertido</div>`;
+});
+document.addEventListener('mouseout',e=>{
+  const h=e.target.closest&&e.target.closest('.donuthole[data-hx]'); if(!h)return;
+  const pct=h.closest('.donutwrap')?.querySelector('.donutpct');
+  if(pct&&pct._orig!=null){pct.classList.remove('peek');pct.innerHTML=pct._orig;pct._orig=null;}
+});
 /* Efecto foco (clases .hot en el elemento / .chartfocus en el svg): mouseover real en desktop y el emulado del tap en móvil */
 document.addEventListener('mouseover',e=>{
   const el=e.target.closest&&e.target.closest('svg circle[data-tip],svg rect[data-tip]'); if(!el)return;
@@ -1175,9 +1282,11 @@ document.addEventListener('mouseout',e=>{
   const el=e.target.closest&&e.target.closest('svg circle[data-tip],svg rect[data-tip]'); if(!el)return;
   el.classList.remove('hot'); const s=el.closest('svg'); if(s)s.classList.remove('chartfocus');
 });
-/* Tap fuera (móvil): iOS deja el hover emulado "pegado" — al tocar fuera de una gráfica, se limpia todo */
+/* Tap fuera (móvil): iOS deja el hover emulado "pegado" — al tocar fuera de una gráfica, se limpia todo.
+   El centro del donut (.donuthole) también se excluye: su tap dispara el mouseover emulado y
+   el click llegaría justo después — sin esta exclusión el centro se restauraría al instante. */
 document.addEventListener('click',e=>{
-  if(e.target.closest&&e.target.closest('svg circle[data-tip],svg rect[data-tip]'))return;
+  if(e.target.closest&&e.target.closest('svg circle[data-tip],svg rect[data-tip],.donuthole'))return;
   document.querySelectorAll('svg.chartfocus').forEach(s=>s.classList.remove('chartfocus'));
   document.querySelectorAll('.hot').forEach(el=>el.classList.remove('hot'));
   document.querySelectorAll('.donutpct').forEach(p=>{if(p._orig!=null){p.classList.remove('peek');p.innerHTML=p._orig;p._orig=null;}});
@@ -1192,6 +1301,7 @@ document.addEventListener('click',e=>{
   if(e.target.closest('[data-noselect]'))return;
   const tb=e.target.closest('[data-tab]'); if(tb){setTab(tb.getAttribute('data-tab'));return;}
   const bf=e.target.closest('[data-bfilter]'); if(bf){bodaFilter=bf.getAttribute('data-bfilter');renderBodas();return;}
+  const er=e.target.closest('[data-evrange]'); if(er){evolRange=+er.getAttribute('data-evrange');try{localStorage.setItem('evolRange',evolRange);}catch(_){}renderEvol();return;}
   const dv=e.target.closest('[data-bodaview]'); if(dv){bodaView=dv.getAttribute('data-bodaview');renderBodas();return;}
   const bv=e.target.closest('[data-bars]'); if(bv){barsMetric=bv.getAttribute('data-bars');renderBodas();return;}
   const v=e.target.closest('[data-view]'); if(v){drillView=v.getAttribute('data-view');renderDrill();return;}
