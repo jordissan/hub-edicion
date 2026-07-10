@@ -403,17 +403,101 @@ def discover_wedding_pages():
     return pages
 
 
-def build_data():
+# ── Archivo histórico de bodas entregadas ────────────────────────────────────
+# El tablero solo conserva los datos COMPLETOS (etapas/escenas/sesiones) de bodas
+# activas o recién cerradas (RECENT_DONE_DAYS) — así el selector no se vuelve una
+# lista infinita y la extracción de Notion no crece sin fin. Para que la pestaña
+# Evolución NO pierda la historia cuando una boda sale del tablero, cada extracción
+# guarda/actualiza sus stats compactas (horas, escenas, días, precio, rondas) en un
+# archivo persistente que viaja en el payload como "archive". Solo se archivan
+# bodas terminadas CON horas de edición trackeadas: las que no tienen sesiones no
+# son referencia válida para medir evolución.
+ARCHIVE_FILE = os.path.join(HERE, ".archive.json")
+
+
+def wedding_archive_stats(w):
+    """Stats compactas de una boda (mismas semánticas que weddingStats del front)."""
+    edit = [s for s in w["stages"] if not s.get("isCorrections")]
+    hours = round(sum(s.get("hours") or 0 for s in edit), 1)
+    scenes = sum(len(s.get("scenes") or []) for s in edit)
+    days = sorted(d[:10] for s in edit for d in (s.get("start"), s.get("end")) if d)
+    span = None
+    if days:
+        try:
+            a = datetime.date.fromisoformat(days[0])
+            b = datetime.date.fromisoformat(days[-1])
+            span = max(1, (b - a).days + 1)
+        except ValueError:
+            pass
+    rondas, any_corr = set(), False
+    for s in w["stages"]:
+        if not s.get("isCorrections"):
+            continue
+        for x in (s.get("sessionLog") or []):
+            any_corr = True
+            if x.get("ronda") is not None:
+                rondas.add(x["ronda"])
+    return {
+        "name": (w.get("name") or "").strip(), "icon": w.get("icon"),
+        "hours": hours, "scenes": scenes, "span": span,
+        "price": w.get("price"), "rounds": len(rondas) or (1 if any_corr else 0),
+        "lastEnd": days[-1] if days else None,
+    }
+
+
+def load_archive():
+    try:
+        with open(ARCHIVE_FILE, "r") as f:
+            arc = json.load(f)
+        return arc if isinstance(arc, list) else []
+    except Exception:
+        return []
+
+
+def save_archive(archive):
+    try:
+        with open(ARCHIVE_FILE, "w") as f:
+            json.dump(archive, f, ensure_ascii=False)
+    except Exception as e:
+        sys.stderr.write("[archivo] no se pudo guardar %s: %s\n" % (ARCHIVE_FILE, e))
+
+
+def merge_archive(prev, weddings):
+    """Upsert de las bodas terminadas con horas trackeadas del tablero actual sobre el
+    archivo previo; las que ya salieron del tablero se conservan tal cual. Mientras una
+    boda archivada siga visible (ventana de 45 días) sus stats se refrescan en cada
+    extracción (p. ej. si le corriges una sesión en Notion)."""
+    by = {e["name"].strip().lower(): e for e in prev if e.get("name")}
+    today = datetime.date.today().isoformat()
+    for w in weddings:
+        status = (w.get("status") or "").strip().lower()
+        if status not in DONE_STATUSES:
+            continue
+        st = wedding_archive_stats(w)
+        if not st["name"] or st["hours"] <= 0:
+            continue
+        key = st["name"].lower()
+        st["archivedAt"] = (by.get(key) or {}).get("archivedAt") or today
+        by[key] = st
+    return sorted(by.values(), key=lambda e: e.get("lastEnd") or e.get("archivedAt") or "")
+
+
+def build_data(prev_archive=None):
     pages = discover_wedding_pages()
     weddings = [build_wedding(p) for p in pages]
     # ordenar: activas (con etapa en progreso) primero
     weddings.sort(key=lambda w: 0 if any(s["estado"] == "live" for s in w["stages"]) else 1)
+    # archivo histórico: en local se persiste en disco; el extractor de la nube
+    # (publish.py) pasa el previo leído de KV (prev_archive) y lo publica él mismo.
+    archive = merge_archive(load_archive() if prev_archive is None else prev_archive, weddings)
+    save_archive(archive)
     now = datetime.datetime.now()
     return {
         "generatedAt": now.isoformat(timespec="seconds"),
         "today": now.strftime("%Y-%m-%d"),
         "live": True,
         "weddings": weddings,
+        "archive": archive,
     }
 
 

@@ -36,13 +36,49 @@ def kv_put(key, value):
         raise
 
 
+def kv_get(key):
+    url = f"{BASE}/accounts/{ACCOUNT}/storage/kv/namespaces/{NS}/values/{key}"
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {CF_TOKEN}"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return r.read().decode("utf-8")
+    except urllib.error.HTTPError as e:
+        if e.code == 404:          # la clave aún no existe (primer run)
+            return None
+        sys.stderr.write(f"KV GET {key} -> {e.code}: {e.read().decode('utf-8','ignore')[:300]}\n")
+        raise
+
+
+def prev_archive():
+    """Archivo histórico previo (stats compactas de bodas entregadas, ver server.py).
+    KV es el estado persistente entre corridas de Actions: primero la clave propia
+    'edicion:archive'; de respaldo, el 'archive' embebido en el data.json anterior."""
+    for key, field in (("edicion:archive", None), ("edicion:data", "archive")):
+        try:
+            raw = kv_get(key)
+        except Exception:
+            continue
+        if not raw:
+            continue
+        try:
+            j = json.loads(raw)
+            arc = j if field is None else j.get(field)
+            if isinstance(arc, list):
+                return arc
+        except Exception:
+            pass
+    return []
+
+
 def main():
-    data = server.build_data()
+    data = server.build_data(prev_archive=prev_archive())
     summary = server.build_summary(data)
     kv_put("edicion:data", json.dumps(data, ensure_ascii=False))
     kv_put("edicion:summary", json.dumps(summary, ensure_ascii=False))
+    kv_put("edicion:archive", json.dumps(data.get("archive", []), ensure_ascii=False))
     print("Publicado:", summary.get("today"),
           "| bodas:", len(data.get("weddings", [])),
+          "| archivo:", len(data.get("archive", [])),
           "| horas hoy:", summary.get("todayMin"), "min")
 
 
