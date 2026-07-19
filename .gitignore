@@ -3,3 +3,4 @@
 .archive.json
 *.pyc
 __pycache__/
+index.*.bak.html
