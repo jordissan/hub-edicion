@@ -48,9 +48,12 @@ con su `server.py` + launchd en el puerto 4599 — es **backup/dev** para probar
 (`/Users/jordi/HubEdicion/index.html`) es la fuente: tiene `fetch('/api/data')` + el
 `window.SNAPSHOT_DATA` real, y se prueba con datos reales vía el server (puerto 4599).
 1. Editar `/Users/jordi/HubEdicion/index.html` (y `server.py` si toca la extracción de Notion).
-2. **Portar a `cloud/index.html`** con un mini-script Python que copia el local pero **preserva
-   2 cosas del cloud**: su bloque `window.SNAPSHOT_DATA` (scrubbeado) y el `fetch('/api/edicion')`
-   (el local usa `/api/data`). Revisar `git diff` antes de commitear.
+2. **Portar a `cloud/index.html` = copia directa** (`cp index.html cloud/index.html`). Desde el
+   rediseño "Sala de Corte" el MISMO archivo sirve para local y nube: el `loadLive()` intenta
+   `/api/data` (local) y luego `/api/edicion` (nube) en orden, y el `window.SNAPSHOT_DATA`
+   embebido es el mismo payload real para ambos. Ya no hay que swapear la URL del fetch.
+   Refresca el snapshot embebido de vez en cuando con el payload vivo (`curl localhost:4599/api/data`).
+   Revisar `git diff` antes de commitear.
 3. `git -C cloud add -A && git -C cloud commit && git -C cloud push` → **Cloudflare Pages auto-despliega (~1-2 min).**
 4. Si cambiaste `server.py`: edita **ambos** (raíz + `cloud/server.py`), pushea el del cloud, y
    `gh workflow run "Publicar dashboard"` para republicar KV. Reinicia el local:
@@ -63,9 +66,10 @@ con su `server.py` + launchd en el puerto 4599 — es **backup/dev** para probar
 **Limitaciones del panel de preview** (del entorno, no de la app): no scrollea programáticamente
 (verificar posiciones con `getBoundingClientRect`/`elementFromPoint` ocultando lo de arriba); no
 bombea frames durante evals — `requestAnimationFrame` no dispara y las transiciones CSS no avanzan
-(para leer el estado final de una clase: desactivar transición, aplicar, leer, restaurar); ojo con
-`applyTheme()` que NO re-renderiza (usar `toggleTheme()` o `applyTheme(t);renderAll()`), y con la
-pestaña activa persistida en `localStorage` (`hubView`) — hacer `setTab(...)` antes de medir vistas.
+(para leer el estado final de una clase: desactivar transición, aplicar, leer, restaurar). El botón de
+tema llama `renderAll(M)` para repintar los SVG con los colores nuevos. También: el fetch vivo se prueba
+con `curl localhost:4599/api/data`; en el panel estático (8753) cae al `SNAPSHOT_DATA` embebido (sello
+"SNAPSHOT"), que ES el payload real más reciente, así que los números siguen siendo válidos para verificar.
 
 **Gotchas iOS (PWA):** `backdrop-filter` + animación de `transform` exige `will-change:transform`
 y animar solo transform (si no, WebKit descarta el blur → "se esfuma"); además el tabbar usa
@@ -84,22 +88,22 @@ barra de navegación flotante inferior).
 - **"Cambios" / "Correcciones" = fase post-entrega** (depende de Claudio/Romina). **Excluida** del avance %, horas
   de edición, entrega y donut. Se evalúa aparte por **rondas + horas/sesiones** (campo number "Ronda" en sesiones).
   Detección: nombre de etapa contiene "cambios" o "correcciones" (≠ "Corrección de Color y Finalización", singular).
-- **Selector de proyecto = menú desplegable.** Al elegir una boda, **todas las gráficas filtran a ese proyecto**
-  (hero, donut, drilldown, KPIs Hoy/Sesiones, alertas, timeline, acumulado, horas/día). **Racha siempre global.**
-  **Solo lista bodas que "miden"** (`wedTracked`: horas trackeadas > 0, o en curso): las finalizadas/en corrección
-  sin sesiones no aparecen ni entran a los agregados de Resumen (`metricWeds`/`focusWeds`) — siguen en la pestaña
-  Bodas marcadas "sin sesiones trackeadas". **Se oculta en Evolución** (ahí no filtra nada; lo hace `setTab`).
+- **Selector de proyecto = la lista de "En la mesa"** (sección Proyectos). **Tocar una boda** re-renderiza su
+  donut/etapas/cinta con datos reales (nada de dropdown global). **Solo lista bodas que "miden"** (horas de
+  edición efectivas > 0): las de solo correcciones o sin sesiones no aparecen. **Racha siempre global.**
 - **Widgets** (`HubEdicion/widgets/`): iPhone (Scriptable) y Mac (SwiftBar) leen `/api/summary` con el Service Token.
-- **Nav por pestañas:** Resumen · Bodas · Evolución (estado en `localStorage`). "Hoy" se fusionó en Resumen.
+- **Nav = rail lateral (desktop, plegable) + tabbar inferior (móvil)**; 6 secciones ancla: Carrera · Hoy ·
+  Ritmo · ADN · Proyectos · Tarifa. **Tema claro/oscuro** en `localStorage` (`scTheme`). Todo lo derivan del
+  payload en el navegador (`deriveModel`) — no hay estado de pestaña activa que persistir.
 - **Rentabilidad:** `$/h`, `$/escena`, `$/etapa` sobre el **precio cobrado** = propiedad **Total** (MXN) de cada
   boda en Notion (`build_wedding` la lee como `price`; el dashboard prioriza `w.price`, con default si falta). En
   proyectos en curso, **`$/h proyectado`** = (tasa histórica `horas/escena` de bodas completas) × escenas de la boda
   → horas totales estimadas. Se afina conforme hay más bodas completas.
-- **Evolución (boda a boda):** records, deltas y tendencias ($/h, h/escena, días, horas) **solo de bodas COMPLETAS**.
-  Las en progreso se muestran en tarjetas pero no entran a la comparación (no es justo comparar a medias vs terminadas).
-  Además, **toda la pestaña Evolución excluye las bodas con `0h` de edición efectiva trackeada** (`weddingsByDate` filtra
-  `wedHours(w)>0`): bodas viejas sin trackeo de sesiones o de **solo correcciones** no son referencia válida para medir
-  mejora en el tiempo → fuera de récords, tarjetas, barras y tendencias (tampoco se archivan). Siguen en la pestaña Bodas.
+- **Carrera / comparación (boda a boda):** el hero enfrenta las **2 bodas con edición terminada más recientes**
+  (la última como línea viva, la anterior como fantasma) — retrospectivo, siempre significativo aunque la boda
+  en curso apenas arranque. `deriveModel` elige `refCur`/`refGhost` = bodas medidas sin etapas `live`, ordenadas
+  por última sesión efectiva. La **anatomía del ahorro** y **El salto** ($/h) usan esa misma pareja. Solo entran
+  bodas con `>0 h` de edición efectiva (las de solo correcciones no son referencia válida).
   **Historia a largo plazo:** `weddingsByDate` fusiona las bodas del tablero con el **archivo histórico** (`D.archive`,
   stats compactas vía `statsFromArchive`, dedupe por nombre) — la Evolución no pierde bodas cuando salen del tablero
   a los 45 días. **Rango visible:** con >5 bodas aparecen chips **Últimas 5 · 10 · Todas** (`evolRange`, en localStorage)
