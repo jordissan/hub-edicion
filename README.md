@@ -104,35 +104,28 @@ barra de navegación flotante inferior).
   en curso apenas arranque. `deriveModel` elige `refCur`/`refGhost` = bodas medidas sin etapas `live`, ordenadas
   por última sesión efectiva. La **anatomía del ahorro** y **El salto** ($/h) usan esa misma pareja. Solo entran
   bodas con `>0 h` de edición efectiva (las de solo correcciones no son referencia válida).
-  **Historia a largo plazo:** `weddingsByDate` fusiona las bodas del tablero con el **archivo histórico** (`D.archive`,
-  stats compactas vía `statsFromArchive`, dedupe por nombre) — la Evolución no pierde bodas cuando salen del tablero
-  a los 45 días. **Rango visible:** con >5 bodas aparecen chips **Últimas 5 · 10 · Todas** (`evolRange`, en localStorage)
-  que limitan tarjetas y curvas; los récords miran siempre TODA la historia y la cadena de deltas se calcula completa
-  (la 1ª tarjeta visible compara contra su antecesora real). `evolLine` rotula cada K puntos si hay muchos.
-  La tasa `horas/escena` del `$/h proyectado` también incluye el archivo (`avgHoursPerScene`).
+  **Historia a largo plazo:** el archivo histórico (`archive` en el payload, `.archive.json` local /
+  KV `edicion:archive`) viaja siempre; `deriveModel` lo usa para que la comparación (Carrera / $/h) no
+  pierda bodas cuando salen del tablero a los 45 días. Con los años, el fantasma pasará de "la anterior"
+  a la **mediana del historial** (pendiente); el heatmap ya crece solo.
 - **Bodas incluidas:** todas (Tipo = Boda) **menos las finalizadas inactivas > `RECENT_DONE_DAYS` (45) días**
   (`discover_wedding_pages`). El filtro de "finalizada" se hace en Python contra `DONE_STATUSES`
   (`Finalizadas`/`Hecho`/`Complete`…), **no en la consulta a Notion** — así renombrar la opción de Status
   ya no rompe el query (antes pedía `Status ≠ "Hecho"` y, al desaparecer esa opción, Notion devolvía 400).
+  Robusto además a renombres de tablas/columnas: `build_wedding` parsea por tipo de propiedad, no por nombre exacto.
 - **Proyectos de solo correcciones:** página con un DB **"Sesiones" directo** (sin "Tracking de Edición"/etapas).
-  `build_wedding` los lee como una etapa **"Correcciones"** (`isCorrections`), así su tiempo cuenta en el log diario.
-- **Nav móvil:** barra inferior flotante (`#tabbar`, se renderiza en `renderChrome`, ≤760px) con blur y
-  safe-area; en tablet/ventana media sigue el `hubnav` de arriba; en **desktop ancho (≥1080px) hay un rail
-  lateral flotante** (`#siderail`, mismo lenguaje visual que el tabbar: pill con blur, activo = tinte lima 16%)
-  anclado al borde del body con `left:max(18px, calc(50vw - 674px))` — el body pasa a `max-width:1384px` +
-  `padding-left:128px` para ceder el espacio sin perder ancho útil. `setTab` sincroniza los tres. Header con fecha.
-- **Gráficas vivas (desktop):** hover en segmentos/barras (CSS `:has` + `transform-box:fill-box`) crece el
-  elemento y atenúa el resto; el **centro del donut reacciona** (handlers delegados sobre `circle[data-eta]`,
-  clase `.peek`) mostrando la etapa señalada y restaurando el total al salir. Además el **hueco del donut
-  revela el tiempo exacto** (`.donuthole`: círculo invisible del 64% con `data-hx`, p. ej. `55h 42m` vía
-  `fmtHMshort`) al hover/tap; `.donutpct` sigue `pointer-events:none`, y el `.donuthole` está **excluido de la
-  limpieza de tap-fuera** (si no, en iOS el click emulado restauraría el centro justo tras el tap).
-- **Pestaña Bodas:** agrupada en secciones **En curso · En corrección · Finalizadas** con chips de filtro;
-  las finalizadas se muestran como tarjetas compactas (overview). El selector de proyecto agrupa igual (optgroups).
-  El **drilldown + timeline siguen a la boda en vista** (`detailWedIdx`/`bodasEnVista`: selección → filtro → en curso).
-  Layout adaptable (`renderBodas` pone clase en `.cols`, `alignDrill` mide el offset): **browse** (Todas → 2 cols, detalle
-  sticky alineado a la 1ª tarjeta), **stack** (filtro de un grupo → apilado a lo ancho), **split** (boda elegida → 50/50).
-  En móvil todo se apila (sin scroll horizontal).
+  `build_wedding` los lee como una etapa **"Correcciones"** (`isCorrections`); NO cuentan como horas de edición
+  efectivas, así que esas bodas quedan fuera de Proyectos/Carrera/Tarifa (no son referencia válida).
+- **Nav (nuevo):** **rail lateral** flotante en desktop (≥1200px, plegable: iconos ↔ iconos+labels) y **tabbar
+  inferior** flotante en móvil/tablet (blur + safe-area). Scroll-spy resalta la sección activa (IntersectionObserver);
+  no hay pestañas ni estado que persistir (una sola vista con anclas). Tema en `localStorage` `scTheme`.
+- **Interfaz viva (nuevo, `@media(hover:hover)`):** tarjetas se elevan al cursor; en las gráficas la marca bajo el
+  cursor **crece y el resto se atenúa** vía clases `.fx` (en el `<svg>`) + `.hot` (la barra), tras `.settled`; el
+  **centro del donut reacciona** (segmentos con listeners `pointerenter`: muestra etapa · horas · $ · % en su color,
+  restaura el total al salir). Todo con transform/opacity, respeta `prefers-reduced-motion`.
+- **Gráficas que se reconstruyen por breakpoint:** la Carrera y "Horas por día" se re-dibujan al cruzar 640px
+  (viewBox y grosores distintos en móvil) vía un registro `regRebuild`; el **heatmap** se re-renderiza al cambiar el
+  ancho (rellena semanas previas hasta llenar la tarjeta) y ancla el scroll a hoy. Helper `barPath()` para las barras.
 
 ## Datos de referencia (Cloudflare)
 - Account ID: `3e5d3a65aa4f2a3819cdaacc1c92c6d9` · KV namespace "hub" ID: `c183c5e72d5e48a19d07fd6831ececeb`
