@@ -85,9 +85,14 @@ barra de navegación flotante inferior).
 ## Modelo y comportamiento (decisiones de Jordi)
 - **El 100% = terminar el montaje de HL/SF** (última etapa de edición). Una etapa marcada **'done' cuenta 100%**
   y sus escenas como completas — la marca de "hecho" a nivel etapa manda sobre el detalle de escenas.
-- **"Cambios" / "Correcciones" = fase post-entrega** (depende de Claudio/Romina). **Excluida** del avance %, horas
-  de edición, entrega y donut. Se evalúa aparte por **rondas + horas/sesiones** (campo number "Ronda" en sesiones).
+- **"Cambios" / "Correcciones" = fase post-entrega** (depende de Claudio/Romina). **Excluida** de las horas
+  de edición *efectivas* (Carrera, ahorro por etapa, $/h) y de la fecha de "edición lista". Se evalúa aparte por
+  **rondas + horas/sesiones** (campo number "Ronda" en sesiones).
   Detección: nombre de etapa contiene "cambios" o "correcciones" (≠ "Corrección de Color y Finalización", singular).
+  **PERO sí cuenta como tiempo trabajado** en HOY y Ritmo (horas por día — el tooltip desglosa "en cambios" —,
+  tiles, racha, heatmap, cronotipo, histograma de sesiones): un día de correcciones es un día trabajado.
+  Además, una etapa de Cambios `live` **no "reabre" la boda**: `hasLive` ignora correcciones, así la boda sigue
+  siendo "edición terminada" para `refCur`/`refGhost` aunque estés metiendo cambios hoy.
 - **Selector de proyecto = la lista de "En la mesa"** (sección Proyectos). **Tocar una boda** re-renderiza su
   donut/etapas/cinta con datos reales (nada de dropdown global). **Solo lista bodas que "miden"** (horas de
   edición efectivas > 0): las de solo correcciones o sin sesiones no aparecen. **Racha siempre global.**
@@ -115,7 +120,8 @@ barra de navegación flotante inferior).
   Robusto además a renombres de tablas/columnas: `build_wedding` parsea por tipo de propiedad, no por nombre exacto.
 - **Proyectos de solo correcciones:** página con un DB **"Sesiones" directo** (sin "Tracking de Edición"/etapas).
   `build_wedding` los lee como una etapa **"Correcciones"** (`isCorrections`); NO cuentan como horas de edición
-  efectivas, así que esas bodas quedan fuera de Proyectos/Carrera/Tarifa (no son referencia válida).
+  efectivas, así que esas bodas quedan fuera de Proyectos/Carrera/Tarifa (no son referencia válida) — pero sus
+  sesiones sí suman como tiempo trabajado en HOY/Ritmo.
 - **Nav (nuevo):** **rail lateral** flotante en desktop (≥1200px, plegable: iconos ↔ iconos+labels) y **tabbar
   inferior** flotante en móvil/tablet (blur + safe-area). Scroll-spy resalta la sección activa (IntersectionObserver);
   no hay pestañas ni estado que persistir (una sola vista con anclas). Tema en `localStorage` `scTheme`.

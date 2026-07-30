@@ -504,7 +504,7 @@ svg text{user-select:none}
   <div class="chartbox">
     <svg id="race" viewBox="0 0 920 400" role="img" aria-label="Horas acumuladas por día de proyecto contra el fantasma de la boda anterior"></svg>
     <div class="legend" id="raceLegend"></div>
-    <p class="scalenote">La boda en curso corre contra tu <b>última entrega</b> como fantasma; con más bodas
+    <p class="scalenote">Tu <b>última edición terminada</b> corre contra la anterior como fantasma; con más bodas
       será la <b>mediana de tu historial</b>, las demás como ecos tenues detrás.</p>
     <details class="tbl"><summary>VER LOS DATOS ▾</summary><div id="raceTbl"></div></details>
   </div>
@@ -681,7 +681,9 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
   const isCorr  = s => !!s.isCorrections;
   const effH    = w => (w.stages||[]).reduce((a,s)=> a + (isCorr(s)?0:(s.hours||0)), 0);
   const totH    = w => (w.stages||[]).reduce((a,s)=> a + (s.hours||0), 0);
-  const hasLive = w => (w.stages||[]).some(s=>s.estado==='live');
+  // "en curso" = alguna etapa de EDICIÓN viva; una ronda de Cambios activa no
+  // reabre la boda (seguiría siendo "edición terminada" para Carrera/refCur)
+  const hasLive = w => (w.stages||[]).some(s=>s.estado==='live' && !isCorr(s));
   const doneN   = w => (w.stages||[]).filter(s=>s.estado==='done').length;
 
   const faseOf = s => isCorr(s) ? 'cam' : (/HL|SF/i.test(s.fase||'') ? 'hl' : 'doc');
@@ -714,15 +716,16 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
     // bodas que "miden" (tienen horas de edición efectivas trackeadas)
     const measured = weddings.filter(w => effH(w) > 0);
 
-    // sesiones efectivas (todas las bodas, excluye correcciones)
+    // sesiones de trabajo (todas las bodas; las de correcciones van marcadas corr:true —
+    // cuentan como tiempo trabajado en HOY/Ritmo, pero no como edición efectiva)
     const sess = [];
     for (const w of weddings)
       for (const s of (w.stages||[])){
-        if (isCorr(s)) continue;
+        const corr = isCorr(s);
         for (const x of (s.sessionLog||[])){
           if (!x.inicio) continue;
           const date = x.inicio.slice(0,10);
-          sess.push({ date, min:x.min||0, hour:+x.inicio.slice(11,13) });
+          sess.push({ date, min:x.min||0, hour:+x.inicio.slice(11,13), corr });
         }
       }
     const NSES = sess.length;
@@ -767,14 +770,14 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
     const over2h = buckets[4];
 
     // ---- HOY: últimos 7 días (meta) ----
-    const dayTot = {};
-    for (const s of sess) dayTot[s.date]=(dayTot[s.date]||0)+s.min;
+    const dayTot = {}, dayCorr = {};
+    for (const s of sess){ dayTot[s.date]=(dayTot[s.date]||0)+s.min; if(s.corr) dayCorr[s.date]=(dayCorr[s.date]||0)+s.min; }
     const dia7=[];
     const base=ymd(today);
     for(let i=6;i>=0;i--){
       const d=new Date(base); d.setDate(base.getDate()-i);
       const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-      dia7.push([fmtDayLbl(iso), round1((dayTot[iso]||0)/60), metaH(iso)]);
+      dia7.push([fmtDayLbl(iso), round1((dayTot[iso]||0)/60), metaH(iso), round1((dayCorr[iso]||0)/60)]);
     }
     // racha de meta diaria (salta domingos)
     let streak=0; { let d=new Date(base);
@@ -958,7 +961,7 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
 
 /* ================= Sala de Corte — capa de render (datos vivos) ================= */
 const fmt = n => (Math.round(n*10)/10).toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:1}).replace('.',',');
-const fmtHM = h => `${Math.floor(h)}h ${String(Math.round((h%1)*60)).padStart(2,'0')}m`;
+const fmtHM = h => { const m=Math.round(h*60); return `${Math.floor(m/60)}h ${String(m%60).padStart(2,'0')}m`; };
 const fmtMXN = v => '$'+Math.round(v).toLocaleString('es-MX');
 const signed = (n,suf='') => (n>0?'+':n<0?'−':'')+fmt(Math.abs(n))+suf;
 const NS='http://www.w3.org/2000/svg';
@@ -1090,7 +1093,7 @@ function renderRace(M){
         p.animate([{strokeDashoffset:1},{strokeDashoffset:0}],{duration:1400,delay:150+i*250,easing:'cubic-bezier(.3,.6,.2,1)',fill:'forwards'}); }); };
   }
   regRebuild(build); build(MQM.matches);
-  leg.innerHTML=`<span class="k"><i style="background:var(--sun)"></i>${R.curName} · en curso</span>`+
+  leg.innerHTML=`<span class="k"><i style="background:var(--sun)"></i>${R.curName} · última edición</span>`+
     (R.hasGhost?`<span class="k"><i style="background:var(--ghost)"></i>El fantasma · ${R.ghostName}</span>`:'')+
     `<span class="k"><i class="dot" style="background:var(--naranja)"></i>playhead · fin de edición</span>`;
   const rows=[];
@@ -1122,9 +1125,9 @@ function renderHoy(M){
     `<div class="m" data-tip="<b>Días con sesiones</b><br>${M.activeDays} de ${M.spanDays} desde ${fmtFecha(M.firstDay)}"><div class="v">${M.activeDays}<small style="color:var(--dim)">/ ${M.spanDays} DÍAS</small></div><div class="l">DÍAS ACTIVOS · RACHA ${M.streak}</div></div>`;
   // tiles
   const todayH=M.todayMin/60;
-  const tHoy = M.metaTodayH===0 ? '0 min' : (todayH>0?fmtHM(todayH):'0 min');
+  const tHoy = todayH>0 ? fmtHM(todayH) : '0 min';
   document.getElementById('tilesRow').innerHTML=
-    `<div class="m" data-tip="<b>Hoy</b><br>${M.metaTodayH===0?'domingo · descanso':fmtHM(todayH)+' de '+M.metaTodayH+' h'}"><div class="v">${tHoy}</div><div class="l">HOY${M.metaTodayH===0?' · DÍA DE DESCANSO':' / '+M.metaTodayH+' H META'}</div></div>`+
+    `<div class="m" data-tip="<b>Hoy</b><br>${M.metaTodayH===0?(todayH>0?fmtHM(todayH)+' · domingo (descanso)':'domingo · descanso'):fmtHM(todayH)+' de '+M.metaTodayH+' h'}"><div class="v">${tHoy}</div><div class="l">HOY${M.metaTodayH===0?' · DÍA DE DESCANSO':' / '+M.metaTodayH+' H META'}</div></div>`+
     `<div class="m" data-tip="<b>Sesiones de hoy</b>"><div class="v">${M.todaySes}</div><div class="l">SESIONES DE HOY</div></div>`+
     `<div class="m" data-tip="<b>Racha de meta diaria</b><br>días consecutivos cumpliendo (salta domingos)"><div class="v">${M.streak} día${M.streak===1?'':'s'}</div><div class="l">CUMPLIENDO META DIARIA</div></div>`+
     `<div class="m" data-tip="<b>Etapa activa</b>${M.activeWed?'<br>'+M.activeWed:''}"><div class="v" style="font-size:${M.activeStage?'16px':'25px'}">${M.activeStage?M.activeStage:'<span class="na">—</span>'}</div><div class="l">ETAPA ACTIVA</div></div>`;
@@ -1146,18 +1149,22 @@ function renderDia7(M){
     const W=mob?430:940,H=250,pl=mob?46:70,pr=mob?10:24,pt=44,pb=30,maxV=Math.max(6,rec*1.15),bw=(W-pl-pr)/7;
     svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.innerHTML='';
     const Y=v=>H-pb-v/maxV*(H-pt-pb);
-    const my=Y(5); S('line',{x1:pl,x2:pl+bw*5,y1:my,y2:my,stroke:'var(--hair2)','stroke-width':1.5,'stroke-dasharray':'5 6'},svg);
-    const ml=S('text',{x:pl,y:my-8,class:'ax'},svg);ml.textContent='meta 5 h';
-    S('line',{x1:pl+bw*5+4,x2:pl+bw*6-4,y1:Y(2),y2:Y(2),stroke:'var(--hair2)','stroke-width':1.5,'stroke-dasharray':'5 6'},svg);
+    // guía de meta por día (la ventana es móvil: cada barra lleva su propia meta)
+    let lbl5=false;
+    dia7.forEach(([,,goal],i)=>{ if(!goal)return; const gy=Y(goal);
+      const cont=j=>j>=0&&j<7&&dia7[j][2]===goal;
+      S('line',{x1:pl+i*bw+(cont(i-1)?0:4),x2:pl+(i+1)*bw-(cont(i+1)?0:4),y1:gy,y2:gy,stroke:'var(--hair2)','stroke-width':1.5,'stroke-dasharray':'5 6'},svg);
+      if(goal===5&&!lbl5){lbl5=true;const ml=S('text',{x:pl+i*bw,y:gy-8,class:'ax'},svg);ml.textContent='meta 5 h';} });
     S('line',{x1:pl,x2:W-pr,y1:H-pb,y2:H-pb,class:'gl'},svg);
-    dia7.forEach(([lab,v,goal],i)=>{
+    dia7.forEach(([lab,v,goal,corrH],i)=>{
       const x=pl+i*bw+bw*0.22,w=bw*0.56,y0=H-pb,y=Y(v);
       const isRec=v>0&&v===rec,isHoy=i===6,fill=isRec?'var(--naranja)':isHoy?'var(--sun)':'var(--violeta)';
       const bar=S('path',{class:'gbar',fill},svg); bar.style.setProperty('--i',i);
       bar.setAttribute('d',v>0?barPath(x,y0,y,w,6):`M${x} ${y0-2.5} L${x} ${y0} L${x+w} ${y0} L${x+w} ${y0-2.5} Z`);
       if(v>0){const c=S('text',{x:x+w/2,y:y-10,class:'lbl hi fadein','text-anchor':'middle'},svg);c.textContent=fmtHM(v);}
       const t=S('text',{x:x+w/2,y:H-pb+18,class:'ax','text-anchor':'middle'},svg);t.textContent=mob?lab.slice(-2):lab;
-      const tipTx=goal>0?`<b>${lab}</b><br>${v>0?fmtHM(v):'0 h'} de ${goal} h${isRec?' · récord de la semana':''}${isHoy?' · hoy':''}`:`<b>${lab}</b><br>descanso — sin meta`;
+      const corrTx=corrH>0?`<br>de ellas, ${fmtHM(corrH)} en cambios`:'';
+      const tipTx=goal>0?`<b>${lab}</b><br>${v>0?fmtHM(v):'0 h'} de ${goal} h${isRec?' · récord de la semana':''}${isHoy?' · hoy':''}${corrTx}`:`<b>${lab}</b><br>${v>0?fmtHM(v)+' · ':''}descanso — sin meta${corrTx}`;
       const hs=S('rect',{x:pl+i*bw,y:pt,width:bw,height:H-pt-pb,fill:'transparent','data-tip':tipTx},svg);
       hs.style.pointerEvents='all'; liveBar(svg,hs,bar);
     });
@@ -1223,7 +1230,7 @@ function renderHeat(M){
       const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
       const h=M.heat[iso]||0,s=step(h); if(d.getDate()<=7&&dw===0)monthLabel=MNU[d.getMonth()];
       const future=d>end, pre=iso<firstIso; const cls=(s?'s'+s:'')+(iso===M.today?' today':'');
-      const lbl=`<b>${DIAS[d.getDay()]} ${d.getDate()} ${MNU[d.getMonth()].toLowerCase()}</b><br>${h?fmt(h)+' h editadas':(future?'—':pre?'aún no medías':'sin sesiones')}`;
+      const lbl=`<b>${DIAS[d.getDay()]} ${d.getDate()} ${MNU[d.getMonth()].toLowerCase()}</b><br>${h?fmt(h)+' h trabajadas':(future?'—':pre?'aún no medías':'sin sesiones')}`;
       cells+=`<div class="cell ${cls}" style="--c:${wk}${future?';visibility:hidden':''}" data-tip="${lbl.replace(/"/g,'&quot;')}"></div>`; }
     html+=`<div class="col">${cells}</div>`; mhtml+=`<span style="width:22px">${monthLabel}</span>`; }
   heat.innerHTML=html; months.innerHTML=mhtml; hw.scrollLeft=hw.scrollWidth;
