@@ -14,7 +14,7 @@ Uso:
     python3 server.py --check    # prueba el token y lista las bodas detectadas
 """
 
-import os, sys, json, time, threading, urllib.request, urllib.error, datetime, socketserver, http.server
+import os, sys, json, time, threading, unicodedata, urllib.request, urllib.error, datetime, socketserver, http.server
 
 # ── Configuración ────────────────────────────────────────────────────────────
 PORT = int(os.environ.get("DASHBOARD_PORT", "4599"))
@@ -49,6 +49,29 @@ def get_token():
 
 
 # ── Cliente Notion ───────────────────────────────────────────────────────────
+# Notion limita a ~3 peticiones/segundo de media. Una extracción completa son
+# ~200 peticiones (una por sub-DB de escenas/sesiones de cada etapa de cada boda),
+# así que sin freno el extractor dispara ráfagas por encima del límite y Notion
+# responde 429. Antes eso reventaba el run entero de GitHub Actions (correo de
+# "Publicar dashboard failed" cada pocas horas): 4 intentos separados 1-3 s no
+# alcanzan cuando el bloqueo dura más. El arreglo es doble: espaciar SIEMPRE las
+# peticiones por debajo del límite (así casi nunca se toca el 429) y, si aun así
+# aparece, reintentar con backoff exponencial de verdad.
+NOTION_MIN_INTERVAL = 0.40          # s entre peticiones → 2.5 req/s, con margen bajo el 3/s
+NOTION_TRIES = 6                    # intentos por petición ante 429 / 5xx / red
+_rate_lock = threading.Lock()
+_last_req = [0.0]
+
+
+def _throttle():
+    """Espacia las peticiones a Notion para no pasar de ~3 req/s."""
+    with _rate_lock:
+        gap = time.time() - _last_req[0]
+        if gap < NOTION_MIN_INTERVAL:
+            time.sleep(NOTION_MIN_INTERVAL - gap)
+        _last_req[0] = time.time()
+
+
 def notion(method, path, body=None):
     token = get_token()
     if not token:
@@ -61,20 +84,27 @@ def notion(method, path, body=None):
             "Notion-Version": NOTION_VERSION,
             "Content-Type": "application/json",
         })
-    for attempt in range(4):
+    for attempt in range(NOTION_TRIES):
+        last = attempt == NOTION_TRIES - 1
+        _throttle()
         try:
             with urllib.request.urlopen(req, timeout=30) as r:
                 return json.load(r)
         except urllib.error.HTTPError as e:
-            if e.code == 429 and attempt < 3:            # rate limit -> espera y reintenta
-                wait = float(e.headers.get("Retry-After", "1") or "1")
-                time.sleep(min(wait, 5))
+            # 429 = rate limit · 5xx = fallo temporal de Notion. Ambos se reintentan
+            # respetando Retry-After y subiendo la espera (2, 4, 8… hasta 30 s).
+            if e.code in (429, 500, 502, 503, 504) and not last:
+                try:
+                    hinted = float(e.headers.get("Retry-After", "") or 0)
+                except ValueError:
+                    hinted = 0.0
+                time.sleep(min(max(hinted, 2.0 * (2 ** attempt)), 30.0))
                 continue
             detail = e.read().decode("utf-8", "ignore")
             raise RuntimeError("Notion %s: %s" % (e.code, detail[:300]))
-        except Exception as e:
-            if attempt < 3:
-                time.sleep(0.6)
+        except Exception:
+            if not last:
+                time.sleep(min(1.0 * (2 ** attempt), 15.0))
                 continue
             raise
 
@@ -126,6 +156,17 @@ def iter_child_databases(block_id, depth=0):
         elif blk.get("has_children") and t in _CONTAINERS:
             out += iter_child_databases(blk["id"], depth + 1)
     return out
+
+
+# En Notion las columnas título de las sub-DBs conviven acentuadas y sin acentuar
+# ("Sesión" y "Sesion" en la misma boda), así que comparamos sin acentos.
+def _sinacento(s):
+    s = unicodedata.normalize("NFD", s or "")
+    return "".join(c for c in s if unicodedata.category(c) != "Mn").lower().strip()
+
+
+def _is_sesion(title_prop):
+    return _sinacento(title_prop).startswith("sesion")
 
 
 _db_meta_cache = {}
@@ -298,9 +339,9 @@ def build_wedding(page):
                 continue
             bid = blk["id"]; title = blk["child_database"].get("title", "")
             try:
-                is_ses = (db_title_prop(bid) == "Sesión") or ("sesi" in title.lower())
+                is_ses = _is_sesion(db_title_prop(bid)) or ("sesi" in _sinacento(title))
             except Exception:
-                is_ses = "sesi" in title.lower()
+                is_ses = "sesi" in _sinacento(title)
             if is_ses:
                 log, th, ns = read_session_db(bid)
                 if ns:
@@ -338,8 +379,12 @@ def build_wedding(page):
             try:
                 title_prop = db_title_prop(sb_id)
             except Exception:
-                continue
-            if title_prop == "Escena":
+                # Notion niega el acceso a algunas sub-DBs huérfanas ("Untitled", sin
+                # data sources). Antes se saltaba la sub-DB entera, así que si una DB
+                # de Sesiones real fallara se perderían sus horas EN SILENCIO. Ahora
+                # caemos al nombre del bloque, igual que la rama de solo-correcciones.
+                title_prop = None
+            if _sinacento(title_prop).startswith("escena"):
                 day = parse_day(sb_title)
                 for sc in query_db(sb_id):
                     scp = sc.get("properties", {})
@@ -351,7 +396,7 @@ def build_wedding(page):
                         "cancion": p_rich(scp, "Cancion", "Canción"),
                         "dia": day, "start": c_start, "end": c_end,
                     })
-            elif title_prop == "Sesion" or "sesion" in sb_title.lower():
+            elif _is_sesion(title_prop) or "sesion" in _sinacento(sb_title):
                 log, th, ns = read_session_db(sb_id)
                 stage["sessionLog"].extend(log); total_h += th; nsess += ns
         if nsess:
@@ -372,11 +417,20 @@ RECENT_DONE_DAYS = 45  # bodas finalizadas editadas en los últimos N días sigu
 # cuando la opción dejaba de existir y tiraba todo a las bodas de respaldo).
 DONE_STATUSES = {"hecho", "finalizadas", "finalizada", "complete", "completado", "done"}
 
+# Se pone a True cuando la consulta a Notion falla y caemos a FALLBACK_WEDDING_PAGES.
+# Ese respaldo son 2 bodas hardcodeadas: un tablero MUTILADO que parece sano. Sin esta
+# marca, publish.py lo subía a KV y borraba el tablero bueno en silencio (ya pasó una
+# vez, con el 400 del Status renombrado). Ahora build_data lo etiqueta y el publicador
+# se niega a sobrescribir la nube con datos degradados.
+DISCOVERY_DEGRADED = [False]
+
+
 def discover_wedding_pages():
     """Trae TODAS las páginas Tipo=Boda y descarta solo las finalizadas que llevan
     inactivas más de RECENT_DONE_DAYS días — para no perder proyectos recién
     cerrados (p.ej. correcciones post-entrega que acabas hoy) ni las que siguen en
     curso o en correcciones. Robusto ante renombrados del estado en Notion."""
+    DISCOVERY_DEGRADED[0] = False
     cutoff = (datetime.date.today() - datetime.timedelta(days=RECENT_DONE_DAYS)).isoformat()
     filt = {"property": "Tipo", "select": {"equals": "Boda"}}
     try:
@@ -393,7 +447,8 @@ def discover_wedding_pages():
                 return kept
     except Exception as e:
         sys.stderr.write("[aviso] consulta a DB raíz falló (%s); usando bodas conocidas\n" % e)
-    # Respaldo: traer las páginas conocidas directamente
+    # Respaldo: traer las páginas conocidas directamente (tablero degradado)
+    DISCOVERY_DEGRADED[0] = True
     pages = []
     for pid in FALLBACK_WEDDING_PAGES:
         try:
@@ -487,8 +542,8 @@ def build_data(prev_archive=None):
     weddings = [build_wedding(p) for p in pages]
     # ordenar: activas (con etapa en progreso) primero
     weddings.sort(key=lambda w: 0 if any(s["estado"] == "live" for s in w["stages"]) else 1)
-    # archivo histórico: en local se persiste en disco; el extractor de la nube
-    # (publish.py) pasa el previo leído de KV (prev_archive) y lo publica él mismo.
+    # archivo histórico: local se persiste en disco; el extractor de la nube pasa
+    # el previo leído de KV (prev_archive) y publica el resultado él mismo.
     archive = merge_archive(load_archive() if prev_archive is None else prev_archive, weddings)
     save_archive(archive)
     now = datetime.datetime.now()
@@ -496,6 +551,7 @@ def build_data(prev_archive=None):
         "generatedAt": now.isoformat(timespec="seconds"),
         "today": now.strftime("%Y-%m-%d"),
         "live": True,
+        "degraded": DISCOVERY_DEGRADED[0],   # True = solo las bodas de respaldo; no publicar
         "weddings": weddings,
         "archive": archive,
     }

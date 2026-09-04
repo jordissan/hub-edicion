@@ -117,7 +117,17 @@ barra de navegación flotante inferior).
   (`discover_wedding_pages`). El filtro de "finalizada" se hace en Python contra `DONE_STATUSES`
   (`Finalizadas`/`Hecho`/`Complete`…), **no en la consulta a Notion** — así renombrar la opción de Status
   ya no rompe el query (antes pedía `Status ≠ "Hecho"` y, al desaparecer esa opción, Notion devolvía 400).
-  Robusto además a renombres de tablas/columnas: `build_wedding` parsea por tipo de propiedad, no por nombre exacto.
+  Robusto además a renombres de tablas/columnas: `build_wedding` parsea por tipo de propiedad, no por nombre exacto
+  (y sin acentos: en Notion conviven columnas título `Sesión` y `Sesion` en la misma boda).
+- **Límite de Notion (sep-2026):** una extracción son **~209 peticiones** y Notion permite **~3 req/s**. Sin freno
+  el extractor se pasaba y Notion devolvía **429**, que tiraba el run entero de Actions (correos recurrentes de
+  *"Publicar dashboard failed"*). Ahora `notion()` **espacia todas las peticiones** (`NOTION_MIN_INTERVAL` 0,40 s
+  → 2,5 req/s; extracción ~2 min, timeout del job 10) y ante 429/5xx **reintenta con backoff exponencial**
+  (`NOTION_TRIES` 6: 2, 4, 8, 16, 30 s respetando `Retry-After` ≈ 60 s de aguante, frente a ~4 s de antes).
+- **Nunca publicar datos degradados:** si la consulta a la DB raíz falla, `discover_wedding_pages` cae a
+  `FALLBACK_WEDDING_PAGES` (2 bodas hardcodeadas) = tablero mutilado con pinta de sano. `build_data` lo marca
+  `degraded: true` y **`publish.py` aborta con exit 1 sin tocar KV**: el run se ve fallido y la nube conserva los
+  últimos datos buenos, en vez de que el tablero se vacíe en silencio (ya pasó con el 400 del Status renombrado).
 - **Proyectos de solo correcciones:** página con un DB **"Sesiones" directo** (sin "Tracking de Edición"/etapas).
   `build_wedding` los lee como una etapa **"Correcciones"** (`isCorrections`); NO cuentan como horas de edición
   efectivas, así que esas bodas quedan fuera de Proyectos/Carrera/Tarifa (no son referencia válida) — pero sus

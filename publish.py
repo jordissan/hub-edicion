@@ -72,6 +72,16 @@ def prev_archive():
 
 def main():
     data = server.build_data(prev_archive=prev_archive())
+    # Si la consulta a Notion falló, build_data devuelve solo las 2 bodas de respaldo
+    # con pinta de payload sano. Publicarlo borraría el tablero bueno de KV en silencio
+    # (ya pasó con el 400 del Status renombrado). Mejor salir con error: el run se marca
+    # fallido, llega el aviso, y la nube conserva los últimos datos correctos.
+    if data.get("degraded"):
+        sys.stderr.write(
+            "ABORTADO: extracción degradada (respaldo de %d bodas, no el tablero real). "
+            "No se toca KV; la nube conserva los últimos datos buenos.\n"
+            % len(data.get("weddings", [])))
+        sys.exit(1)
     summary = server.build_summary(data)
     kv_put("edicion:data", json.dumps(data, ensure_ascii=False))
     kv_put("edicion:summary", json.dumps(summary, ensure_ascii=False))
