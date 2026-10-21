@@ -25,6 +25,10 @@
   --sun:#d9ed2f; --naranja:#de6b45; --violeta:#685bc7; --crema:#f0eee9;
   --sun-tx:#d9ed2f; --naranja-tx:#de6b45; --violeta-tx:#9a8fe3;
   --sun-block:#d9ed2f;
+  /* fases de la plantilla nueva (oct-2026): PREP y TEASER ocupan los huecos libres del
+     círculo (azul cielo y aqua) junto al lima DCT, violeta HL/SF y naranja CMB.
+     Validado con validate_palette: CVD ΔE 16,4 · visión normal 18,1 (todos los pares). */
+  --f-prep:#5aa3ec; --f-teas:#40d9c1; --f-prep-tx:#5aa3ec; --f-teas-tx:#40d9c1;
   --ghost:#7c7c88; --debar:#3d3d46;
   --h1:#4a4e12; --h2:#6c7218; --h3:#8f971f; --h4:#b4c226; --h5:#d9ed2f;
   --tipbg:#1c1c21;
@@ -40,6 +44,7 @@
   --txt:#1a1b15; --mut:#585a56; --dim:#7a7a80;
   --sun:#58700f; --naranja:#e0713a; --violeta:#685bc7; --crema:#52534c;
   --sun-tx:#5f7511; --naranja-tx:#b8431a; --violeta-tx:#5646b8;
+  --f-prep-tx:#2563a8; --f-teas-tx:#0b7a6a;
   --debar:#d8d7cf;
   --h1:#9fb223; --h2:#82981a; --h3:#657d11; --h4:#4b620a; --h5:#334305;
   --tipbg:#ffffff;
@@ -266,6 +271,16 @@ svg text{user-select:none}
 .pchip{padding:3px 8px;border-radius:20px;font-weight:700;font-size:9.5px;letter-spacing:.1em}
 .pchip.now{color:var(--naranja-tx);background:color-mix(in srgb,var(--naranja) 12%,transparent)}
 .pchip.done{color:var(--sun-tx);background:color-mix(in srgb,var(--sun) 10%,transparent)}
+.pchip.wait{color:var(--dim);background:color-mix(in srgb,var(--dim) 12%,transparent)}
+.pchip.tag{color:var(--mut);background:transparent;box-shadow:inset 0 0 0 1px var(--hair2)}
+/* checklist de Etapas agrupado por fase */
+.ephase{display:flex;align-items:center;gap:8px;padding:14px 0 5px;font-family:var(--f-m);font-size:9.5px;
+  font-weight:700;letter-spacing:.12em;color:var(--dim);border-bottom:1px solid var(--hair)}
+.ephase:first-child{padding-top:2px}
+.ephase i{width:7px;height:7px;border-radius:2px;flex:none}
+.ephase span{margin-left:auto;font-weight:400;letter-spacing:.06em}
+.erow.wait .en{color:var(--dim)}
+.erow.wait .dot{background:transparent!important;box-shadow:inset 0 0 0 1.5px var(--c)}
 .mesa2{display:grid;grid-template-columns:1.05fr 1fr;gap:14px;margin-top:14px}
 .cintarow{margin-top:14px}
 .erow{display:flex;align-items:center;gap:10px;padding:7.5px 0;border-bottom:1px solid var(--hair);font-size:13px;break-inside:avoid}
@@ -284,7 +299,9 @@ svg text{user-select:none}
 .dbig{font-family:var(--f-d);font-weight:800;font-size:40px;letter-spacing:-.02em;fill:var(--txt)}
 .dsm{font-family:var(--f-b);font-size:13.5px;fill:var(--mut)}
 .dsm2{font-family:var(--f-m);font-size:11px;fill:var(--dim);letter-spacing:.06em}
-.dlg{display:grid;grid-template-columns:1fr 1fr;column-gap:28px;margin-top:12px}
+/* una columna: con la plantilla de 5 fases los nombres llevan sufijo ("Selección (TEAS)")
+   y en dos columnas se cortaban; la tarjeta de Etapas de al lado es alta, sobra espacio */
+.dlg{display:grid;grid-template-columns:1fr;column-gap:28px;margin-top:12px}
 .dlr{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--hair);font-size:12.5px;min-width:0}
 .dlr .dot{width:8px;height:8px;border-radius:3px;flex:none}
 .dlr .n{flex:1;color:var(--mut);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -301,6 +318,8 @@ svg text{user-select:none}
   transition:filter .15s ease,opacity .5s ease,transform .5s var(--ease);transition-delay:0s,calc(var(--i,0)*70ms),calc(var(--i,0)*70ms)}
 .in .clip{opacity:1;transform:none}
 .clip:hover{filter:brightness(1.12)}
+.clip.prep{background:var(--f-prep)}
+.clip.teas{background:var(--f-teas)}
 .clip.doc{background:var(--sun-block)}
 .clip.hl{background:var(--violeta)}
 .clip.cam{background:var(--naranja)}
@@ -625,11 +644,7 @@ svg text{user-select:none}
     <div class="cl"><h3>La cinta</h3><span class="u" id="cintaU"></span></div>
     <div class="ruler" id="ruler"></div>
     <div class="tape" id="tape"></div>
-    <div class="legend" style="margin-top:18px">
-      <span class="k"><i class="sw" style="background:var(--sun-block)"></i>Documental</span>
-      <span class="k"><i class="sw" style="background:var(--violeta)"></i>Highlights / Same-day</span>
-      <span class="k"><i class="sw" style="background:var(--naranja)"></i>Cambios</span>
-    </div>
+    <div class="legend" id="cintaLeg" style="margin-top:18px"></div>
     <div class="fasetot" id="fasetot"></div>
   </div>
 </section>
@@ -684,18 +699,67 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
   // "en curso" = alguna etapa de EDICIÓN viva; una ronda de Cambios activa no
   // reabre la boda (seguiría siendo "edición terminada" para Carrera/refCur)
   const hasLive = w => (w.stages||[]).some(s=>s.estado==='live' && !isCorr(s));
-  const doneN   = w => (w.stages||[]).filter(s=>s.estado==='done').length;
+  // ---- etapas: fase + rol ----------------------------------------------------
+  // Plantilla nueva (oct-2026): Fase = PREP · TEAS · DCT · HL/SF · CMB, etapas
+  // "Setup", "Música (TEAS)", "Montaje (DCT)"… Plantilla vieja: Fase = Documental /
+  // HL/SF, etapas "Importación y organización", "Edición Musical"… Cada etapa se
+  // reduce a (fase, rol) para que las dos plantillas se comparen entre sí:
+  //   Importación→Setup · Separación→Escenas · Musicalización→Música (DCT)
+  //   Edición Musical→Montaje (DCT) · Corrección de color→Color y finalización (DCT)
+  //   Selección de material/musical (HL/SF)→Selección/Música (HL/SF)
+  const noAcc = s => (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+  const PREP_ROLES = new Set(['setup','escenas','limpieza','sync']);
+  function roleOf(s){
+    const n = noAcc(s.etapa);
+    if (isCorr(s)) return 'cambios';
+    if (/importacion|setup/.test(n)) return 'setup';
+    if (/separacion|^escenas/.test(n)) return 'escenas';
+    if (/limpieza/.test(n)) return 'limpieza';
+    if (/sincroniz/.test(n)) return 'sync';
+    if (/edicion musical|montaje/.test(n)) return 'montaje';     // antes que "musica"
+    if (/seleccion musical|musicaliz|musica/.test(n)) return 'musica';
+    if (/seleccion/.test(n)) return 'seleccion';
+    if (/color|finaliz/.test(n)) return 'color';
+    return n;                                                     // etapa nueva: su propio nombre
+  }
+  function phaseOf(s){
+    if (isCorr(s)) return 'cam';
+    const f = noAcc(s.fase), n = noAcc(s.etapa);
+    if (/teas/.test(f) || /\(teas/.test(n)) return 'teas';
+    if (/hl|sf/.test(f) || /\(hl|\(sf|hl\/sf/.test(n)) return 'hl';
+    if (/prep/.test(f)) return 'prep';
+    // plantilla vieja: "Documental" incluía la preparación → se reclasifica por rol
+    if (PREP_ROLES.has(roleOf(s))) return 'prep';
+    return 'doc';
+  }
+  const keyOf  = s => phaseOf(s)+':'+roleOf(s);
+  const faseOf = phaseOf;                          // alias: el resto del modelo lo llama así
+  const PHASE_ORDER = ['prep','teas','doc','hl','cam'];
+  const PHASES = {
+    prep:{ lbl:'PREPARACIÓN', nm:'Preparación',          col:'var(--f-prep)',    tx:'var(--f-prep-tx)' },
+    teas:{ lbl:'TEASER',      nm:'Teaser',               col:'var(--f-teas)',    tx:'var(--f-teas-tx)' },
+    doc: { lbl:'DOCUMENTAL',  nm:'Documental',           col:'var(--sun-block)', tx:'var(--sun-tx)' },
+    hl:  { lbl:'HL / SF',     nm:'Highlights / Same-day', col:'var(--violeta)',   tx:'var(--violeta-tx)' },
+    cam: { lbl:'CAMBIOS',     nm:'Cambios',              col:'var(--naranja)',   tx:'var(--naranja-tx)' },
+  };
+  // horas de edición efectivas solo de ciertas fases (comparaciones justas)
+  const effHp = (w,P) => (w.stages||[]).reduce((a,s)=> a + (!isCorr(s)&&P.has(phaseOf(s))?(s.hours||0):0), 0);
+  const phasesOf = w => new Set((w.stages||[]).filter(s=>!isCorr(s)).map(phaseOf));
+  const SCENE_P  = new Set(['prep','doc','hl']);   // fases que trabajan sobre escenas (sin teaser)
+  // boda de 2 días: la plantilla mete el día previo como escena "Día 1" que recorre las etapas
+  const isDay1 = sc => /^\s*d[ií]a\s*(1|uno|previo)\b/i.test(sc.escena||'') || sc.dia==='Día 1';
+  const daysOf = w => (w.stages||[]).some(s=>(s.scenes||[]).some(isDay1)) ? 2 : 1;
 
-  const faseOf = s => isCorr(s) ? 'cam' : (/HL|SF/i.test(s.fase||'') ? 'hl' : 'doc');
-
-  const shortName = n => (n||'')
+  // nombres de la plantilla vieja, más cortos; los nuevos ya lo son y CONSERVAN su
+  // sufijo de fase ("Montaje (TEAS)" ≠ "Montaje (DCT)" ≠ "Montaje (HL/SF)")
+  const shortName = n => (n||'').trim()
     .replace(/Importaci[oó]n y [Oo]rganizaci[oó]n/,'Importación')
     .replace(/Separaci[oó]n por [Ee]scenas/,'Separación')
-    .replace(/Correcci[oó]n de [Cc]olor y [Ff]inalizaci[oó]n/,'Color y Final.')
+    .replace(/Correcci[oó]n de [Cc]olor y [Ff]inalizaci[oó]n/i,'Color y final.')
+    .replace(/Color y [Ff]inalizaci[oó]n/,'Color y final.')
     .replace(/Edici[oó]n Musical/i,'Ed. Musical')
-    .replace(/Selecci[oó]n de [Mm]aterial.*/,'Sel. Material')
-    .replace(/Selecci[oó]n [Mm]usical.*/,'Sel. Musical')
-    .replace(/Montaje.*/,'Montaje');
+    .replace(/Selecci[oó]n de [Mm]aterial/,'Sel. material')
+    .replace(/Selecci[oó]n [Mm]usical/,'Sel. musical');
 
   // fecha local a partir de "YYYY-MM-DD" (evita el corrimiento de zona horaria de new Date(str))
   const ymd = s => { const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); };
@@ -794,33 +858,43 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
     const DOWNAMES=['lunes','martes','miércoles','jueves','viernes','sábado','domingo'];
     const bestDowName = DOWNAMES[bestDowIdx];
     // etapa activa (boda en curso)
-    let activeStage=null, activeWed=null;
+    // varias etapas pueden ir en paralelo (p.ej. Montaje (TEAS) + Música (HL/SF))
+    let activeStage=null, activeWed=null, activeStages=[];
     if (liveW0()){ const lw=liveW0(); activeWed=(lw.name||'').trim();
-      const ls=(lw.stages||[]).find(s=>s.estado==='live'); activeStage=ls?ls.etapa:null; }
+      activeStages=(lw.stages||[]).filter(s=>s.estado==='live' && !isCorr(s)).map(s=>shortName(s.etapa));
+      activeStage=activeStages[0]||null; }
     function liveW0(){ return weddings.find(hasLive)||null; }
 
     // ---- PROYECTOS: cada boda medida como selector ----
-    const colFor = {doc:'var(--sun-block)', hl:'var(--violeta)', cam:'var(--naranja)'};
+    const colFor = Object.fromEntries(PHASE_ORDER.map(k=>[k,PHASES[k].col]));
     function projModel(w){
       const stages=(w.stages||[]);
+      const work  = stages.filter(s=>!isCorr(s));          // Cambios no cuenta para el avance
       const total = round1(totH(w));
       const eff   = round1(effH(w));
       const price = w.price || 13000;
-      const nStages = stages.length;
-      const nDone   = doneN(w);
+      const nStages = work.length;
+      const nDone   = work.filter(s=>s.estado==='done').length;
       const w_pct   = nStages ? Math.round(nDone/nStages*100) : 0;
       const pend    = stages.some(s=>isCorr(s) && s.estado!=='done');
-      // etapas con horas (para donut/cinta/checklist): excluye pendientes sin horas salvo el stub de cambios
+      // etapas con horas (donut/cinta): [nombre, h, sesiones, fase]
       const etapas = stages.filter(s=> (s.hours||0)>0 ).map(s=>[shortName(s.etapa), round1(s.hours), s.sessions||0, faseOf(s)]);
-      // totales por fase
-      const faseSum = {doc:0,hl:0,cam:0};
+      // checklist completo (Etapas): todas, con su estado, en el orden de Notion (agrupadas por fase)
+      const checklist = stages.map(s=>({ nm:shortName(s.etapa), h:(s.hours||0)>0?round1(s.hours):null,
+                                         min:(s.sessionLog||[]).reduce((a,x)=>a+(x.min||0),0),  // < 0,1 h se ve en min
+                                         ses:s.sessions||0, fase:faseOf(s), estado:s.estado }))
+        .map((e,i)=>[e,i]).sort((a,b)=>(PHASE_ORDER.indexOf(a[0].fase)-PHASE_ORDER.indexOf(b[0].fase))||(a[1]-b[1])).map(x=>x[0]);
+      // totales por fase, en el orden del flujo; solo las fases que la boda tiene
+      const present = phasesOf(w);
+      const faseSum = {}; for (const k of PHASE_ORDER) faseSum[k]=0;
       for (const s of stages) if((s.hours||0)>0) faseSum[faseOf(s)] += s.hours;
       const fases=[];
       const gt = total || 1;
-      fases.push(['DOCUMENTAL', round1(faseSum.doc), Math.round(faseSum.doc/gt*100), 'var(--sun-block)']);
-      fases.push(['HL / SF',    round1(faseSum.hl),  Math.round(faseSum.hl/gt*100),  'var(--violeta)']);
-      if (faseSum.cam>0) fases.push(['CAMBIOS', round1(faseSum.cam), Math.round(faseSum.cam/gt*100), 'var(--naranja)']);
-      else if (pend)     fases.push(['CAMBIOS · EN ESPERA', null, null, 'color-mix(in srgb,var(--naranja) 55%,transparent)']);
+      for (const k of PHASE_ORDER){ if(k==='cam' || !present.has(k)) continue;
+        fases.push([PHASES[k].lbl, round1(faseSum[k]), Math.round(faseSum[k]/gt*100), PHASES[k].col, k]); }
+      if (faseSum.cam>0) fases.push(['CAMBIOS', round1(faseSum.cam), Math.round(faseSum.cam/gt*100), PHASES.cam.col, 'cam']);
+      else if (pend)     fases.push(['CAMBIOS · EN ESPERA', null, null, 'color-mix(in srgb,var(--naranja) 55%,transparent)', 'cam']);
+      const teaser = present.has('teas'), days = daysOf(w);
       // chip de estado
       const st=(w.status||'').toLowerCase();
       let chip;
@@ -830,7 +904,7 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
       return {
         key: slug(w.name), nm:(w.name||'').trim(), ic:w.icon||'⛪',
         total, eff, price, prog:`${nDone}/${nStages} etapas`, w:w_pct, chip,
-        extra: fmt1(total)+' h', pend, etapas, fases,
+        extra: fmt1(total)+' h', pend, etapas, checklist, fases, teaser, days,
         scenes: stages.reduce((a,s)=>a+((s.scenes||[]).length),0)
       };
     }
@@ -846,10 +920,11 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
 
     // ---- CARRERA: en curso vs fantasma ----
     // curva acumulada de horas por día-de-proyecto (todas las sesiones de la boda)
-    function cumCurve(w){
+    // P = fases a comparar (null = todas). Los Cambios siguen en la curva como antes.
+    function cumCurve(w, P){
       const start=w.projectStart; if(!start) return null;
       const per={};
-      for (const s of (w.stages||[])) for (const x of (s.sessionLog||[])){
+      for (const s of (w.stages||[])) if (isCorr(s) || !P || P.has(phaseOf(s))) for (const x of (s.sessionLog||[])){
         if(!x.inicio) continue; const day=daysBetween(start, x.inicio.slice(0,10));
         if(day>=0) per[day]=(per[day]||0)+(x.min||0);
       }
@@ -859,9 +934,9 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
       return arr.length?arr:null;
     }
     // día en que la edición quedó lista = último día con sesión efectiva (no correcciones)
-    function editDoneDay(w){
+    function editDoneDay(w, P){
       const start=w.projectStart; if(!start) return null; let last=null;
-      for (const s of (w.stages||[])){ if(isCorr(s))continue; for(const x of (s.sessionLog||[])){ if(!x.inicio)continue; const day=daysBetween(start,x.inicio.slice(0,10)); if(day>=0&&(last==null||day>last))last=day; } }
+      for (const s of (w.stages||[])){ if(isCorr(s) || (P && !P.has(phaseOf(s))))continue; for(const x of (s.sessionLog||[])){ if(!x.inicio)continue; const day=daysBetween(start,x.inicio.slice(0,10)); if(day>=0&&(last==null||day>last))last=day; } }
       return last;
     }
 
@@ -882,12 +957,19 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
 
     let race=null, hero=null;
     if (refCur){
-      const cur=cumCurve(refCur), gh=refGhost?cumCurve(refGhost):null;
+      // comparar solo las fases que AMBAS bodas tienen: un teaser que el fantasma no
+      // tuvo no es "ir más lento", es otro entregable (igual para fases futuras)
+      let P=null, excluded=[];
+      if (refGhost){ const a=phasesOf(refCur), b=phasesOf(refGhost);
+        P=new Set([...a].filter(k=>b.has(k)));
+        excluded=PHASE_ORDER.filter(k=>(a.has(k)||b.has(k)) && !P.has(k)); }
+      const effC = w => round1(P ? effHp(w,P) : effH(w));
+      const cur=cumCurve(refCur,P), gh=refGhost?cumCurve(refGhost,P):null;
       race={ cur:cur||[], ghost:gh||[], curName:(refCur.name||'').trim(), ghostName:refGhost?(refGhost.name||'').trim():null,
-             curEditDay:editDoneDay(refCur), ghostEditDay:refGhost?editDoneDay(refGhost):null,
-             curEff:round1(effH(refCur)), ghostEff:refGhost?round1(effH(refGhost)):null,
+             curEditDay:editDoneDay(refCur,P), ghostEditDay:refGhost?editDoneDay(refGhost,P):null,
+             curEff:effC(refCur), ghostEff:refGhost?effC(refGhost):null,
              curEnd:refCur.projectEnd, ghostEnd:refGhost?refGhost.projectEnd:null,
-             hasGhost:!!refGhost };
+             hasGhost:!!refGhost, excluded:excluded.map(k=>PHASES[k].lbl.toLowerCase()) };
       if (refGhost){
         const dDays = (race.curEditDay!=null && race.ghostEditDay!=null) ? race.curEditDay-race.ghostEditDay : null;
         const dH = round1(race.curEff - race.ghostEff);
@@ -896,7 +978,7 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
         const dHpe = (curHpe&&ghHpe)? Math.round((curHpe-ghHpe)/ghHpe*100) : null;
         hero={ dDays, dH, dPct, curEditDay:race.curEditDay, ghostEditDay:race.ghostEditDay,
                curHpe: curHpe?round2(curHpe):null, ghHpe:ghHpe?round2(ghHpe):null, dHpe,
-               curName:race.curName, ghostName:race.ghostName, hasGhost:true };
+               curName:race.curName, ghostName:race.ghostName, hasGhost:true, excluded:race.excluded };
       } else {
         // solo una boda medida terminada: sin comparación, hero informativo
         hero={ hasGhost:false, curName:race.curName, curEditDay:race.curEditDay, curEff:race.curEff };
@@ -904,14 +986,16 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
     }
 
     // ---- ADN: anatomía del ahorro (refCur vs refGhost, por etapa) ----
+    // emparejadas por fase+rol (keyOf), no por nombre: así "Edición Musical" de la
+    // plantilla vieja se compara con "Montaje (DCT)" de la nueva, y los tres "Montaje"
+    // (TEAS/DCT/HL/SF) ya no colapsan en uno solo
     let anat=[];
     if (refCur && refGhost){
-      const gmap={}; for(const s of (refGhost.stages||[])) if((s.hours||0)>0 && !isCorr(s)) gmap[shortName(s.etapa)]=s.hours;
-      for(const s of (refCur.stages||[])){
-        if(isCorr(s) || !(s.hours||0)) continue;
-        const nm=shortName(s.etapa); if(!(nm in gmap)) continue;
-        anat.push([s.etapa.replace(/\s*\(HL\/SF\)/,''), round1(gmap[nm]-s.hours)]); // + = ahorró
-      }
+      const sumBy = w => { const m=new Map(); for(const s of (w.stages||[])){ if(isCorr(s)||!(s.hours||0))continue;
+        const k=keyOf(s), e=m.get(k)||{h:0,nm:shortName(s.etapa)}; e.h+=s.hours; m.set(k,e); } return m; };
+      const gmap=sumBy(refGhost), cmap=sumBy(refCur);
+      for(const [k,c] of cmap){ const g=gmap.get(k); if(!g) continue;
+        anat.push([c.nm, round1(g.h-c.h)]); }                // + = ahorró
     }
 
     // ---- DINERO: tarifa de la última boda terminada (refCur) vs la anterior (refGhost) ----
@@ -920,8 +1004,9 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
       const eff=round1(effH(refCur)), price=refCur.price||13000;
       const scenes=(refCur.stages||[]).reduce((a,s)=>a+((s.scenes||[]).length),0)||1;
       const stagesW=(refCur.stages||[]).filter(s=>(s.hours||0)>0 && !isCorr(s)).length||1;
+      // $/h usa TODAS las horas efectivas (el precio incluye el teaser); h/escena, sin teaser
       money={ perH:Math.round(price/eff), perScene:Math.round(price/scenes), perStage:Math.round(price/stagesW),
-              hPerScene:round2(eff/scenes), eff, price, scenes, stages:stagesW, name:(refCur.name||'').trim() };
+              hPerScene:round2(effHp(refCur,SCENE_P)/scenes), eff, price, scenes, stages:stagesW, name:(refCur.name||'').trim() };
       if (refGhost){
         const geff=round1(effH(refGhost));
         money.prevH=geff?Math.round((refGhost.price||13000)/geff):null;
@@ -938,16 +1023,17 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
       NSES, HODTOT, WEEKTOT,
       hod, goldStart:gStart, goldPct, week, bestDowIdx,
       heat, bestDay, bestH:round1(bestH), firstDay, spanDays, activeDays, streak,
-      bestDowName, todayMin, todaySes, thisWeekH, activeStage, activeWed, metaTodayH: metaH(today),
+      bestDowName, todayMin, todaySes, thisWeekH, activeStage, activeStages, activeWed, metaTodayH: metaH(today),
       sprints, medMin, over2h,
       dia7,
       projects, projOrder, currentKey,
       liveName: liveW?(liveW.name||'').trim():null,
       race, hero, anat, money,
-      colFor
+      colFor, PHASES, PHASE_ORDER
     };
 
-    function hpe(w){ const sc=(w.stages||[]).reduce((a,s)=>a+((s.scenes||[]).length),0); return sc? effH(w)/sc : null; }
+    // horas por escena: sin el teaser (no tiene escenas; inflaría la cifra de las bodas que lo llevan)
+    function hpe(w){ const sc=(w.stages||[]).reduce((a,s)=>a+((s.scenes||[]).length),0); return sc? effHp(w,SCENE_P)/sc : null; }
   }
 
   // helpers expuestos
@@ -1015,7 +1101,8 @@ function renderHero(M){
   if(H && H.hasGhost && H.dDays!=null){
     const faster=H.dDays<=0;
     h1.innerHTML=`${signed(H.dDays)} <em>d${Math.abs(H.dDays)===1?'ía':'ías'}</em><br>vs tu yo<br>anterior`;
-    lede.innerHTML=`<b>${H.curName}</b> cerró la edición en el día ${H.curEditDay}; ${H.ghostName}, en el ${H.ghostEditDay}.`;
+    lede.innerHTML=`<b>${H.curName}</b> cerró la edición en el día ${H.curEditDay}; ${H.ghostName}, en el ${H.ghostEditDay}.`+
+      (H.excluded&&H.excluded.length?` Comparado sin ${H.excluded.join(' ni ')}: solo una de las dos lo tiene.`:'');
     stats.innerHTML=
       `<div class="s"><div class="v">${signed(H.dH,' h')}</div><div class="l">EDICIÓN · ${signed(H.dPct,' %')}</div></div>`+
       (H.dHpe!=null?`<div class="s"><div class="v">${signed(H.dHpe,' %')}</div><div class="l">HORAS POR ESCENA</div></div>`:'')+
@@ -1117,7 +1204,7 @@ function renderHoy(M){
   else if(M.todayMin/60>=M.metaTodayH) rows+=`<div class="row"><span class="t">${dLbl}</span><p><b>Meta cumplida.</b> ${fmtHM(M.todayMin/60)} de ${M.metaTodayH} h hoy.</p></div>`;
   else rows+=`<div class="row"><span class="t">${dLbl}</span><p><b>Meta: ${M.metaTodayH} h.</b> Llevas ${M.todayMin?fmtHM(M.todayMin/60):'0 min'} — faltan ${fmtHM(Math.max(0,M.metaTodayH-M.todayMin/60))}.</p></div>`;
   rows+=`<div class="row"><span class="t">${String(M.goldStart).padStart(2,'0')}:00</span><p>Tu <b>ventana de oro</b> (${M.goldStart}:00–${M.goldStart+6}:00). Ahí concentras el ${M.goldPct}% de tu edición.</p></div>`;
-  if(M.activeWed) rows+=`<div class="row"><span class="t">EN CURSO</span><p><b>${M.activeWed}</b>${M.activeStage?' · '+M.activeStage:''}.</p></div>`;
+  if(M.activeWed) rows+=`<div class="row"><span class="t">EN CURSO</span><p><b>${M.activeWed}</b>${M.activeStages.length?' · '+M.activeStages.join(' · '):''}.</p></div>`;
   plan.innerHTML=rows;
   // mini
   document.getElementById('miniRow').innerHTML=
@@ -1130,7 +1217,9 @@ function renderHoy(M){
     `<div class="m" data-tip="<b>Hoy</b><br>${M.metaTodayH===0?(todayH>0?fmtHM(todayH)+' · domingo (descanso)':'domingo · descanso'):fmtHM(todayH)+' de '+M.metaTodayH+' h'}"><div class="v">${tHoy}</div><div class="l">HOY${M.metaTodayH===0?' · DÍA DE DESCANSO':' / '+M.metaTodayH+' H META'}</div></div>`+
     `<div class="m" data-tip="<b>Sesiones de hoy</b>"><div class="v">${M.todaySes}</div><div class="l">SESIONES DE HOY</div></div>`+
     `<div class="m" data-tip="<b>Racha de meta diaria</b><br>días consecutivos cumpliendo (salta domingos)"><div class="v">${M.streak} día${M.streak===1?'':'s'}</div><div class="l">CUMPLIENDO META DIARIA</div></div>`+
-    `<div class="m" data-tip="<b>Etapa activa</b>${M.activeWed?'<br>'+M.activeWed:''}"><div class="v" style="font-size:${M.activeStage?'16px':'25px'}">${M.activeStage?M.activeStage:'<span class="na">—</span>'}</div><div class="l">ETAPA ACTIVA</div></div>`;
+    (()=>{ const A=M.activeStages||[], more=A.length-1;
+      const tipTx=`<b>${A.length>1?'Etapas activas':'Etapa activa'}</b>${M.activeWed?'<br>'+M.activeWed:''}${A.length?'<br>'+A.join('<br>'):''}`;
+      return `<div class="m" data-tip="${tipTx}"><div class="v" style="font-size:${A.length?'16px':'25px'}">${A.length?A[0]+(more>0?` <small>+${more}</small>`:''):'<span class="na">—</span>'}</div><div class="l">${A.length>1?'ETAPAS ACTIVAS · '+A.length:'ETAPA ACTIVA'}</div></div>`; })();
   // insight
   const aip=document.getElementById('aipBox');
   if(M.hero&&M.hero.hasGhost&&M.hero.dHpe!=null&&M.hero.curHpe!=null){
@@ -1280,13 +1369,23 @@ function renderMesa(M){
   const tapeBox=document.getElementById('tape'),ruler=document.getElementById('ruler');
   const cintaU=document.getElementById('cintaU'),fasetot=document.getElementById('fasetot');
   const donut=document.getElementById('donut'),dlg=document.getElementById('dlg');
-  const cols={doc:'var(--sun-block)',hl:'var(--violeta)',cam:'var(--naranja)'};
-  const colsTx={doc:'var(--sun-tx)',hl:'var(--violeta-tx)',cam:'var(--naranja-tx)'};
+  const PH=M.PHASES;
+  const cols=Object.fromEntries(M.PHASE_ORDER.map(k=>[k,PH[k].col]));
+  const colsTx=Object.fromEntries(M.PHASE_ORDER.map(k=>[k,PH[k].tx]));
+  const ESTADO={done:['done','COMPLETADO'],live:['now','EN CURSO'],wait:['wait','PENDIENTE']};
 
-  function renderEtapas(p){ let html='';
-    for(const [nm,h,ses,fase] of p.etapas){
-      html+=`<div class="erow" data-tip="<b>${nm}</b><br>${fmt(h)} h · ${ses} ${ses===1?'sesión':'sesiones'}"><span class="dot" style="background:${cols[fase]}"></span><span class="en">${nm}</span><span class="pchip done">COMPLETADO</span><span class="eh">${fmt(h)} h</span></div>`; }
-    if(p.pend) html+=`<div class="erow" data-tip="<b>Cambios</b><br>en espera del cliente"><span class="dot" style="background:color-mix(in srgb,var(--naranja) 55%,transparent);border:1px dashed var(--naranja)"></span><span class="en">Cambios</span><span class="pchip now">EN ESPERA</span><span class="eh">—</span></div>`;
+  // checklist completo agrupado por fase. Antes solo listaba etapas con horas y todas
+  // decían COMPLETADO, también la que estaba en curso.
+  function renderEtapas(p){ let html='', last=null;
+    for(const e of p.checklist){
+      if(e.fase!==last){ last=e.fase; const g=p.checklist.filter(x=>x.fase===e.fase);
+        const gh=g.reduce((a,x)=>a+(x.h||0),0), gd=g.filter(x=>x.estado==='done').length;
+        html+=`<div class="ephase"><i style="background:${cols[e.fase]}"></i>${PH[e.fase].lbl}<span>${gd}/${g.length} · ${gh?fmt(gh)+' h':'—'}</span></div>`; }
+      let [cls,lbl]=ESTADO[e.estado]||ESTADO.wait;
+      if(e.fase==='cam' && e.estado==='wait'){ cls='now'; lbl='EN ESPERA'; }
+      const hTx=e.h!=null?fmt(e.h)+' h':(e.min?e.min+' min':'—');
+      const det=e.ses?`${hTx} · ${e.ses} ${e.ses===1?'sesión':'sesiones'}`:'sin sesiones aún';
+      html+=`<div class="erow${e.estado==='wait'?' wait':''}" data-tip="<b>${e.nm}</b><br>${det} · ${lbl.toLowerCase()}"><span class="dot" style="background:${cols[e.fase]};--c:${colsTx[e.fase]}"></span><span class="en">${e.nm}</span><span class="pchip ${cls}">${lbl}</span><span class="eh">${hTx}</span></div>`; }
     etBox.innerHTML=html; etU.textContent=`${p.nm.toUpperCase()} · ${p.prog.toUpperCase().replace(' ETAPAS','')}`; }
 
   function renderDonut(p){ const C=180,R=140,circ=2*Math.PI*R,gap=30; donut.innerHTML='';
@@ -1307,9 +1406,13 @@ function renderMesa(M){
 
   function renderTape(p){ const pendW=p.pend?7:0; let html='';
     p.etapas.forEach(([nm,h,ses,fase],i)=>{ const w=Math.max(h/p.total*(100-pendW),0.7);
-      html+=`<div class="clip ${fase}" style="width:${w}%;--i:${i}" tabindex="0" data-tip="<b>${nm}</b> · ${fase==='doc'?'Documental':fase==='hl'?'HL/SF':'Cambios'}<br>${fmt(h)} h · ${ses} ${ses===1?'sesión':'sesiones'} · ${fmt(h/p.total*100)} % del total"><div class="cn">${nm}<small>${fmt(h)} h</small></div></div>`; });
+      html+=`<div class="clip ${fase}" style="width:${w}%;--i:${i}" tabindex="0" data-tip="<b>${nm}</b> · ${PH[fase].nm}<br>${fmt(h)} h · ${ses} ${ses===1?'sesión':'sesiones'} · ${fmt(h/p.total*100)} % del total"><div class="cn">${nm}<small>${fmt(h)} h</small></div></div>`; });
     if(p.pend) html+=`<div class="clip pend" style="width:${pendW}%;--i:${p.etapas.length}" tabindex="0" data-tip="<b>Cambios</b><br>en espera del cliente"></div>`;
     tapeBox.innerHTML=html;
+    // leyenda: solo las fases que esta boda tiene en la cinta
+    const inTape=new Set(p.etapas.map(e=>e[3])); if(p.pend) inTape.add('cam');
+    document.getElementById('cintaLeg').innerHTML=M.PHASE_ORDER.filter(k=>inTape.has(k))
+      .map(k=>`<span class="k"><i class="sw" style="background:${cols[k]}"></i>${PH[k].nm}</span>`).join('');
     if(p.pend){const ph=document.createElement('div');ph.className='playhead blink';ph.style.left=(100-pendW)+'%';tapeBox.appendChild(ph);}
     let r=''; const tstep=p.total>40?8:p.total>16?4:2; for(let h=0;h<=p.total;h+=tstep){r+=`<span class="tick" style="left:${h/p.total*(100-pendW)}%">${String(h).padStart(2,'0')}H<i></i></span>`;} ruler.innerHTML=r;
     cintaU.textContent=`${fmt(p.total)} H · ANCHO = HORAS REALES`;
@@ -1325,7 +1428,7 @@ function renderMesa(M){
 
   let html='';
   M.projOrder.forEach((key,i)=>{ const p=M.projects[key];
-    html+=`<div class="prow" data-key="${key}" role="button" tabindex="0" aria-pressed="false" data-tip="<b>${p.nm}</b><br>${p.prog} · ${p.extra} trabajadas — toca para abrir"><div class="pnm">${p.ic} <span>${p.nm}</span></div><div class="ptrack"><i style="--w:${p.w}%;--i:${i}"></i></div><div class="pmeta"><b>${p.w} %</b><span class="pchip ${p.chip[0]}">${p.chip[1]}</span><span>${p.extra}</span></div></div>`; });
+    html+=`<div class="prow" data-key="${key}" role="button" tabindex="0" aria-pressed="false" data-tip="<b>${p.nm}</b><br>${p.prog} · ${p.extra} trabajadas${p.teaser?' · con teaser':''}${p.days>1?' · boda de '+p.days+' días':''} — toca para abrir"><div class="pnm">${p.ic} <span>${p.nm}</span></div><div class="ptrack"><i style="--w:${p.w}%;--i:${i}"></i></div><div class="pmeta"><b>${p.w} %</b>${p.teaser?'<span class="pchip tag">TEASER</span>':''}${p.days>1?`<span class="pchip tag">${p.days} DÍAS</span>`:''}<span class="pchip ${p.chip[0]}">${p.chip[1]}</span><span>${p.extra}</span></div></div>`; });
   projBox.innerHTML=html;
   if(!renderMesa._bound){ renderMesa._bound=true;
     projBox.addEventListener('click',e=>{const r=e.target.closest('.prow');if(r)renderMesa._select(r.dataset.key);});
