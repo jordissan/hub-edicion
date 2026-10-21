@@ -85,6 +85,16 @@ barra de navegación flotante inferior).
 ## Modelo y comportamiento (decisiones de Jordi)
 - **El 100% = terminar el montaje de HL/SF** (última etapa de edición). Una etapa marcada **'done' cuenta 100%**
   y sus escenas como completas — la marca de "hecho" a nivel etapa manda sobre el detalle de escenas.
+- **Plantilla de 5 fases (oct-2026, desde Ale + Lorenzo):** Fase = **PREP** (Setup · Escenas · Limpieza ·
+  Sincronización) · **TEAS** (Selección/Música/Montaje/Color (TEAS)) · **DCT** (Música/Montaje/Color y
+  finalización (DCT)) · **HL/SF** (Selección/Música/Montaje (HL/SF)) · **CMB** (Cambios); `Orden` admite
+  decimales (4.1…4.4). `deriveModel` reduce cada etapa a **fase + rol** (`phaseOf`/`roleOf`/`keyOf`) para que la
+  plantilla vieja (Importación, Edición Musical, Fase "Documental"…) se compare con la nueva; en las viejas la
+  preparación se reclasifica como PREP. Colores: PREP azul cielo `--f-prep`, TEAS aqua `--f-teas` (validados con
+  `validate_palette`: CVD ΔE 16,4). **Teaser** = la boda tiene etapas TEAS (sin teaser → borrar esas filas).
+  **2 días** = alguna escena "Día 1…" (el día previo recorre las mismas etapas como una escena más). Carrera y
+  titular comparan **solo fases compartidas** (teaser fuera si el fantasma no lo tuvo); h/escena sin teaser;
+  $/h con todo. Avance % sin Cambios. Varias etapas en curso a la vez → HOY las lista todas.
 - **"Cambios" / "Correcciones" = fase post-entrega** (depende de Claudio/Romina). **Excluida** de las horas
   de edición *efectivas* (Carrera, ahorro por etapa, $/h) y de la fecha de "edición lista". Se evalúa aparte por
   **rondas + horas/sesiones** (campo number "Ronda" en sesiones).
