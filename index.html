@@ -257,7 +257,7 @@ svg text{user-select:none}
 .anat .track .mid{position:absolute;left:38%;top:-4px;bottom:-4px;width:1px;background:var(--hair2)}
 .anat .bar{position:absolute;top:2px;height:18px;border-radius:0 4px 4px 0;width:0;
   transition:width .8s var(--ease);transition-delay:calc(var(--i,0)*90ms)}
-.in .anat .bar{width:var(--w)}
+.in .anat .bar,.anat.in .bar{width:var(--w)}
 .anat .bar.save{background:var(--sun);left:38%}
 .anat .bar.more{background:var(--violeta);border-radius:4px 0 0 4px;right:62%}
 .anat .val{position:absolute;top:3px;font-family:var(--f-m);font-size:10.5px;font-weight:700;color:var(--mut);white-space:nowrap}
@@ -1124,12 +1124,15 @@ const S=(t,a,p)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setA
 const barPath=(x,y0,y,w,rMax=4)=>{const r=Math.min(rMax,(y0-y)/2,w/2);
   return `M${x} ${y0} L${x} ${y+r} Q${x} ${y} ${x+r} ${y} L${x+w-r} ${y} Q${x+w} ${y} ${x+w} ${y+r} L${x+w} ${y0} Z`;};
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-const EASE_FX='cubic-bezier(.22,.9,.3,1)';
-// entrada escalonada (clics: elegir boda, abrir tabla o archivo). WAAPI = transform/opacity,
-// interrumpible y sin pisar las transiciones CSS de hover
-function cascade(nodes,o={}){ if(reduced)return; const {dx=0,dy=6,step=28,max=14,dur=380,delay=0}=o;
+const EASE_FX='cubic-bezier(.22,.9,.3,1)';      // gráficas (donut, curvas)
+const EASE_SOFT='cubic-bezier(.33,1,.68,1)';     // piezas y filas: desacelera sin "golpe"
+// entrada escalonada de filas: de izquierda a derecha con desvanecido (WAAPI = transform/opacity,
+// interrumpible y sin pisar las transiciones CSS de hover)
+function cascade(nodes,o={}){ if(reduced)return; const {dx=-12,dy=0,step=45,max=12,dur=560,delay=0}=o;
   [...nodes].forEach((n,i)=>n.animate([{opacity:0,transform:`translate(${dx}px,${dy}px)`},{opacity:1,transform:'none'}],
-    {duration:dur,delay:delay+Math.min(i,max)*step,easing:EASE_FX,fill:'backwards'})); }
+    {duration:dur,delay:delay+Math.min(i,max)*step,easing:EASE_SOFT,fill:'backwards'})); }
+// paneles tipo lista: sus filas entran en cascada (al aparecer por scroll y al cambiar de boda)
+const LIST_ROWS='#etapas > *, #dlg > .dlr, #proj > .prow, #proj > .parch, .plan .row, #anat .arow, .mini > *';
 // ¿la pieza que contiene a el está a la vista (ya entró)? Si no, su entrada por scroll se encarga
 const inView = el => !!(el && el.closest('.rv.in'));
 const MQM=matchMedia('(max-width: 640px)');
@@ -1439,9 +1442,9 @@ function renderAnat(M){
   const box=document.getElementById('anat'); const A=M.anat||[]; const max=Math.max(2,...A.map(a=>Math.abs(a[1])))*1.15,MID=38;
   let html='';
   A.forEach(([nm,v],i)=>{ const w=Math.abs(v)/max*(v>0?100-MID:MID);
-    const bar=v>0?`<div class="bar save" style="--w:${w}%;--i:${i}"></div><span class="val fadein" style="left:calc(${MID+w}% + 8px)">+${fmt(v)} h</span>`
+    const bar=Math.abs(v)<0.05?`<span class="val fadein" style="left:calc(${MID}% + 8px)">0 h</span>`:v>0?`<div class="bar save" style="--w:${w}%;--i:${i}"></div><span class="val fadein" style="left:calc(${MID+w}% + 8px)">+${fmt(v)} h</span>`
       :`<div class="bar more" style="--w:${w}%;--i:${i}"></div><span class="val fadein" style="left:calc(${MID-w}% - 8px);transform:translateX(-100%)">−${fmt(Math.abs(v))} h</span>`;
-    html+=`<div class="arow" data-tip="<b>${nm}</b><br>${v>0?fmt(v)+' h menos':fmt(Math.abs(v))+' h más'} que antes"><div class="nm">${nm}</div><div class="track"><div class="mid"></div>${bar}</div></div>`; });
+    html+=`<div class="arow" data-tip="<b>${nm}</b><br>${Math.abs(v)<0.05?'igual que antes':(v>0?fmt(v)+' h menos':fmt(Math.abs(v))+' h más')+' que antes'}"><div class="nm">${nm}</div><div class="track"><div class="mid"></div>${bar}</div></div>`; });
   box.innerHTML=html;
   document.getElementById('anatTbl').innerHTML=`<table><thead><tr><th>Etapa</th><th>Δ horas</th></tr></thead><tbody>${A.map(([nm,v])=>`<tr><td>${nm}</td><td>${v>0?'−':'+'}${fmt(Math.abs(v))} h</td></tr>`).join('')}</tbody></table>`;
 }
@@ -1520,10 +1523,10 @@ function renderMesa(M){
     renderEtapas(p); renderDonut(p); renderTape(p);
     if(anim && !reduced){                                // solo lo que está a la vista; lo demás entra al scrollear
       if(inView(donut)) window.__swirlDonut();
-      if(inView(dlg)) cascade(dlg.children,{delay:140,step:30});
-      if(inView(etBox)) cascade(etBox.children,{step:20,max:20});
-      if(inView(tapeBox)) cascade(tapeBox.querySelectorAll('.clip'),{dx:-12,dy:0,step:45,dur:460});
-      if(inView(fasetot)) cascade(fasetot.children,{delay:200,step:50});
+      if(inView(dlg)) cascade(dlg.children,{delay:160});
+      if(inView(etBox)) cascade(etBox.children);
+      if(inView(tapeBox)) cascade(tapeBox.querySelectorAll('.clip'),{step:55});
+      if(inView(fasetot)) cascade(fasetot.children,{delay:220,step:60});
     } }
   renderMesa._select=select;
 
@@ -1541,7 +1544,7 @@ function renderMesa(M){
   if(!renderMesa._bound){ renderMesa._bound=true;
     projBox.addEventListener('click',e=>{
       const t=e.target.closest('.parch');
-      if(t){ const l=document.getElementById('projArch'), open=l.hidden; l.hidden=!open; t.setAttribute('aria-expanded',open); renderMesa._archOpen=open; if(open) cascade(l.children,{step:40,dy:8}); return; }
+      if(t){ const l=document.getElementById('projArch'), open=l.hidden; l.hidden=!open; t.setAttribute('aria-expanded',open); renderMesa._archOpen=open; if(open) cascade(l.children); return; }
       const r=e.target.closest('.prow');if(r)renderMesa._select(r.dataset.key,true);});
     projBox.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const r=e.target.closest('.prow');if(r){e.preventDefault();renderMesa._select(r.dataset.key,true);}}}); }
   const openKey = M.projOrder.includes(M.currentKey)?M.currentKey:M.projOrder[0];
@@ -1614,9 +1617,13 @@ document.getElementById('thmBtn').addEventListener('click',()=>{ const r=documen
                         if(on && u.querySelector('#donut')) window.__swirlDonut?.(); };
   function enter(u,delay){ if(u.classList.contains('in')||timers.has(u))return;
     timers.set(u,[setTimeout(()=>{
-      const dy=u.classList.contains('up')?-16:16;          // regresas scrolleando hacia arriba → baja desde arriba
+      const dy=u.classList.contains('up')?-14:14;          // regresas scrolleando hacia arriba → baja desde arriba
+      const rows=u.querySelectorAll(LIST_ROWS);
       u.classList.add('in');
-      u.animate([{opacity:0,transform:`translateY(${dy}px)`},{opacity:1,transform:'none'}],{duration:700,easing:EASE_FX});
+      if(rows.length){                                    // panel-lista: la tarjeta se desvanece, las filas entran de izq. a der.
+        u.animate([{opacity:0},{opacity:1}],{duration:500,easing:EASE_SOFT});
+        cascade(rows,{delay:90});
+      } else u.animate([{opacity:0,transform:`translateY(${dy}px)`},{opacity:1,transform:'none'}],{duration:760,easing:EASE_SOFT});
       hooks(u,true);
       timers.set(u,[setTimeout(()=>{u.classList.add('settled');timers.delete(u);},1600)]);
     },delay)]); }
@@ -1636,7 +1643,7 @@ document.getElementById('thmBtn').addEventListener('click',()=>{ const r=documen
 
 // tablas "Ver los datos": las filas entran en cascada al abrir
 document.addEventListener('toggle',e=>{ const d=e.target;
-  if(d instanceof HTMLDetailsElement && d.open && d.classList.contains('tbl')) cascade(d.querySelectorAll('tr'),{dy:5,step:24,max:12,dur:340}); },true);
+  if(d instanceof HTMLDetailsElement && d.open && d.classList.contains('tbl')) cascade(d.querySelectorAll('tr'),{step:35}); },true);
 
 /* ================= boot: snapshot → fetch vivo ================= */
 function bootRender(payload,isLive){ try{ const model=deriveModel(payload); model.live=isLive; renderAll(model); }catch(e){ console.error('derive',e); } }
