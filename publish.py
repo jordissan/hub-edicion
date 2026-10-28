@@ -107,6 +107,25 @@ def drain_pending():
             kv_delete(key)
         except Exception as e:
             sys.stderr.write(f"[cola] {key} falló (se reintenta luego): {e}\n")
+    # cierres de escena/etapa (POST /api/close sin NOTION_TOKEN): después de las sesiones
+    try:
+        keys = kv_keys("edicion:pending-close:")
+    except Exception as e:
+        sys.stderr.write(f"[cola] no se pudo listar cierres: {e}\n")
+        return
+    for key in keys:
+        try:
+            item = json.loads(kv_get(key) or "null")
+            if item is None:
+                continue
+            err = server.validate_close(item)
+            if err:
+                sys.stderr.write(f"[cola] {key} descartado: {err}\n")
+            else:
+                print("Cerrado desde la cola:", item.get("cerrar"), server.close_targets(item))
+            kv_delete(key)
+        except Exception as e:
+            sys.stderr.write(f"[cola] {key} falló (se reintenta luego): {e}\n")
 
 
 def main():
