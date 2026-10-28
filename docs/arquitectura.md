@@ -1,0 +1,213 @@
+# Hub de Edición — arquitectura y referencia técnica
+
+> Referencia única para **mantener** el proyecto. La guía de uso está en el
+> [`README.md`](../README.md) de la raíz; la operación de la nube, en [`cloud/README.md`](../cloud/README.md).
+> Este archivo vive en `docs/` y `sync-cloud.sh` lo copia a `cloud/docs/` (queda versionado en git).
+
+---
+
+## 1. Piezas y flujo de datos
+
+```
+                       Notion (workspace "Trabajo")
+                                   │  API (token de integración, lectura + escritura)
+          ┌────────────────────────┴────────────────────────┐
+   LOCAL (Mac, backup/dev)                         NUBE (siempre encendida)
+   server.py · launchd · :4599                     GitHub Actions cada 30 min
+     GET  /api/data     payload completo             publish.py → importa server.py
+     GET  /api/summary  resumen widgets                ├─ drain_pending(): cola de sprints → Notion
+     POST /api/session  registra un sprint             ├─ build_data() / build_summary()
+     GET  /api/health                                  └─ escribe Cloudflare KV
+     caché .cache.json + .archive.json             Cloudflare Pages (detrás de Access)
+                                                     index.html
+                                                     functions/api/edicion  → KV edicion:data
+                                                     functions/api/summary  → KV edicion:summary
+                                                     functions/api/session  → Notion o cola KV
+          └────────────────────────┬────────────────────────┘
+                     index.html (el MISMO archivo en ambos)
+                     snapshot embebido → loadLive() → deriveModel() → render*
+                     Widgets: iPhone (Scriptable → nube) · Mac (SwiftBar → local)
+```
+
+- **El local es la fuente.** Se edita en `~/HubEdicion/` y se porta a `cloud/` con
+  `./sync-cloud.sh` (ver §8). `cloud/server.py` es una copia **idéntica** del raíz.
+- **Todo cálculo vive en el navegador** (`deriveModel`): `server.py` solo extrae y normaliza
+  Notion. Excepción: el resumen de widgets (`build_summary`) replica algunas reglas en Python
+  (meta diaria, racha, avance, fase/color) — si cambias una, cambia la otra.
+
+## 2. Contrato del payload (`/api/data` · KV `edicion:data` · `SNAPSHOT_DATA`)
+
+```jsonc
+{
+  "generatedAt": "2026-10-28T00:17:38",   // hora local de la extracción
+  "today": "2026-10-28",
+  "live": true,
+  "degraded": false,                      // true = solo bodas de respaldo → publish.py NO publica
+  "weddings": [{                          // tablero: activas + finalizadas editadas en ≤45 días
+    "name", "icon", "studio", "status", "priority", "url",
+    "price": 13000,                       // propiedad "Total" (MXN); el front usa 13000 si falta
+    "projectStart", "projectEnd",
+    "stages": [{
+      "id": "…",                          // página de la etapa (el sprint cambia su estado)
+      "etapa": "Montaje (DCT)", "fase": "DCT",
+      "estado": "done|live|wait",         // ⚪️ wait · 🔵 live · 🟢 done (norm_estado)
+      "orden": 6, "start", "end",         // "Del → Al"
+      "isCorrections": false,             // etapa "Cambios"/"Correcciones"
+      "hours": 8.4, "sessions": 18,
+      "sessionDb": "…",                   // DB "Sesiones" de la etapa (null si no tiene)
+      "sessionLog": [{ "name", "inicio": "2026-10-27T17:05", "min": 43,
+                       "tipo": "Edición|Gestión", "ronda": null, "escena": "<id>" }],
+      "scenes": [{ "id", "escena", "estado", "orden", "cancion", "dia", "start", "end" }]
+    }]
+  }],
+  "archive": [{                           // bodas entregadas con horas (persistente)
+    "name", "icon", "hours", "scenes", "span", "price", "rounds", "lastEnd", "archivedAt",
+    "ghost": { "v": 2, "projectStart", "projectEnd",
+               "stages": [{ "etapa", "fase", "isCorrections", "estado", "sessions",
+                            "hours", "nScenes", "days": { "2026-09-07": 26 } }] }
+  }]
+}
+```
+
+**Resumen de widgets** (`/api/summary` · KV `edicion:summary`): `generatedAt, today, todayMin,
+metaMin, streak, week[{key,min,meta}], overallProgress, active{wedding, icon, stage, stageColor,
+stageProgress, stageHours, scene}, weddings[{name, icon, progress, done, live, wait, stages, hours}]`.
+`progress` = etapas de edición hechas / etapas de edición (igual que el "Avance %" del dashboard);
+`stageColor` = color de la fase (`PHASE_COLORS`, mismos tokens del dashboard).
+
+## 3. Extracción (`server.py`)
+
+| Función | Qué hace |
+|---|---|
+| `notion()` | Cliente HTTP: **throttle** 0,40 s entre peticiones (Notion ≈ 3 req/s) + **backoff** ante 429/5xx (6 intentos: 2-4-8-16-30 s, respeta `Retry-After`). Una extracción ≈ 200 peticiones ≈ 2 min. |
+| `discover_wedding_pages()` | Páginas `Tipo = Boda` de la DB "Trabajo". Deja fuera las **finalizadas sin cambios en 45 días** (`RECENT_DONE_DAYS`; "finalizada" = `DONE_STATUSES`, comparado en Python para que renombrar la opción en Notion no rompa la consulta). Si la consulta falla → `FALLBACK_WEDDING_PAGES` y `degraded: true`. |
+| `build_wedding()` | Busca la sub-DB "Tracking de Edición" → etapas → dentro de cada etapa, sub-DBs de **escenas** (título "Escena…") y de **sesiones**. Sin tracking: DB "Sesiones" directa = etapa "Correcciones". Parsea por **tipo** de propiedad y sin acentos (conviven "Sesión"/"Sesion"). |
+| `is_session_log_db()` | Una DB es de sesiones solo si tiene fechas **Inicio y Fin**. ⚠️ "Tiempo total" también titula su columna "Sesión". |
+| `merge_archive` / `backfill_ghosts` | Upsert del archivo con las finalizadas del tablero; reconstruye desde Notion (máx. `BACKFILL_MAX` = 2 por corrida) las entradas sin `ghost` o con `GHOST_VERSION` vieja. Subir la versión fuerza el re-backfill. |
+| `build_summary()` | Resumen para widgets (§2). |
+| `create_session()` / `set_in_progress()` | Registro de sprints (§5). |
+
+**Caché local:** stale-while-revalidate de 3 min (`CACHE_TTL`) en memoria + `.cache.json`.
+Un **candado** (`_build_lock`) garantiza una sola extracción a la vez: el ↻ o un registro que
+llega durante una extracción en curso espera su resultado en vez de lanzar otra.
+
+## 4. El dashboard (`index.html`)
+
+Un solo archivo: CSS (tokens Pantone, tema claro/oscuro) + HTML + un `<script>` en este orden:
+
+1. **`SNAPSHOT_DATA`** — último payload real embebido: render instantáneo y respaldo sin servidor.
+2. **`deriveModel(payload)`** (IIFE, sin DOM) — contrato Notion → modelo `M`. Reglas clave:
+   - **Fase + rol** (`phaseOf`/`roleOf`/`keyOf`): las plantillas vieja y nueva se comparan.
+     Fases: PREP · TEAS · DCT(doc) · HL/SF · CMB(cam).
+   - **Cambios/Correcciones**: fuera de las horas *efectivas* (Carrera, ahorro, $/h, "edición
+     lista"), dentro del tiempo trabajado (Hoy, Ritmo, racha, heatmap). Una etapa de Cambios
+     viva no "reabre" la boda (`hasLive` la ignora).
+   - **Carrera**: `refCur`/`refGhost` = las 2 bodas con edición terminada más recientes (incluye
+     archivadas reconstruidas desde `ghost`); compara **solo fases compartidas**.
+   - **h/escena** sin teaser; **$/h** con todo (el precio lo incluye).
+   - **Heatmap**: sesiones del tablero + `ghost.days` de las archivadas fuera del tablero.
+   - **Avance %** = etapas de edición hechas / etapas de edición (Cambios no cuenta): el 100 %
+     es terminar la última etapa (Montaje HL/SF). Varias etapas pueden ir en curso a la vez.
+   - **Rentabilidad**: $/h, $/escena, $/etapa sobre el precio cobrado (`Total`) de la última
+     boda entregada vs la anterior.
+   - **Proyectos**: bodas que miden (horas efectivas > 0) + Archivo (`archOrder`).
+   - **`sprintTargets`**: etapas no terminadas con `sessionDb`, en curso primero.
+3. **Capa de render** — `fmt/fmtHM/fmtMXN`, `S()` (SVG), `barPath`, tooltip, `liveBar`;
+   `render{Chrome,Hero,Race,Hoy,Dia7,Ritmo,Adn,Mesa,Tarifa}`. `renderAll` aísla cada sección
+   (si una falla, las demás se pintan). `regRebuild(nombre, fn)` registra las gráficas que cambian
+   de geometría al cruzar 640 px (una por nombre: Carrera y Horas por día).
+4. **`Sprint`** — tarjeta de enfoque (§5).
+5. **Navegación + tema** — rail (≥1200 px) / tabbar (móvil), scroll-spy, tema en `scTheme`.
+6. **Reveal** — cada pieza (hijos de `.hero`/`.sec` y de las rejillas) es una unidad `.rv`.
+   Entra con WAAPI (no CSS, para no pisar los `transform` de hover) al cruzar el 8 % inferior,
+   en cascada; se **rearma al salir del todo** y reentra desde la dirección del scroll (`.up`).
+   `.in` dispara las transiciones internas (`.in .gbar`, `.in .heat .cell`…); `.settled` llega a
+   los 1,6 s. Paneles-lista (`LIST_ROWS`): la tarjeta hace fade y sus filas entran con `cascade`
+   (izquierda → derecha). Ganchos: `__playRace`/`__resetRace`, `__swirlDonut`.
+   ⚠️ Si la tarjeta misma lleva la clase del componente (`.card.anat`) usa `.anat.in …`, no `.in .anat …`.
+7. **Boot** — snapshot → `loadLive()`: en la nube (`*.pages.dev`) pide primero `/api/edicion`, en
+   local `/api/data`; el otro de respaldo. Refresca solo al volver a la app o cada 10 min si los
+   datos tienen > 5 min. ↻ = `fresh` (local: extracción síncrona; nube: relee KV).
+
+**Interfaz viva** (`@media(hover:hover)`, tras `.settled`): la barra bajo el cursor crece y el
+resto se atenúa (`.fx` en el `<svg>` + `.hot` en la marca); el centro del donut muestra etapa ·
+horas · $ · % al pasar por un segmento. Presión sutil (`:active`) en botones, filas y navegación
+—fuera del gate de hover para que también anime al tocar en el iPhone.
+
+Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
+
+## 5. Sprint de enfoque (registro de sesiones)
+
+- **Front (`Sprint`)**: destino (etapa · escena · tipo), esquemas (Mediana, Pomodoro 25/5 con
+  largo de 15 cada 4, 52/17, 90/20, Libre, Propio), ciclos foco → descanso. Solo los bloques de
+  **foco** se registran. Reloj con hora real de inicio; duración **redondeada al minuto**
+  (≥ 30 s sube), Fin = Inicio + duración; < 30 s no se registra. Fallo de red/servidor → queda
+  pendiente en el dispositivo (reintentar/descartar), nunca se pierde.
+- **Petición** `POST /api/session`: `{id, db, stageId, escena, inicio, fin, tipo, ronda}` con
+  fechas ISO **con zona horaria**.
+- **Validación** (`validate_session` + `target_error`, igual en `session.js`): 1 min–8 h, tipo
+  Edición/Gestión, y lista blanca: `db` = una `sessionDb` del tablero, `stageId` su etapa,
+  `escena` una de sus escenas. Dedup por `id`.
+- **Escritura** (`create_session`, igual al registro manual): título "Sesión", Inicio, Fin,
+  Tipo, Escena y **Total** → fila *Edición*/*Gestión* de la DB "Tiempo total" de la etapa.
+  Se niega a escribir en una DB sin Inicio/Fin.
+- **Estados** (`set_in_progress`): etapa/escena ⚪️ o vacía → 🔵 y llena su fecha de inicio vacía
+  (etapa: "Del → Al", solo día; escena: "Inicio", con hora). Nunca retrocede. En la UI los estados
+  se muestran como palabras agrupadas, sin emojis.
+- **Nube**: con el secreto `NOTION_TOKEN` en Pages escribe directo; sin él (o si Notion falla)
+  deja `edicion:pending:<id>` y `publish.py` lo crea en la siguiente corrida (≤ 30 min).
+
+## 6. Claves de estado
+
+| Dónde | Clave | Contenido |
+|---|---|---|
+| KV | `edicion:data` | payload completo (§2) |
+| KV | `edicion:summary` | resumen de widgets |
+| KV | `edicion:archive` | archivo histórico (estado persistente de la nube) |
+| KV | `edicion:pending:<id>` | sprint en cola (sin `NOTION_TOKEN` en Pages) |
+| KV | `edicion:done:<id>` | resultado de un sprint ya registrado (dedup, 24 h) |
+| Mac | `.cache.json` · `.archive.json` | caché local · archivo histórico local |
+| Navegador | `scTheme` | tema claro/oscuro |
+| Navegador | `scSprint` · `scSprintBrk` · `scSprintCyc` | bloque en curso · descanso · ciclo |
+| Navegador | `scSprintMode` · `scSprintDest` · `scSprintPend` | esquema · último destino · registro pendiente |
+
+## 7. Plantilla de Notion que espera
+
+- DB raíz **Trabajo** (`TRABAJO_DB_ID`) con `Tipo = Boda`, `Status`, `Total`, fecha del proyecto.
+- En cada boda, sub-DB **"Tracking de Edición"**: etapas con `Etapa` (título), `Fase`
+  (PREP/TEAS/DCT/HL/SF/CMB), `Estado` (⚪️/🔵/🟢), `Orden` (admite decimales), `Del → Al`.
+- En cada etapa: DB de **escenas** (título "Escena", `Estado (Select)` + fórmula `Estado`,
+  `Orden`, `Inicio`, `Fin`), DB **Sesiones** (`Sesión`, `Inicio`, `Fin`, `Tipo`, `Escena`,
+  `Total`, `Ronda` en Cambios) y DB **Tiempo total** (filas *Edición* y *Gestión*).
+- Teaser = la boda tiene etapas TEAS. 2 días = una escena "Día 1…".
+
+## 8. Mantenimiento
+
+1. Edita **local**: `index.html` y/o `server.py`. Si tocaste `server.py`:
+   `launchctl kickstart -k gui/$(id -u)/com.jordi.hub-edicion`.
+2. Verifica con datos reales en <http://localhost:4599> (en Claude Code: configuración
+   `hub-vivo` de `.claude/launch.json`).
+3. `./sync-cloud.sh` → revisa el diff → `./sync-cloud.sh --publicar "mensaje"`
+   (commit + push; Pages despliega en 1-2 min; si cambió `server.py` republica los datos).
+4. `publish.py`, `functions/` y el workflow se editan directamente en `cloud/`.
+5. Actualiza la documentación en la misma pasada si cambió comportamiento o datos.
+6. Para ver la versión nueva en el iPhone: **matar la PWA** desde el app switcher y reabrir.
+
+Datos a mano: `gh workflow run "Publicar dashboard" -R jordissan/hub-edicion`.
+
+## 9. Trampas conocidas
+
+- **"Tiempo total"** titula su columna "Sesión": nunca la trates como DB de sesiones (§3).
+- **Estado de escena** es una fórmula → `p_select` lee fórmulas de texto.
+- **iOS / PWA**: `backdrop-filter` + `transform` animado necesita `will-change:transform`; `:active`
+  requiere un listener `touchstart` (hay uno global); el hover del tap se queda pegado (hay
+  limpieza); campos de < 16 px hacen zoom al enfocar; la caché de la PWA solo se va matando la app.
+- **Panel de preview de Claude Code**: si está oculto no corre frames (IntersectionObserver,
+  rAF y timers se frenan) — una captura fuerza un frame. Las transiciones no avanzan durante un eval.
+- **Snapshot embebido**: refrescarlo por concatenación de texto, nunca con `re.sub` (se come
+  las barras invertidas del JSON y rompe el script).
+- **Privacidad — el repo de la nube es público**: el código no tiene tokens, pero `index.html`
+  lleva embebido `SNAPSHOT_DATA` con datos reales (nombres de parejas, precios, estudio,
+  sesiones), visibles en GitHub aunque el sitio esté detrás de Access. Opciones: repo privado
+  (Actions deja de ser gratis ilimitado: ~48 corridas/día rebasan los 2 000 min/mes; habría que
+  bajar el cron a cada hora) o un snapshot anonimizado en la copia de la nube.

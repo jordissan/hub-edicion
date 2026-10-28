@@ -5,7 +5,8 @@ apagada, detrás de login, **100% gratis**.
 
 - **URL:** https://hub-edicion.pages.dev
 - **Login:** Cloudflare Access — **One-time PIN por correo** (jor.jorwww@gmail.com), sesión 1 mes.
-- **Repo:** `github.com/jordissan/hub-edicion` (público — solo código, nunca datos ni tokens).
+- **Repo:** `github.com/jordissan/hub-edicion` (**público**). Nunca tokens. ⚠️ `index.html` lleva embebido el
+  snapshot (`SNAPSHOT_DATA`) con datos reales de las bodas — ver "Privacidad" en `docs/arquitectura.md` §9.
 
 ## Arquitectura
 
@@ -38,19 +39,9 @@ con su `server.py` + launchd en el puerto 4599 — es **backup/dev** para probar
   `build_data(prev_archive=...)` + `build_summary` → escribe `edicion:data`, `edicion:summary`
   y `edicion:archive` a KV vía API REST.
 - `functions/api/edicion.js`, `functions/api/summary.js` — leen de KV (binding `HUB_KV`).
-- `functions/api/session.js` — `POST /api/session` del **sprint de enfoque**. Valida (inicio/fin con zona, 1 min–8 h,
-  tipo) y que la DB sea una `stages[].sessionDb` del `edicion:data` publicado. Con la variable secreta
-  **`NOTION_TOKEN`** en Pages (Settings → Variables and Secrets) escribe directo (`createSession`, mismo criterio
-  que `server.create_session`); sin ella o si Notion falla, deja `edicion:pending:<id>` en KV y `publish.py`
-  (`drain_pending`) la crea antes de extraer. Dedup por id del sprint (`edicion:done:<id>`, 24 h).
-  `server.py` expone `stages[].id`, `stages[].sessionDb`, `scenes[].id` y `sessionLog[].escena` para el selector del sprint.
-  Lista blanca: `db` debe ser una `sessionDb`, `stageId` su etapa y `escena` una de sus escenas (`server.target_error`).
-  Tras crear la sesión, `set_in_progress` (JS: `setInProgress`) pasa etapa/escena de sin iniciar (⚪️ en Notion) a en
-  proceso (🔵) y llena su fecha de inicio vacía; nunca retrocede. Front (`Sprint`): esquemas Mediana/Pomodoro/52-17/90/
-  Libre/Propio y ciclos foco→descanso en localStorage (`scSprint`, `scSprintBrk`, `scSprintCyc`, `scSprintMode`,
-  `scSprintPend`, `scSprintDest`); solo los bloques de foco se registran. En la UI los estados van como palabras
-  agrupadas (optgroups), sin emojis. El estado de escena es la fórmula `Estado` = `prop("Estado (Select)")`: `p_select` ahora
-  lee fórmulas de texto (antes todas las escenas salían ⚪️, también en el avance de los widgets).
+- `functions/api/session.js` — `POST /api/session`: registra un **sprint de enfoque** como sesión en Notion
+  (valida contra la lista blanca de `edicion:data`; directo con `NOTION_TOKEN`, si no cola `edicion:pending:<id>`).
+- `docs/arquitectura.md` — referencia técnica completa (la copia `sync-cloud.sh`).
 - `.github/workflows/publish.yml` — cron + `workflow_dispatch`. Secretos: `NOTION_TOKEN`, `CF_API_TOKEN`,
   `CF_ACCOUNT_ID`, `CF_KV_NAMESPACE_ID`. Lleva `env: TZ: America/Mexico_City` (el runner es UTC).
 - `index.html`, `manifest.json`, `icon-*.png` — el sitio estático.
@@ -60,138 +51,30 @@ con su `server.py` + launchd en el puerto 4599 — es **backup/dev** para probar
 - **A mano / ya:** `gh workflow run "Publicar dashboard" -R jordissan/hub-edicion` (o Actions → Run workflow).
 
 ## Cómo cambiar el dashboard (mantenimiento)
-**Se edita el LOCAL primero, luego se porta al cloud** (no al revés). El local
-(`/Users/jordi/HubEdicion/index.html`) es la fuente: tiene `fetch('/api/data')` + el
-`window.SNAPSHOT_DATA` real, y se prueba con datos reales vía el server (puerto 4599).
-1. Editar `/Users/jordi/HubEdicion/index.html` (y `server.py` si toca la extracción de Notion).
-2. **Portar a `cloud/index.html` = copia directa** (`cp index.html cloud/index.html`). Desde el
-   rediseño "Sala de Corte" el MISMO archivo sirve para local y nube: el `loadLive()` intenta
-   `/api/data` (local) y luego `/api/edicion` (nube) en orden, y el `window.SNAPSHOT_DATA`
-   embebido es el mismo payload real para ambos. Ya no hay que swapear la URL del fetch.
-   Refresca el snapshot embebido de vez en cuando con el payload vivo (`curl localhost:4599/api/data`).
-   Revisar `git diff` antes de commitear.
-3. `git -C cloud add -A && git -C cloud commit && git -C cloud push` → **Cloudflare Pages auto-despliega (~1-2 min).**
-4. Si cambiaste `server.py`: edita **ambos** (raíz + `cloud/server.py`), pushea el del cloud, y
-   `gh workflow run "Publicar dashboard"` para republicar KV. Reinicia el local:
-   `launchctl kickstart -k gui/$(id -u)/com.jordi.hub-edicion`.
+**Se edita el LOCAL (`~/HubEdicion/`) y se porta aquí** — nunca al revés.
+1. Edita `~/HubEdicion/index.html` y/o `server.py` y pruébalo con datos reales en <http://localhost:4599>.
+2. `~/HubEdicion/sync-cloud.sh` → copia `index.html`, `server.py` y `docs/arquitectura.md` a esta carpeta
+   y muestra el diff (no publica).
+3. `~/HubEdicion/sync-cloud.sh --publicar "mensaje"` → commit + push (**Cloudflare Pages despliega solo,
+   ~1-2 min**); si cambió `server.py`, además lanza el workflow para republicar KV y reinicia el server local.
+4. `publish.py`, `functions/` y `.github/workflows/` viven solo aquí: se editan directamente en `cloud/`.
 
-**Verificación**: Claude Preview MCP funciona — `python3 -m http.server` (vía `.claude/launch.json`) +
-`preview_screenshot`/`preview_eval`. Para datos reales: `curl localhost:4599/api/data` (server local).
-`gh` se instala bajando el binario oficial si falta (auth en keychain). `python3 -m py_compile` valida `server.py`.
+`server.py` es **idéntico** al de la raíz (se copia tal cual). El deploy de Pages no se reporta a la API de
+GitHub: la verificación es visual (en el iPhone, matar la PWA y reabrir).
 
-**Limitaciones del panel de preview** (del entorno, no de la app): no scrollea programáticamente
-(verificar posiciones con `getBoundingClientRect`/`elementFromPoint` ocultando lo de arriba); no
-bombea frames durante evals — `requestAnimationFrame` no dispara y las transiciones CSS no avanzan
-(para leer el estado final de una clase: desactivar transición, aplicar, leer, restaurar). El botón de
-tema llama `renderAll(M)` para repintar los SVG con los colores nuevos. También: el fetch vivo se prueba
-con `curl localhost:4599/api/data`; en el panel estático (8753) cae al `SNAPSHOT_DATA` embebido (sello
-"SNAPSHOT"), que ES el payload real más reciente, así que los números siguen siendo válidos para verificar.
+## Secretos y variables
+- **GitHub Actions** (Settings → Secrets): `NOTION_TOKEN`, `CF_API_TOKEN` (Workers KV Storage: Edit),
+  `CF_ACCOUNT_ID`, `CF_KV_NAMESPACE_ID`.
+- **Cloudflare Pages** (Settings → Variables and Secrets): `NOTION_TOKEN` **opcional** — con él, el sprint
+  registra al instante desde la nube; sin él, queda en cola KV y `publish.py` lo crea en la siguiente corrida.
+  Binding KV: `HUB_KV`.
+- **Widgets**: Service Token de Cloudflare Access (Client ID + Secret) pegado en el script de Scriptable.
 
-**Movimiento (reveal):** el IIFE `reveal` toma como unidades los hijos de `.hero`/`.sec` (y los
-hijos de las rejillas `.hoy,.ritmo,.adn,.mesa2,.dinero,.tiles`) y les pone `.rv`. CSS solo oculta
-(`.rv:not(.in){opacity:0}`); la entrada es WAAPI (translateY 16px→0 + opacity, 700 ms) para no pisar
-los `transform` de hover de `.card`/`.m`. Dos IntersectionObserver: entra al cruzar el 8 % inferior
-(las que entran juntas, escalonadas 70 ms por posición) y se **rearma solo al salir del todo**
-(`.up` si salió por arriba → reentra bajando). `.in` dispara las transiciones internas de siempre
-(`.in .gbar`, `.in .heat .cell`…); `.settled` llega 1,6 s después. Ganchos: `__playRace`/`__resetRace`
-(curva) y `__swirlDonut`. Paneles-lista (`LIST_ROWS`): la tarjeta solo hace fade y sus filas entran con
-`cascade` (por defecto −12 px en X + fade, 560 ms, 45 ms entre filas, `EASE_SOFT`). Ojo: si la tarjeta
-misma lleva la clase del componente (`.card.anat`), los selectores `.in .anat …` no casan → `.anat.in …`.
-Clics: `cascade(nodes,opts)` (WAAPI, `fill:'backwards'`) en `select(key,true)`
-de Proyectos, Archivo y `toggle` de `details.tbl`; solo anima lo que está a la vista (`inView`). Ojo al
-verificar en el panel de preview: si está oculto no corre frames y el observer no dispara (una
-captura fuerza un frame).
-
-**Gotchas iOS (PWA):** `backdrop-filter` + animación de `transform` exige `will-change:transform`
-y animar solo transform (si no, WebKit descarta el blur → "se esfuma"); además el tabbar usa
-**curvas de easing distintas por dirección** — reaparecer decelera (`--ease-out`) y ocultarse
-acelera (`--ease-in`, `cubic-bezier(.68,0,.77,0)`, mirror del ease-out) — usar la misma curva
-para ambas hacía que el ocultado se sintiera como un salto/desvanecido en vez de un deslizamiento;
-`:active` solo se activa con un listener `touchstart` registrado (hay uno vacío global); el hover
-emulado del tap se queda pegado — hay limpieza en `click` fuera de las gráficas; para ver una
-versión nueva hay que **matar la PWA desde el app switcher** (recargar no basta). El deploy de
-Pages NO se reporta a la API de GitHub — verificación solo visual (señal de versión nueva: la
-barra de navegación flotante inferior).
-
-## Modelo y comportamiento (decisiones de Jordi)
-- **El 100% = terminar el montaje de HL/SF** (última etapa de edición). Una etapa marcada **'done' cuenta 100%**
-  y sus escenas como completas — la marca de "hecho" a nivel etapa manda sobre el detalle de escenas.
-- **Plantilla de 5 fases (oct-2026, desde Ale + Lorenzo):** Fase = **PREP** (Setup · Escenas · Limpieza ·
-  Sincronización) · **TEAS** (Selección/Música/Montaje/Color (TEAS)) · **DCT** (Música/Montaje/Color y
-  finalización (DCT)) · **HL/SF** (Selección/Música/Montaje (HL/SF)) · **CMB** (Cambios); `Orden` admite
-  decimales (4.1…4.4). `deriveModel` reduce cada etapa a **fase + rol** (`phaseOf`/`roleOf`/`keyOf`) para que la
-  plantilla vieja (Importación, Edición Musical, Fase "Documental"…) se compare con la nueva; en las viejas la
-  preparación se reclasifica como PREP. Colores: PREP azul cielo `--f-prep`, TEAS aqua `--f-teas` (validados con
-  `validate_palette`: CVD ΔE 16,4). **Teaser** = la boda tiene etapas TEAS (sin teaser → borrar esas filas).
-  **2 días** = alguna escena "Día 1…" (el día previo recorre las mismas etapas como una escena más). Carrera y
-  titular comparan **solo fases compartidas** (teaser fuera si el fantasma no lo tuvo); h/escena sin teaser;
-  $/h con todo. Avance % sin Cambios. Varias etapas en curso a la vez → HOY las lista todas.
-- **"Cambios" / "Correcciones" = fase post-entrega** (depende de Claudio/Romina). **Excluida** de las horas
-  de edición *efectivas* (Carrera, ahorro por etapa, $/h) y de la fecha de "edición lista". Se evalúa aparte por
-  **rondas + horas/sesiones** (campo number "Ronda" en sesiones).
-  Detección: nombre de etapa contiene "cambios" o "correcciones" (≠ "Corrección de Color y Finalización", singular).
-  **PERO sí cuenta como tiempo trabajado** en HOY y Ritmo (horas por día — el tooltip desglosa "en cambios" —,
-  tiles, racha, heatmap, cronotipo, histograma de sesiones): un día de correcciones es un día trabajado.
-  Además, una etapa de Cambios `live` **no "reabre" la boda**: `hasLive` ignora correcciones, así la boda sigue
-  siendo "edición terminada" para `refCur`/`refGhost` aunque estés metiendo cambios hoy.
-- **Selector de proyecto = la lista de "En la mesa"** (sección Proyectos). **Tocar una boda** re-renderiza su
-  donut/etapas/cinta con datos reales (nada de dropdown global). **Solo lista bodas que "miden"** (horas de
-  edición efectivas > 0): las de solo correcciones o sin sesiones no aparecen. **Racha siempre global.**
-  **Archivo:** debajo, fila plegable (`.parch`, estado en `renderMesa._archOpen`) con las bodas del archivo
-  histórico que ya no están en el tablero (`M.archOrder`, por `lastEnd` desc), reconstruidas desde su `ghost`
-  con el mismo `projModel` → donut/etapas/cinta funcionan igual. Nunca son la boda abierta por defecto.
-- **Widgets** (`HubEdicion/widgets/`): iPhone (Scriptable) y Mac (SwiftBar) leen `/api/summary` con el Service Token.
-- **Nav = rail lateral (desktop, plegable) + tabbar inferior (móvil)**; 6 secciones ancla: Carrera · Hoy ·
-  Ritmo · ADN · Proyectos · Tarifa. **Tema claro/oscuro** en `localStorage` (`scTheme`). Todo lo derivan del
-  payload en el navegador (`deriveModel`) — no hay estado de pestaña activa que persistir.
-- **Rentabilidad:** `$/h`, `$/escena`, `$/etapa` sobre el **precio cobrado** = propiedad **Total** (MXN) de cada
-  boda en Notion (`build_wedding` la lee como `price`; el dashboard prioriza `w.price`, con default si falta). En
-  proyectos en curso, **`$/h proyectado`** = (tasa histórica `horas/escena` de bodas completas) × escenas de la boda
-  → horas totales estimadas. Se afina conforme hay más bodas completas.
-- **Carrera / comparación (boda a boda):** el hero enfrenta las **2 bodas con edición terminada más recientes**
-  (la última como línea viva, la anterior como fantasma) — retrospectivo, siempre significativo aunque la boda
-  en curso apenas arranque. `deriveModel` elige `refCur`/`refGhost` = bodas medidas sin etapas `live`, ordenadas
-  por última sesión efectiva. La **anatomía del ahorro** y **El salto** ($/h) usan esa misma pareja. Solo entran
-  bodas con `>0 h` de edición efectiva (las de solo correcciones no son referencia válida).
-  **Historia a largo plazo:** el archivo histórico (`archive` en el payload, `.archive.json` local /
-  KV `edicion:archive`) viaja siempre; `deriveModel` lo usa para que la comparación (Carrera / $/h) no
-  pierda bodas cuando salen del tablero a los 45 días: cada entrada lleva un `ghost` (`server.wedding_ghost`:
-  por etapa estado, horas, sesiones, `nScenes` y minutos por día) y el front la reconstruye como boda terminada para
-  `refCur`/`refGhost` y el Archivo de Proyectos (nunca la lista principal). `ghost.v`=2 añade `estado` y
-  `sessions` por etapa. Entradas sin `ghost` o con versión vieja → `server.backfill_ghosts` las
-  rehace desde Notion con las páginas que el descubrimiento dejó fuera (`DROPPED_DONE_PAGES`, máx.
-  `BACKFILL_MAX`=2 por extracción: cada una ~1 min y el job tiene 10 min de límite). Con los años, el fantasma pasará de "la anterior"
-  a la **mediana del historial** (pendiente); el heatmap ya crece solo: suma `ghost.stages[].days` de las
-  bodas archivadas fuera del tablero (sin duplicar las del tablero), y `activeDays`/`firstDay` salen de ahí.
-- **Bodas incluidas:** todas (Tipo = Boda) **menos las finalizadas inactivas > `RECENT_DONE_DAYS` (45) días**
-  (`discover_wedding_pages`). El filtro de "finalizada" se hace en Python contra `DONE_STATUSES`
-  (`Finalizadas`/`Hecho`/`Complete`…), **no en la consulta a Notion** — así renombrar la opción de Status
-  ya no rompe el query (antes pedía `Status ≠ "Hecho"` y, al desaparecer esa opción, Notion devolvía 400).
-  Robusto además a renombres de tablas/columnas: `build_wedding` parsea por tipo de propiedad, no por nombre exacto
-  (y sin acentos: en Notion conviven columnas título `Sesión` y `Sesion` en la misma boda).
-- **Límite de Notion (sep-2026):** una extracción son **~209 peticiones** y Notion permite **~3 req/s**. Sin freno
-  el extractor se pasaba y Notion devolvía **429**, que tiraba el run entero de Actions (correos recurrentes de
-  *"Publicar dashboard failed"*). Ahora `notion()` **espacia todas las peticiones** (`NOTION_MIN_INTERVAL` 0,40 s
-  → 2,5 req/s; extracción ~2 min, timeout del job 10) y ante 429/5xx **reintenta con backoff exponencial**
-  (`NOTION_TRIES` 6: 2, 4, 8, 16, 30 s respetando `Retry-After` ≈ 60 s de aguante, frente a ~4 s de antes).
-- **Nunca publicar datos degradados:** si la consulta a la DB raíz falla, `discover_wedding_pages` cae a
-  `FALLBACK_WEDDING_PAGES` (2 bodas hardcodeadas) = tablero mutilado con pinta de sano. `build_data` lo marca
-  `degraded: true` y **`publish.py` aborta con exit 1 sin tocar KV**: el run se ve fallido y la nube conserva los
-  últimos datos buenos, en vez de que el tablero se vacíe en silencio (ya pasó con el 400 del Status renombrado).
-- **Proyectos de solo correcciones:** página con un DB **"Sesiones" directo** (sin "Tracking de Edición"/etapas).
-  `build_wedding` los lee como una etapa **"Correcciones"** (`isCorrections`); NO cuentan como horas de edición
-  efectivas, así que esas bodas quedan fuera de Proyectos/Carrera/Tarifa (no son referencia válida) — pero sus
-  sesiones sí suman como tiempo trabajado en HOY/Ritmo.
-- **Nav (nuevo):** **rail lateral** flotante en desktop (≥1200px, plegable: iconos ↔ iconos+labels) y **tabbar
-  inferior** flotante en móvil/tablet (blur + safe-area). Scroll-spy resalta la sección activa (IntersectionObserver);
-  no hay pestañas ni estado que persistir (una sola vista con anclas). Tema en `localStorage` `scTheme`.
-- **Interfaz viva (nuevo, `@media(hover:hover)`):** tarjetas se elevan al cursor; en las gráficas la marca bajo el
-  cursor **crece y el resto se atenúa** vía clases `.fx` (en el `<svg>`) + `.hot` (la barra), tras `.settled`; el
-  **centro del donut reacciona** (segmentos con listeners `pointerenter`: muestra etapa · horas · $ · % en su color,
-  restaura el total al salir). Todo con transform/opacity, respeta `prefers-reduced-motion`.
-- **Gráficas que se reconstruyen por breakpoint:** la Carrera y "Horas por día" se re-dibujan al cruzar 640px
-  (viewBox y grosores distintos en móvil) vía un registro `regRebuild`; el **heatmap** se re-renderiza al cambiar el
-  ancho (rellena semanas previas hasta llenar la tarjeta) y ancla el scroll a hoy. Helper `barPath()` para las barras.
+## Modelo, reglas y detalles técnicos
+Todo lo que explica **cómo** funciona (contrato del payload, extracción, `deriveModel`, Carrera/fantasma,
+archivo histórico, sprint y estados, movimiento, claves de KV y del navegador, plantilla de Notion y trampas
+conocidas) está en [`docs/arquitectura.md`](docs/arquitectura.md) — copia versionada de
+`~/HubEdicion/docs/arquitectura.md`.
 
 ## Datos de referencia (Cloudflare)
 - Account ID: `3e5d3a65aa4f2a3819cdaacc1c92c6d9` · KV namespace "hub" ID: `c183c5e72d5e48a19d07fd6831ececeb`

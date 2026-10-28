@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Puente local para el Hub de Edición.
+Puente local del Hub de Edición — y núcleo compartido con la nube (cloud/publish.py
+importa este mismo archivo; cloud/server.py es una copia idéntica).
 - Sirve el dashboard (index.html) en http://localhost:PUERTO
-- Expone /api/data que consulta Notion EN VIVO y devuelve el JSON del dashboard
+- GET  /api/data     → payload completo del dashboard (Notion en vivo, caché 3 min)
+- GET  /api/summary  → resumen compacto para los widgets
+- POST /api/session  → registra un sprint de enfoque como sesión en Notion
+- GET  /api/health   → {ok, hasToken}
 - El token de Notion NUNCA vive en el HTML: se lee de la variable de entorno
   NOTION_TOKEN o del archivo ~/.notion-dashboard-token
 
 Solo usa la librería estándar de Python 3 (no hay que instalar nada).
+Referencia técnica completa: docs/arquitectura.md
 
 Uso:
     python3 server.py            # arranca el servidor
@@ -32,8 +37,8 @@ FALLBACK_WEDDING_PAGES = [
 CACHE_TTL = 180  # segundos antes de refrescar EN SEGUNDO PLANO; el botón 🔄 fuerza
 CACHE_FILE = os.path.join(HERE, ".cache.json")
 _cache = {"at": 0, "data": None}
-_lock = threading.Lock()
-_refreshing = False
+_lock = threading.Lock()          # protege _cache
+_build_lock = threading.Lock()    # una sola extracción a la vez (cada una son ~200 peticiones)
 
 
 # ── Token ────────────────────────────────────────────────────────────────────
@@ -225,6 +230,11 @@ def p_number(props, name):
     v = props.get(name)
     return v.get("number") if v and v.get("type") == "number" else None
 
+def p_orden(props):
+    """Propiedad "Orden" (admite decimales: 4.1…4.4); sin valor va al final."""
+    o = p_number(props, "Orden")
+    return 99 if o is None else o
+
 def p_rich(props, *names):
     for name in names:
         v = props.get(name)
@@ -344,8 +354,9 @@ def build_wedding(page):
         "stages": [],
     }
     # Encontrar la sub-DB "Tracking de Edición" dentro de la página de la boda
+    blocks = children(page["id"])
     tracking_db = None
-    for blk in children(page["id"]):
+    for blk in blocks:
         if blk.get("type") == "child_database":
             t = blk["child_database"].get("title", "")
             if "tracking" in t.lower():
@@ -354,7 +365,7 @@ def build_wedding(page):
     if not tracking_db:
         # Bodas de SOLO correcciones / sesiones sueltas: un "Sesiones" directo bajo la
         # página (sin etapas). Capturamos sus sesiones como una etapa "Correcciones".
-        for blk in children(page["id"]):
+        for blk in blocks:
             if blk.get("type") != "child_database":
                 continue
             bid = blk["id"]; title = blk["child_database"].get("title", "")
@@ -383,7 +394,7 @@ def build_wedding(page):
             "etapa": s_etapa,
             "fase": p_select(sp, "Fase"),
             "estado": norm_estado(p_select(sp, "Estado")),
-            "orden": p_number(sp, "Orden") if p_number(sp, "Orden") is not None else 99,
+            "orden": p_orden(sp),
             "start": s_start, "end": s_end,
             # "Cambios"/"Correcciones" se trackean pero NO cuentan como tiempo de edición
             # (dependen de terceros: Claudio/Romina). OJO: "correcciones" plural ≠
@@ -415,7 +426,7 @@ def build_wedding(page):
                         "id": sc["id"],
                         "escena": p_title(scp, "Escena") or title_any(scp),
                         "estado": norm_estado(p_select(scp, "Estado")),
-                        "orden": p_number(scp, "Orden") if p_number(scp, "Orden") is not None else 99,
+                        "orden": p_orden(scp),
                         "cancion": p_rich(scp, "Cancion", "Canción"),
                         "dia": day, "start": c_start, "end": c_end,
                     })
@@ -624,12 +635,12 @@ def discover_wedding_pages():
 # ── Archivo histórico de bodas entregadas ────────────────────────────────────
 # El tablero solo conserva los datos COMPLETOS (etapas/escenas/sesiones) de bodas
 # activas o recién cerradas (RECENT_DONE_DAYS) — así el selector no se vuelve una
-# lista infinita y la extracción de Notion no crece sin fin. Para que la pestaña
-# Evolución NO pierda la historia cuando una boda sale del tablero, cada extracción
-# guarda/actualiza sus stats compactas (horas, escenas, días, precio, rondas) en un
-# archivo persistente que viaja en el payload como "archive". Solo se archivan
-# bodas terminadas CON horas de edición trackeadas: las que no tienen sesiones no
-# son referencia válida para medir evolución.
+# lista infinita y la extracción de Notion no crece sin fin. Para no perder la historia
+# cuando una boda sale del tablero, cada extracción guarda/actualiza sus stats compactas
+# (horas, escenas, días, precio, rondas) + su "ghost" en un archivo persistente que viaja
+# en el payload como "archive". Lo usan la Carrera (fantasma), el Archivo de Proyectos y
+# el heatmap. Solo se archivan bodas terminadas CON horas de edición trackeadas: las que
+# no tienen sesiones no son referencia válida.
 ARCHIVE_FILE = os.path.join(HERE, ".archive.json")
 
 
@@ -774,26 +785,32 @@ def build_data(prev_archive=None):
 
 
 # ── Resumen compacto para widgets (iPhone Scriptable / Mac SwiftBar) ──────────
-# Colores de marca por etapa (mismo mapa que el dashboard, index.html).
-STAGE_COLORS = {
-    "Importación y Organización": "#5b9dff",
-    "Separación por Escenas": "#c084fc",
-    "Limpieza": "#34d399",
-    "Sincronización": "#fbbf24",
-    "Musicalización": "#fb7185",
-    "Edición Musical": "#c8f24e",
-    "Corrección de Color y Finalización": "#fb923c",
-    "Selección de Material (HL/SF)": "#a78bfa",
-    "Selección Musical (HL/SF)": "#22d3ee",
-    "Montaje (HL/SF)": "#f472b6",
-}
-_PALETTE = ["#c8f24e", "#5b9dff", "#fb7185", "#fbbf24", "#34d399", "#c084fc", "#22d3ee", "#fb923c"]
+# Color por FASE, igual que el dashboard (tokens --f-prep, --f-teas, --sun-block,
+# --violeta, --naranja de index.html) — antes era un mapa por nombre de etapa de la
+# plantilla vieja y las etapas nuevas caían en colores al azar.
+PHASE_COLORS = {"prep": "#5aa3ec", "teas": "#40d9c1", "doc": "#d9ed2f", "hl": "#685bc7", "cam": "#de6b45"}
+_PREP_ROLES = ("importacion", "setup", "separacion", "escenas", "limpieza", "sincroniz")
 
-def stage_color(etapa, i=0):
-    return STAGE_COLORS.get(etapa) or _PALETTE[(i or 0) % len(_PALETTE)]
+def phase_of(st):
+    """Fase de una etapa: misma regla que phaseOf() de deriveModel (plantilla nueva por
+    la propiedad Fase; en la vieja, "Documental" incluía la preparación)."""
+    if st.get("isCorrections"):
+        return "cam"
+    f, n = _sinacento(st.get("fase")), _sinacento(st.get("etapa"))
+    if "teas" in f or "(teas" in n:
+        return "teas"
+    if "hl" in f or "sf" in f or "(hl" in n or "(sf" in n or "hl/sf" in n:
+        return "hl"
+    if "prep" in f or any(n.startswith(r) or (" " + r) in n for r in _PREP_ROLES):
+        return "prep"
+    return "doc"
+
+def stage_color(st):
+    return PHASE_COLORS[phase_of(st)]
 
 def stage_prog(st):
-    """Avance 0..1 de una etapa (mismo cálculo que index.html)."""
+    """Avance 0..1 de UNA etapa (escenas hechas; en curso cuenta media). Para la
+    barra de la etapa activa del widget."""
     scenes = st.get("scenes") or []
     if scenes:
         d = sum(1 for x in scenes if x.get("estado") == "done")
@@ -803,10 +820,12 @@ def stage_prog(st):
     return 1.0 if e == "done" else 0.5 if e == "live" else 0.0
 
 def wed_prog(w):
-    stages = w.get("stages") or []
-    if not stages:
+    """Avance 0..1 de una boda = etapas de edición hechas / etapas de edición — el mismo
+    "Avance %" del dashboard (Cambios no cuenta)."""
+    work = [s for s in (w.get("stages") or []) if not s.get("isCorrections")]
+    if not work:
         return 0.0
-    return sum(stage_prog(s) for s in stages) / len(stages)
+    return sum(1 for s in work if s.get("estado") == "done") / len(work)
 
 def _js_dow(d):
     """Día de la semana al estilo JS getDay(): 0=Dom .. 6=Sáb."""
@@ -881,22 +900,21 @@ def build_summary(data):
         live_w = weddings[0]
     if live_w:
         stages = live_w.get("stages", [])
-        live_stage = next((s for s in stages if s.get("estado") == "live"), None)
+        live_stage = next((s for s in stages if s.get("estado") == "live" and not s.get("isCorrections")), None)
         if live_stage:
-            idx = stages.index(live_stage)
             live_scene = next((sc for sc in (live_stage.get("scenes") or []) if sc.get("estado") == "live"), None)
             active = {
                 "wedding": live_w.get("name"),
                 "icon": live_w.get("icon"),
                 "stage": live_stage.get("etapa"),
-                "stageColor": stage_color(live_stage.get("etapa"), idx),
+                "stageColor": stage_color(live_stage),
                 "stageProgress": round(stage_prog(live_stage), 3),
                 "stageHours": live_stage.get("hours"),
                 "scene": (live_scene or {}).get("escena"),
             }
         else:
             active = {"wedding": live_w.get("name"), "icon": live_w.get("icon"),
-                      "stage": None, "stageColor": _PALETTE[0], "stageProgress": None}
+                      "stage": None, "stageColor": PHASE_COLORS["doc"], "stageProgress": None}
 
     weds = []
     for w in weddings:
@@ -943,9 +961,15 @@ def _save_disk_cache():
     except Exception:
         pass
 
-def _do_build():
-    """Reconstruye los datos y actualiza caché (memoria + disco)."""
-    global _refreshing
+def _do_build(wait=False):
+    """Reconstruye los datos y actualiza caché (memoria + disco). Si ya hay una
+    extracción en curso no lanza otra: con wait=True espera a que termine y usa su
+    resultado (botón ↻, registro de sesiones); sin wait, simplemente no hace nada."""
+    if not _build_lock.acquire(blocking=False):
+        if wait:
+            with _build_lock:
+                pass
+        return
     try:
         data = build_data()
         with _lock:
@@ -955,23 +979,27 @@ def _do_build():
     except Exception as e:
         sys.stderr.write("[refresh] error: %s\n" % e)
     finally:
-        _refreshing = False
+        _build_lock.release()
+
+
+def _refresh_in_background():
+    if not _build_lock.locked():
+        threading.Thread(target=_do_build, daemon=True).start()
+
 
 def get_data(fresh=False):
     """Stale-while-revalidate: responde YA con lo cacheado y refresca en 2º plano."""
-    global _refreshing
-    if fresh:                       # botón 🔄 Actualizar -> síncrono
-        _do_build()
+    if fresh:                       # botón ↻ Actualizar → síncrono
+        _do_build(wait=True)
         return _cache["data"]
     with _lock:
         cached = _cache["data"]
         age = time.time() - _cache["at"]
-    if cached is None:              # primera vez sin caché -> construir ya
-        _do_build()
+    if cached is None:              # primera vez sin caché → construir ya
+        _do_build(wait=True)
         return _cache["data"]
-    if age > CACHE_TTL and not _refreshing:   # caché viejo -> refrescar sin bloquear
-        _refreshing = True
-        threading.Thread(target=_do_build, daemon=True).start()
+    if age > CACHE_TTL:             # caché viejo → refrescar sin bloquear
+        _refresh_in_background()
     return cached                   # respuesta instantánea
 
 
@@ -991,8 +1019,22 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _send_payload(self, build):
+        """Responde JSON con build() o {"error": ...} legible (siempre 200: el front
+        lo distingue por la clave "error")."""
+        try:
+            self._send(200, json.dumps(build(), ensure_ascii=False))
+        except RuntimeError as e:
+            msg = str(e)
+            if msg == "NO_TOKEN":
+                msg = ("Falta el token de Notion. Crea una integración en "
+                       "notion.so/my-integrations, comparte tu workspace 'Trabajo' con ella "
+                       "y guarda el token en ~/.notion-dashboard-token")
+            self._send(200, json.dumps({"error": msg}, ensure_ascii=False))
+        except Exception as e:
+            self._send(200, json.dumps({"error": str(e)}, ensure_ascii=False))
+
     def do_POST(self):
-        global _refreshing
         path = self.path.split("?")[0]
         if path != "/api/session":
             self._send(404, json.dumps({"ok": False, "error": "No existe"}))
@@ -1013,7 +1055,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         # solo DBs de Sesiones / etapas / escenas del tablero (no escribe donde le pidan)
         targets = session_targets(_cache.get("data"))
         if not any(t["stage"] for t in targets.values()):
-            _do_build()          # caché de antes del sprint (sin ids de etapa) → reconstruir una vez
+            _do_build(wait=True)  # caché de antes del sprint (sin ids de etapa) → reconstruir una vez
             targets = session_targets(_cache.get("data"))
         terr = target_error(item, targets)
         if terr:
@@ -1028,9 +1070,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if res.get("warn"):
             out["warn"] = res["warn"]
         _session_done[item["id"]] = out
-        if not _refreshing:      # que el tablero la muestre en cuanto termine de reconstruirse
-            _refreshing = True
-            threading.Thread(target=_do_build, daemon=True).start()
+        _refresh_in_background()   # que el tablero la muestre en cuanto termine de reconstruirse
         self._send(200, json.dumps(out))
 
     def do_GET(self):
@@ -1045,31 +1085,12 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == "/api/health":
             self._send(200, json.dumps({"ok": True, "hasToken": bool(get_token())}))
             return
+        fresh = "fresh=1" in self.path
         if path == "/api/data":
-            fresh = "fresh=1" in self.path
-            try:
-                self._send(200, json.dumps(get_data(fresh=fresh), ensure_ascii=False))
-            except RuntimeError as e:
-                msg = str(e)
-                if msg == "NO_TOKEN":
-                    msg = ("Falta el token de Notion. Crea una integración en "
-                           "notion.so/my-integrations, comparte tu workspace 'Trabajo' con ella "
-                           "y guarda el token en ~/.notion-dashboard-token")
-                self._send(200, json.dumps({"error": msg}, ensure_ascii=False))
-            except Exception as e:
-                self._send(200, json.dumps({"error": str(e)}, ensure_ascii=False))
+            self._send_payload(lambda: get_data(fresh=fresh))
             return
         if path == "/api/summary":
-            fresh = "fresh=1" in self.path
-            try:
-                self._send(200, json.dumps(build_summary(get_data(fresh=fresh)), ensure_ascii=False))
-            except RuntimeError as e:
-                msg = str(e)
-                if msg == "NO_TOKEN":
-                    msg = "Falta el token de Notion (~/.notion-dashboard-token)."
-                self._send(200, json.dumps({"error": msg}, ensure_ascii=False))
-            except Exception as e:
-                self._send(200, json.dumps({"error": str(e)}, ensure_ascii=False))
+            self._send_payload(lambda: build_summary(get_data(fresh=fresh)))
             return
         # Estáticos de la PWA (lista blanca, sin acceso libre al disco)
         statics = {
@@ -1126,7 +1147,7 @@ def main():
     print("(Ctrl+C para detener)")
     _load_disk_cache()                       # carga instantánea de la última extracción
     if get_token():                          # precalienta en 2º plano para la 1ª carga
-        threading.Thread(target=_do_build, daemon=True).start()
+        _refresh_in_background()
     ThreadingServer(("0.0.0.0", PORT), Handler).serve_forever()
 
 
