@@ -82,7 +82,6 @@ svg text{user-select:none}
 .refreshbtn.spin .rfi{animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .rec.snap i{background:var(--naranja)}
-.rec.err i{background:#e5484d}
 :root[data-theme="light"] .thm .i-luna-u{display:none}
 :root:not([data-theme="light"]) .thm .i-sol-u{display:none}
 
@@ -882,8 +881,11 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
   const dowMon0 = dateStr => (ymd(dateStr).getDay()+6)%7;      // 0=Lun .. 6=Dom
   const metaH = dateStr => { const dw=ymd(dateStr).getDay(); return dw===0?0:(dw===6?2:5); }; // Dom 0 · Sáb 2 · L-V 5
   const daysBetween = (a,b) => Math.round((ymd(b)-ymd(a))/86400000);
+  const isoOf = d => d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); // fecha LOCAL
+  const scenesOf = w => (w.stages||[]).reduce((a,s)=>a+((s.scenes||[]).length),0);
+  const PRICE_DEFAULT = 13000;                     // si una boda no tiene "Total" en Notion
+  const priceOf = w => w.price || PRICE_DEFAULT;
 
-  const MN=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
   const DN=['lun','mar','mié','jue','vie','sáb','dom'];
   const fmtDayLbl = dateStr => { const d=ymd(dateStr); return `${DN[dowMon0(dateStr)].charAt(0).toUpperCase()+DN[dowMon0(dateStr)].slice(1,3)} ${String(d.getDate()).padStart(2,'0')}`; };
 
@@ -891,7 +893,7 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
   function deriveModel(P){
     const weddings = P.weddings || [];
     const archive  = P.archive  || [];
-    const today    = P.today || new Date().toISOString().slice(0,10);
+    const today    = P.today || isoOf(new Date());   // local (toISOString daba UTC: de noche, mañana)
 
     // bodas que "miden" (tienen horas de edición efectivas trackeadas)
     const measured = weddings.filter(w => effH(w) > 0);
@@ -965,13 +967,12 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
     const base=ymd(today);
     for(let i=6;i>=0;i--){
       const d=new Date(base); d.setDate(base.getDate()-i);
-      const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      const iso=isoOf(d);
       dia7.push([fmtDayLbl(iso), round1((dayTot[iso]||0)/60), metaH(iso), round1((dayCorr[iso]||0)/60)]);
     }
     // racha de meta diaria (salta domingos)
     let streak=0; { let d=new Date(base);
       const met=iso=>((dayTot[iso]||0)/60) >= metaH(iso);
-      const isoOf=x=>x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');
       if(!met(isoOf(d))) d.setDate(d.getDate()-1);
       for(let i=0;i<160;i++){ const iso=isoOf(d); if(d.getDay()!==0){ if(metaH(iso)===0||met(iso))streak+= (metaH(iso)>0?1:0); else break; } d.setDate(d.getDate()-1); }
     }
@@ -982,22 +983,19 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
     const thisWeekH = round1(dia7.reduce((a,d)=>a+d[1],0));
     const DOWNAMES=['lunes','martes','miércoles','jueves','viernes','sábado','domingo'];
     const bestDowName = DOWNAMES[bestDowIdx];
-    // etapa activa (boda en curso)
-    // varias etapas pueden ir en paralelo (p.ej. Montaje (TEAS) + Música (HL/SF))
-    let activeStage=null, activeWed=null, activeStages=[];
-    if (liveW0()){ const lw=liveW0(); activeWed=(lw.name||'').trim();
-      activeStages=(lw.stages||[]).filter(s=>s.estado==='live' && !isCorr(s)).map(s=>shortName(s.etapa));
-      activeStage=activeStages[0]||null; }
-    function liveW0(){ return weddings.find(hasLive)||null; }
+    // boda en curso para HOY (cualquiera del tablero, mida o no aún) y sus etapas activas:
+    // varias pueden ir en paralelo (p.ej. Montaje (TEAS) + Música (HL/SF))
+    const liveAny = weddings.find(hasLive) || null;
+    const activeWed = liveAny ? (liveAny.name||'').trim() : null;
+    const activeStages = liveAny ? (liveAny.stages||[]).filter(s=>s.estado==='live' && !isCorr(s)).map(s=>shortName(s.etapa)) : [];
 
     // ---- PROYECTOS: cada boda medida como selector ----
-    const colFor = Object.fromEntries(PHASE_ORDER.map(k=>[k,PHASES[k].col]));
     function projModel(w){
       const stages=(w.stages||[]);
       const work  = stages.filter(s=>!isCorr(s));          // Cambios no cuenta para el avance
       const total = round1(totH(w));
       const eff   = round1(effH(w));
-      const price = w.price || 13000;
+      const price = priceOf(w);
       const nStages = work.length;
       const nDone   = work.filter(s=>s.estado==='done').length;
       const w_pct   = nStages ? Math.round(nDone/nStages*100) : 0;
@@ -1030,7 +1028,7 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
         key: slug(w.name), nm:(w.name||'').trim(), ic:w.icon||'⛪',
         total, eff, price, prog:`${nDone}/${nStages} etapas`, w:w_pct, chip,
         extra: fmt1(total)+' h', pend, etapas, checklist, fases, teaser, days,
-        scenes: stages.reduce((a,s)=>a+((s.scenes||[]).length),0)
+        scenes: scenesOf(w)
       };
     }
 
@@ -1149,25 +1147,26 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
     // ---- DINERO: tarifa de la última boda terminada (refCur) vs la anterior (refGhost) ----
     let money=null;
     if (refCur){
-      const eff=round1(effH(refCur)), price=refCur.price||13000;
-      const scenes=(refCur.stages||[]).reduce((a,s)=>a+((s.scenes||[]).length),0)||1;
+      const eff=round1(effH(refCur)), price=priceOf(refCur);
+      const scenes=scenesOf(refCur)||1;
       const stagesW=(refCur.stages||[]).filter(s=>(s.hours||0)>0 && !isCorr(s)).length||1;
       // $/h usa TODAS las horas efectivas (el precio incluye el teaser); h/escena, sin teaser
       money={ perH:Math.round(price/eff), perScene:Math.round(price/scenes), perStage:Math.round(price/stagesW),
               hPerScene:round2(effHp(refCur,SCENE_P)/scenes), eff, price, scenes, stages:stagesW, name:(refCur.name||'').trim() };
       if (refGhost){
         const geff=round1(effH(refGhost));
-        money.prevH=geff?Math.round((refGhost.price||13000)/geff):null;
+        const gPrice=priceOf(refGhost);
+        money.prevH=geff?Math.round(gPrice/geff):null;
         money.prevName=(refGhost.name||'').trim();
         money.jumpPct = money.prevH? Math.round((money.perH-money.prevH)/money.prevH*100) : null;
-        const gScenes=(refGhost.stages||[]).reduce((a,s)=>a+((s.scenes||[]).length),0)||1;
-        money.dScenePct = Math.round((price/scenes - (refGhost.price||13000)/gScenes)/((refGhost.price||13000)/gScenes)*100);
+        const gScenes=scenesOf(refGhost)||1;
+        money.dScenePct = Math.round((price/scenes - gPrice/gScenes)/(gPrice/gScenes)*100);
         money.dHpe = money.jumpPct!=null && hero && hero.dHpe!=null ? hero.dHpe : null;
       }
     }
 
-    // ---- SPRINT: etapas sin terminar con DB de Sesiones — 🔵 en curso (la última trabajada
-    // primero) y ⚪️ por empezar (en el orden de Notion). Las 🟢 no se ofrecen. ----
+    // ---- SPRINT: etapas sin terminar con DB de Sesiones — en curso (la última trabajada
+    // primero) y por empezar (en el orden de Notion). Las terminadas no se ofrecen. ----
     const sprintTargets=[];
     for (const w of weddings) for (const s of (w.stages||[])){
       if (s.estado==='done' || !s.sessionDb) continue;
@@ -1187,26 +1186,25 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
       NSES, HODTOT, WEEKTOT,
       hod, goldStart:gStart, goldPct, week, bestDowIdx,
       heat, bestDay, bestH:round1(bestH), firstDay, spanDays, activeDays, streak,
-      bestDowName, todayMin, todaySes, thisWeekH, activeStage, activeStages, activeWed, metaTodayH: metaH(today),
+      bestDowName, todayMin, todaySes, thisWeekH, activeStages, activeWed, metaTodayH: metaH(today),
       sprints, medMin, over2h,
       dia7,
       projects, projOrder, archOrder, currentKey,
-      liveName: liveW?(liveW.name||'').trim():null,
       race, hero, anat, money,
-      colFor, PHASES, PHASE_ORDER
+      PHASES, PHASE_ORDER
     };
 
     // horas por escena: sin el teaser (no tiene escenas; inflaría la cifra de las bodas que lo llevan)
-    function hpe(w){ const sc=(w.stages||[]).reduce((a,s)=>a+((s.scenes||[]).length),0); return sc? effHp(w,SCENE_P)/sc : null; }
+    function hpe(w){ const sc=scenesOf(w); return sc? effHp(w,SCENE_P)/sc : null; }
   }
 
-  // helpers expuestos
+  // helpers
   function slug(s){ return (s||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
-  const fmt1 = n => (Math.round(n*10)/10).toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:1});
+  // decimal con coma, igual que fmt() de la capa de render (antes salía "57.6 h" en Proyectos)
+  const fmt1 = n => (Math.round(n*10)/10).toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:1}).replace('.',',');
   const round2 = n => Math.round(n*100)/100;
 
   global.deriveModel = deriveModel;
-  global.__deriveHelpers = { slug };
 })(typeof window!=='undefined'?window:globalThis);
 
 /* ================= Sala de Corte — capa de render (datos vivos) ================= */
@@ -1234,19 +1232,21 @@ const inView = el => !!(el && el.closest('.rv.in'));
 const MQM=matchMedia('(max-width: 640px)');
 document.addEventListener('touchstart',function(){},{passive:true});
 
-let M=null, firstRender=true, raceDrawn=false;
+let M=null, raceDrawn=false;
 // la Carrera se rearma al salir de pantalla para volver a dibujarse al regresar
 window.__resetRace=()=>{ raceDrawn=false; document.querySelectorAll('#race path.draw').forEach(p=>{
   p.getAnimations().forEach(a=>a.cancel()); p.style.strokeDasharray='1'; p.style.strokeDashoffset='1'; }); };
-const rebuilds=[]; let lastMob=MQM.matches;
-function regRebuild(fn){ if(!rebuilds.includes(fn))rebuilds.push(fn); }
+// gráficas que cambian de geometría al cruzar 640 px: una por nombre (cada render reemplaza
+// la suya; antes se acumulaba una función nueva por render y al cruzar se corrían todas)
+const rebuilds=new Map(); let lastMob=MQM.matches;
+function regRebuild(key,fn){ rebuilds.set(key,fn); }
 const flipAll=()=>{ if(MQM.matches!==lastMob){ lastMob=MQM.matches; rebuilds.forEach(f=>f(lastMob)); } };
 if(MQM.addEventListener)MQM.addEventListener('change',flipAll); else MQM.addListener(flipAll);
 addEventListener('resize',flipAll);
 
 /* ---- tooltip ---- */
 const tip=document.getElementById('tip');
-function showTip(html,x,y){ tip.innerHTML=html; tip.classList.add('on');
+function showTip(html,x,y){ if(tip._h!==html){ tip.innerHTML=html; tip._h=html; } tip.classList.add('on');
   const w=tip.offsetWidth,h=tip.offsetHeight; let px=x+14,py=y-h-10;
   if(px+w>innerWidth-8)px=x-w-14; if(py<8)py=y+16; tip.style.left=px+'px'; tip.style.top=py+'px'; }
 function hideTip(){ tip.classList.remove('on'); }
@@ -1259,6 +1259,7 @@ function liveBar(svg,rect,bar){ rect.addEventListener('pointerenter',()=>{svg.cl
 const MESES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
 const DIAS=['dom','lun','mar','mié','jue','vie','sáb'];
 function ymd(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);}
+const isoDay=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 function fmtFecha(s){const d=ymd(s);return `${d.getDate()} ${MESES[d.getMonth()]}`;}
 function fmtFechaFull(s){const d=ymd(s);return `${DIAS[d.getDay()].toUpperCase()} · ${String(d.getDate()).padStart(2,'0')} ${MESES[d.getMonth()].toUpperCase()} ${d.getFullYear()}`;}
 
@@ -1362,7 +1363,7 @@ function renderRace(M){
       [pGhost,pMain].forEach((p,i)=>{ if(!p)return; p.style.strokeDasharray='1';p.style.strokeDashoffset='1';
         p.animate([{strokeDashoffset:1},{strokeDashoffset:0}],{duration:1400,delay:150+i*250,easing:'cubic-bezier(.3,.6,.2,1)',fill:'forwards'}); }); };
   }
-  regRebuild(build); build(MQM.matches);
+  regRebuild('race',build); build(MQM.matches);
   leg.innerHTML=`<span class="k"><i style="background:var(--sun)"></i>${R.curName} · última edición</span>`+
     (R.hasGhost?`<span class="k"><i style="background:var(--ghost)"></i>El fantasma · ${R.ghostName}</span>`:'')+
     `<span class="k"><i class="dot" style="background:var(--naranja)"></i>playhead · fin de edición</span>`;
@@ -1439,7 +1440,7 @@ function renderDia7(M){
       hs.style.pointerEvents='all'; liveBar(svg,hs,bar);
     });
   }
-  regRebuild(build); build(MQM.matches);
+  regRebuild('dia7',build); build(MQM.matches);
 }
 
 /* ================= RITMO ================= */
@@ -1497,7 +1498,7 @@ function renderHeat(M){
   let html='',mhtml='';
   for(let wk=0;wk<weeks;wk++){ let cells='',monthLabel='';
     for(let dw=0;dw<7;dw++){ const d=new Date(start);d.setDate(start.getDate()+wk*7+dw);
-      const iso=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      const iso=isoDay(d);
       const h=M.heat[iso]||0,s=step(h); if(d.getDate()<=7&&dw===0)monthLabel=MNU[d.getMonth()];
       const future=d>end, pre=iso<firstIso; const cls=(s?'s'+s:'')+(iso===M.today?' today':'');
       const lbl=`<b>${DIAS[d.getDay()]} ${d.getDate()} ${MNU[d.getMonth()].toLowerCase()}</b><br>${h?fmt(h)+' h trabajadas':(future?'—':pre?'aún no medías':'sin sesiones')}`;
@@ -1511,7 +1512,7 @@ function renderHeat(M){
 
 /* ================= ADN ================= */
 function renderAdn(M){
-  document.getElementById('sprintNote').innerHTML=`Mediana <b>${M.medMin} min</b> · solo ${M.over2h} ${M.over2h===1?'sesión pasó':'sesiones pasaron'} de 2 h. Por eso el sprint propone ${M.medMin}:00.`;
+  document.getElementById('sprintNote').innerHTML=`Mediana <b>${M.medMin} min</b> · solo ${M.over2h} ${M.over2h===1?'sesión pasó':'sesiones pasaron'} de 2 h. Es la duración del esquema <b>Mediana</b> del sprint.`;
   renderSprints(M); renderAnat(M);
   const anatCard=document.getElementById('anatCard');
   if(M.anat&&M.anat.length&&M.race&&M.race.hasGhost){
@@ -1607,8 +1608,9 @@ function renderMesa(M){
     cintaU.textContent=`${fmt(p.total)} H · ANCHO = HORAS REALES`;
     fasetot.innerHTML=p.fases.map(([l,h,pct,c])=>`<div class="f"><div class="v"><i style="background:${c}"></i>${h!=null?fmt(h)+' h':'0 h'}</div><div class="l">${l}${pct!=null?' · '+pct+' %':''}</div></div>`).join('');
     fitLabels(); }
+  // nombres de clip que no caben se ocultan (el tooltip los sigue mostrando)
   function fitLabels(){ tapeBox.querySelectorAll('.clip .cn').forEach(n=>{n.style.display='';if(n.scrollWidth+12>n.parentElement.clientWidth)n.style.display='none';}); }
-  if(!renderMesa._fit){ renderMesa._fit=true; addEventListener('resize',()=>{ const s=document.querySelector('#tape'); if(s)s.querySelectorAll('.clip .cn').forEach(n=>{n.style.display='';if(n.scrollWidth+12>n.parentElement.clientWidth)n.style.display='none';}); }); }
+  if(!renderMesa._fit){ renderMesa._fit=true; addEventListener('resize',fitLabels); }
 
   function select(key,anim){ const p=M.projects[key]; if(!p)return;
     if(anim && key===renderMesa._cur) return;            // tocar la misma boda no re-anima
@@ -1674,10 +1676,10 @@ function renderTarifa(M){
 /* ================= renderAll ================= */
 function renderAll(model){
   M=model;
-  try{ renderChrome(M); renderHero(M); renderRace(M); renderHoy(M); renderDia7(M);
-       renderRitmo(M); renderAdn(M); renderMesa(M); renderTarifa(M); }
-  catch(e){ console.error('render', e); }
-  firstRender=false;
+  // cada sección aislada: si una falla (dato raro en Notion), las demás se pintan igual
+  for(const f of [renderChrome,renderHero,renderRace,renderHoy,renderDia7,renderRitmo,renderAdn,renderMesa,renderTarifa]){
+    try{ f(M); }catch(e){ console.error('render · '+f.name, e); }
+  }
 }
 
 /* ================= sprint de enfoque: esquemas, ciclos y registro en Notion =================
@@ -1946,12 +1948,20 @@ document.addEventListener('toggle',e=>{ const d=e.target;
 
 /* ================= boot: snapshot → fetch vivo ================= */
 function bootRender(payload,isLive){ try{ const model=deriveModel(payload); model.live=isLive; renderAll(model); }catch(e){ console.error('derive',e); } }
+// local (server.py) sirve /api/data; la nube (Cloudflare Pages) sirve /api/edicion desde KV.
+// Se prueba primero el del entorno en que corre la página; el otro queda de respaldo.
+const IS_CLOUD=/\.pages\.dev$/.test(location.hostname);
+let lastLoad=0, loading=false;
 async function loadLive(fresh){
+  if(loading) return false; loading=true;
   const btn=document.getElementById('refreshBtn'); if(btn)btn.classList.add('spin');
-  const endpoints = fresh ? ['/api/data?fresh=1','/api/edicion'] : ['/api/data','/api/edicion'];
+  const local=fresh?'/api/data?fresh=1':'/api/data';
+  const endpoints=IS_CLOUD?['/api/edicion',local]:[local,'/api/edicion'];
   let ok=false;
   for(const url of endpoints){ try{ const r=await fetch(url,{cache:'no-store'}); if(!r.ok)continue; const j=await r.json(); if(j&&j.error)continue; if(!j||!j.weddings)continue; bootRender(j,true); ok=true; break; }catch(e){} }
   if(btn)btn.classList.remove('spin');
+  if(ok) lastLoad=Date.now();
+  loading=false;
   return ok;
 }
 // 1) render instantáneo desde el snapshot embebido
@@ -1960,6 +1970,11 @@ bootRender(window.SNAPSHOT_DATA, false);
 loadLive(false);
 // 3) botón actualizar (fresh desde Notion)
 document.getElementById('refreshBtn').addEventListener('click',()=>loadLive(true));
+// 4) la PWA puede quedar abierta horas: al volver a ella (o cada 10 min a la vista) refresca
+//    si los datos tienen más de 5 min
+const STALE_MS=5*60e3;
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden && Date.now()-lastLoad>STALE_MS) loadLive(false); });
+setInterval(()=>{ if(!document.hidden && Date.now()-lastLoad>STALE_MS) loadLive(false); },10*60e3);
 
 </script>
 </body>
