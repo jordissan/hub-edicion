@@ -194,7 +194,36 @@ svg text{user-select:none}
 .focuscard{background:var(--sun-block);border:none;color:var(--ink);display:flex;flex-direction:column;justify-content:space-between;gap:16px}
 .focuscard .cl h3{color:var(--ink)}
 .focuscard .tcode{font-family:var(--f-m);font-weight:700;font-size:52px;letter-spacing:-.01em;line-height:1;
-  font-variant-numeric:tabular-nums;color:var(--ink)}
+  font-variant-numeric:tabular-nums;color:var(--ink);background:none;border:0;padding:0;text-align:left;cursor:pointer;
+  transition:opacity .2s ease}
+.focuscard.run .tcode,.focuscard.brk .tcode{cursor:default}
+.focuscard.brk .tcode{opacity:.6}
+.ftime{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.fadj{background:none;border:1px solid rgba(21,22,10,.22);border-radius:999px;color:rgba(21,22,10,.7);cursor:pointer;
+  font-family:var(--f-m);font-weight:700;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:6px 10px;margin-bottom:6px;
+  transition:border-color .15s ease,color .15s ease,transform .16s var(--ease)}
+.fadj:hover{border-color:rgba(21,22,10,.45);color:var(--ink)}
+.fadj:active{transform:scale(.95)}
+/* esquema: Mediana · Pomodoro · 52/17 · 90 · Libre · Propio */
+.fmode{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.fmode button{flex:none;border:1px solid rgba(21,22,10,.2);background:transparent;color:rgba(21,22,10,.62);cursor:pointer;
+  font-family:var(--f-m);font-weight:700;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:6px 9px;border-radius:999px;
+  transition:background-color .18s ease,color .18s ease,border-color .18s ease,transform .16s var(--ease)}
+.fmode button:hover{border-color:rgba(21,22,10,.45);color:var(--ink)}
+.fmode button:active{transform:scale(.95)}
+.fmode button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--sun-block)}
+/* ajustar: minutos de foco y de descanso */
+.fedit{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;font-size:12.5px;font-weight:600;color:rgba(21,22,10,.75)}
+.fedit label{display:flex;align-items:center;gap:6px}
+.fedit input{width:58px;font-family:var(--f-m);font-weight:700;font-size:15px;color:var(--ink);text-align:center;
+  background:rgba(21,22,10,.06);border:1px solid rgba(21,22,10,.22);border-radius:8px;padding:6px 4px;-moz-appearance:textfield}
+.fedit input::-webkit-inner-spin-button,.fedit input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.fedit input:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+.fedit .fok{background:var(--ink);color:var(--sun-block);border:0;border-radius:999px;cursor:pointer;
+  font-family:var(--f-m);font-weight:700;font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:7px 12px}
+.fpend{font-size:12px;line-height:1.45;color:rgba(21,22,10,.75);margin-top:8px;padding-top:8px;border-top:1px solid rgba(21,22,10,.15)}
+.flink{background:none;border:0;padding:0;color:var(--ink);font:inherit;font-weight:700;text-decoration:underline;
+  text-underline-offset:2px;cursor:pointer}
 .focuscard .why{font-size:12.5px;color:rgba(21,22,10,.62);line-height:1.45}
 .focuscard .fgo{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:var(--ink);color:var(--sun-block);
   border:none;border-radius:12px;padding:13px 0;font-family:var(--f-d);font-weight:800;font-size:14px;letter-spacing:.06em;
@@ -465,7 +494,7 @@ svg text{user-select:none}
   .wrap{padding:0 16px}
   .hero{margin-top:36px;gap:26px}
   .hero .herotbl{margin-top:-12px}
-  .fsel{font-size:16px}   /* iOS hace zoom al enfocar campos de menos de 16 px */
+  .fsel,.fedit input{font-size:16px}   /* iOS hace zoom al enfocar campos de menos de 16 px */
   .hero .eyebrow{margin-bottom:12px}
   .hero h1{font-size:clamp(54px,19.5vw,78px);line-height:.9;letter-spacing:-.035em}
   .hero .lede{max-width:none;margin-top:14px;font-size:14.5px}
@@ -610,9 +639,21 @@ svg text{user-select:none}
           </div>
         </div>
         <div class="flbl" id="fLbl" hidden></div>
+        <div class="fmode" id="fMode" role="group" aria-label="Esquema de trabajo"></div>
         <div class="why" id="focusWhy" style="margin-top:10px">—</div>
+        <div class="fpend" id="fPend" hidden></div>
       </div>
-      <div class="tcode" id="tcode">26:00</div>
+      <div>
+        <div class="ftime">
+          <button class="tcode" id="tcode" type="button" aria-label="Ajustar la duración">26:00</button>
+          <button class="fadj" id="fAdj" type="button">Ajustar</button>
+        </div>
+        <div class="fedit" id="fEdit" hidden>
+          <label>Foco <input id="fFoc" type="number" inputmode="numeric" min="1" max="240" aria-label="Minutos de foco"> min</label>
+          <label>Descanso <input id="fBrk" type="number" inputmode="numeric" min="0" max="60" aria-label="Minutos de descanso"> min</label>
+          <button type="button" class="fok" id="fOk">Listo</button>
+        </div>
+      </div>
       <div class="fact">
         <button id="focusBtn" class="fgo" type="button">▶&nbsp; INICIAR SPRINT</button>
         <button id="fDrop" class="fdrop" type="button" hidden>Descartar sin registrar</button>
@@ -1639,135 +1680,215 @@ function renderAll(model){
   firstRender=false;
 }
 
-/* ================= sprint de enfoque: cronómetro real + registro en Notion =================
-   Guarda la hora real de inicio (localStorage), así que sobrevive a bloquear el iPhone o
-   cerrar la PWA. Al terminar crea la sesión en la DB "Sesiones" de la etapa elegida
-   (POST /api/session: server.py en local, Pages Function en la nube). Si falla la red,
-   el registro queda pendiente en el dispositivo con botón de reintento. */
-let SPRINT_SECS=26*60;
+/* ================= sprint de enfoque: esquemas, ciclos y registro en Notion =================
+   - Esquemas: Mediana (tu sesión típica), Pomodoro (25/5, largo de 15 cada 4), 52/17, 90/20,
+     Libre (cronómetro sin meta) y Propio (tocas el tiempo y eliges foco/descanso).
+   - Cada bloque de FOCO se registra en Notion al terminarlo (hora real, duración redondeada al
+     minuto); luego corre el DESCANSO (no se registra) y se ofrece el siguiente bloque.
+   - Todo vive en localStorage con horas reales: sobrevive a bloquear el iPhone o cerrar la PWA.
+   - POST /api/session: server.py en local, Pages Function en la nube. Si falla, el registro
+     queda pendiente en el dispositivo (reintentar / descartar); nunca se pierde. */
 const Sprint=(function(){
   const $=id=>document.getElementById(id);
-  const card=$('focus'), btn=$('focusBtn'), drop=$('fDrop'), code=$('tcode'), why=$('focusWhy'),
-        pick=$('fPick'), selT=$('fTarget'), selE=$('fScene'), seg=$('fTipo'), lbl=$('fLbl'), state=$('fState');
-  const LS='scSprint', LSP='scSprintPend', LSD='scSprintDest';
+  const card=$('focus'), btn=$('focusBtn'), drop=$('fDrop'), code=$('tcode'), why=$('focusWhy'), adj=$('fAdj'),
+        pick=$('fPick'), selT=$('fTarget'), selE=$('fScene'), seg=$('fTipo'), lbl=$('fLbl'), state=$('fState'),
+        modeBox=$('fMode'), edit=$('fEdit'), inF=$('fFoc'), inB=$('fBrk'), ok=$('fOk'), pendBox=$('fPend');
+  const LS='scSprint', LSP='scSprintPend', LSD='scSprintDest', LSM='scSprintMode', LSB='scSprintBrk', LSC='scSprintCyc';
   const load=k=>{ try{ return JSON.parse(localStorage.getItem(k)||'null'); }catch(e){ return null; } };
   const save=(k,v)=>{ try{ v==null?localStorage.removeItem(k):localStorage.setItem(k,JSON.stringify(v)); }catch(e){} };
-  let targets=[], med=26, tipo='Edición', run=load(LS), tick=null, busy=false, note='';
+  const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
   const mmss=x=>{ x=Math.abs(Math.round(x)); return String(Math.floor(x/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0'); };
-  // fecha local con zona horaria, redondeada al minuto (como el registro manual)
+  const hhmm=ms=>new Date(ms).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false});
+  // fecha local con zona horaria (Notion trabaja en minutos)
   const isoLocal=ms=>{ const d=new Date(Math.round(ms/60000)*60000), p=n=>String(n).padStart(2,'0'), off=-d.getTimezoneOffset(), a=Math.abs(off);
     return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:00${off>=0?'+':'-'}${p(Math.floor(a/60))}:${p(a%60)}`; };
-  const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+  const BASE_TITLE=document.title;
+
+  let targets=[], med=26, tipo='Edición', run=load(LS), tick=null, busy=false, note='', editing=false;
+  let mode=load(LSM)||{k:'med', custom:{focus:30, brk:5}};
+  let cyc=load(LSC)||{n:1, at:0};
+  if(Date.now()-(cyc.at||0)>3*3600e3 && !run && !load(LSB)) cyc={n:1, at:0};   // tras 3 h sin bloques, ciclo nuevo
+
+  // ---- esquemas ----
+  const SCHEMES={
+    med:   {nm:'Mediana',  f:()=>med, b:0},
+    pomo:  {nm:'Pomodoro', f:()=>25,  b:5,  long:15, every:4},
+    s5217: {nm:'52/17',    f:()=>52,  b:17},
+    deep:  {nm:'90',       f:()=>90,  b:20},
+    libre: {nm:'Libre',    f:()=>0,   b:0},
+    custom:{nm:'Propio',   f:()=>mode.custom.focus, b:null},
+  };
+  const sch=()=>{ const x=SCHEMES[mode.k]||SCHEMES.med; return {...x, k:mode.k, focus:x.f(), brk:x.b==null?mode.custom.brk:x.b}; };
+  function describe(x){
+    if(x.k==='libre') return 'Cronómetro <b>sin meta</b>: corre hasta que lo termines.';
+    const foc=x.k==='med'?`Tu sesión mediana: <b>${x.focus} min</b>`:`<b>${x.focus} min</b> de foco`;
+    if(!x.brk) return foc+', sin descanso fijo.';
+    return `${foc} y <b>${x.brk}</b> de descanso`+(x.every?`; cada ${x.every} bloques, uno de <b>${x.long}</b>.`:'.');
+  }
+  function paintModes(){
+    modeBox.innerHTML=Object.entries(SCHEMES).map(([k,v])=>`<button type="button" data-k="${k}" aria-pressed="${mode.k===k}">${v.nm}</button>`).join('');
+  }
+  function setMode(k){ mode.k=k; save(LSM,mode); note=''; if(!run&&!load(LSB)){ cyc={n:1, at:0}; save(LSC,cyc); } paintModes(); paint(); }
+
+  // ---- destino: etapa · escena · tipo (estados como palabras, agrupados) ----
   const cur=()=>targets.find(t=>t.db===selT.value)||null;
   const destLabel=d=>[d.etapa, d.escenaNm].filter(Boolean).join(' · ');
-
-  const DOT={live:'🔵',wait:'⚪️',done:'🟢'};
-  // escena propuesta: la que recordabas o la de tu última sesión si NO está terminada;
-  // si no, la primera 🔵 en curso; si no, la siguiente ⚪️ por empezar (orden de Notion)
   function fillScenes(){
     const t=cur(); if(!t){ selE.hidden=true; return; }
     const open=id=>t.scenes.some(sc=>sc.id===id && sc.estado!=='done');
     const remembered=(load(LSD)||{}).escena;
-    selE.innerHTML=`<option value="">Sin escena</option>`+t.scenes.map(sc=>`<option value="${sc.id}">${DOT[sc.estado]||'⚪️'} ${esc(sc.nm)}</option>`).join('');
+    const grp=(lab,arr)=>arr.length?`<optgroup label="${lab}">${arr.map(sc=>`<option value="${sc.id}">${esc(sc.nm)}</option>`).join('')}</optgroup>`:'';
+    selE.innerHTML=`<option value="">Sin escena</option>`
+      +grp('En curso',t.scenes.filter(sc=>sc.estado==='live'))
+      +grp('Por hacer',t.scenes.filter(sc=>sc.estado!=='live'&&sc.estado!=='done'))
+      +grp('Terminadas',t.scenes.filter(sc=>sc.estado==='done'));
+    // propuesta: la recordada o la de tu última sesión si no está terminada; si no, la primera en curso; si no, la siguiente por hacer
     const want=[remembered,t.lastScene].find(id=>id&&open(id))
       || (t.scenes.find(sc=>sc.estado==='live')||t.scenes.find(sc=>sc.estado==='wait')||{}).id;
     selE.value=want||''; selE.hidden=!t.scenes.length;
   }
   function fillTargets(){
     const multiWed=new Set(targets.map(t=>t.wed)).size>1, prev=selT.value||(load(LSD)||{}).db;
-    const opt=t=>`<option value="${t.db}">${DOT[t.estado]||'⚪️'} ${esc(t.etapa)}${multiWed?' · '+esc(t.wed):''}${t.corr&&t.ronda?' · ronda '+t.ronda:''}</option>`;
+    const opt=t=>`<option value="${t.db}">${esc(t.etapa)}${multiWed?' · '+esc(t.wed):''}${t.corr&&t.ronda?' · ronda '+t.ronda:''}</option>`;
     const live=targets.filter(t=>t.estado==='live'), next=targets.filter(t=>t.estado!=='live');
     selT.innerHTML=(live.length?`<optgroup label="En curso">${live.map(opt).join('')}</optgroup>`:'')
-                  +(next.length?`<optgroup label="Por empezar · pasa a 🔵 al registrar">${next.map(opt).join('')}</optgroup>`:'');
+                  +(next.length?`<optgroup label="Por empezar">${next.map(opt).join('')}</optgroup>`:'');
     selT.value=targets.some(t=>t.db===prev)?prev:(targets[0]?targets[0].db:'');
     fillScenes();
   }
   function remember(){ save(LSD,{db:selT.value, escena:selE.value||null, tipo}); }
   function setTipo(t){ tipo=t; seg.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t)); }
 
+  // ---- aviso sonoro suave (se habilita con el primer toque: iOS lo exige) ----
+  let ac=null;
+  const unlock=()=>{ try{ ac=ac||new (window.AudioContext||window.webkitAudioContext)(); if(ac.state==='suspended') ac.resume(); }catch(e){} };
+  function chime(){ if(!ac||document.hidden) return; try{ const t=ac.currentTime;
+    [[784,0],[1175,.16]].forEach(([f,d])=>{ const o=ac.createOscillator(), g=ac.createGain(); o.type='sine'; o.frequency.value=f;
+      g.gain.setValueAtTime(0,t+d); g.gain.linearRampToValueAtTime(.1,t+d+.02); g.gain.exponentialRampToValueAtTime(.0001,t+d+.6);
+      o.connect(g); g.connect(ac.destination); o.start(t+d); o.stop(t+d+.65); }); }catch(e){} }
+
+  // ---- pintar ----
   function paint(){
-    const pend=load(LSP);
-    card.classList.toggle('run',!!run);
+    const pend=load(LSP), brk=load(LSB), x=sch();
+    card.classList.toggle('run',!!run); card.classList.toggle('brk',!run&&!!brk);
+    modeBox.hidden=!!(run||brk); adj.hidden=!!(run||brk||editing); edit.hidden=!editing||!!run||!!brk;
+    const blockTag=x.every?` · BLOQUE ${((cyc.n-1)%x.every)+1} DE ${x.every}`:(cyc.n>1?` · BLOQUE ${cyc.n}`:'');
+    if(pend){ const m=Math.round((Date.parse(pend.item.fin)-Date.parse(pend.item.inicio))/60000);
+      pendBox.innerHTML=`Sin registrar: <b>${m} min</b> en ${esc(pend.label)}. <button type="button" class="flink" data-a="retry">Reintentar</button> · <button type="button" class="flink" data-a="drop">Descartar</button>`; }
+    pendBox.hidden=!pend||busy;
     if(run){
-      const left=run.target-(Date.now()-run.start)/1000;
-      code.textContent=(left<0?'+':'')+mmss(left);
-      state.textContent=left<0?'· TIEMPO EXTRA':'· EN CURSO';
+      const el=(Date.now()-run.start)/1000, left=run.target-el;
+      code.textContent=run.target?(left<0?'+':'')+mmss(left):mmss(el);
+      state.textContent=(run.target&&left<0?'· TIEMPO EXTRA':'· EN CURSO')+(run.tag||'');
+      if(run.target&&left<=0&&!run.chimed){ run.chimed=true; save(LS,run); chime(); }
       pick.hidden=true; lbl.hidden=false;
-      lbl.innerHTML=run.db?`${esc(destLabel(run))}<small>${esc(run.tipo.toUpperCase())}${run.wed?' · '+esc(run.wed.toUpperCase()):''}</small>`:'Sin etapa en curso<small>NO SE REGISTRARÁ</small>';
-      why.innerHTML=`Empezaste a las <b>${new Date(run.start).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false})}</b>. Se registra con la hora real al terminar, aunque te pases.`;
+      lbl.innerHTML=run.db?`${esc(destLabel(run))}<small>${esc(run.tipo.toUpperCase())}${run.wed?' · '+esc(run.wed.toUpperCase()):''}</small>`:'Sin etapa en Notion<small>NO SE REGISTRARÁ</small>';
+      why.innerHTML=note||`Empezaste a las <b>${hhmm(run.start)}</b>. Se registra con la hora real al terminar, aunque te pases.`;
       btn.innerHTML='■&nbsp; TERMINAR Y REGISTRAR'; drop.hidden=false; drop.textContent='Descartar sin registrar';
+      document.title=`${code.textContent} · Sprint`;
+    } else if(brk){
+      const left=brk.secs-(Date.now()-brk.start)/1000;
+      code.textContent=mmss(Math.max(0,left));
+      state.textContent=(left>0?'· DESCANSO':'· DESCANSO TERMINADO')+blockTag;
+      if(left<=0&&!brk.chimed){ brk.chimed=true; save(LSB,brk); chime(); }
+      pick.hidden=!targets.length; lbl.hidden=true;   // puedes cambiar de escena para el siguiente bloque
+      why.innerHTML=(note?note+'<br>':'')+(left>0?`Descanso${brk.long?' largo':''} de <b>${Math.round(brk.secs/60)} min</b>. No se registra.`:'Descanso terminado. Cuando quieras, el siguiente bloque.');
+      btn.innerHTML=`▶&nbsp; EMPEZAR BLOQUE ${x.every?((cyc.n-1)%x.every)+1:cyc.n}`; drop.hidden=false; drop.textContent='Terminar ciclo';
+      document.title=left>0?`${code.textContent} · Descanso`:BASE_TITLE;
     } else {
-      code.textContent=mmss(SPRINT_SECS); state.textContent=pend?'· PENDIENTE':'';
-      lbl.hidden=true; pick.hidden=!targets.length||!!pend; drop.hidden=!pend;
-      drop.textContent='Descartar registro pendiente';
-      if(note) why.innerHTML=note;
-      else if(!targets.length) why.innerHTML=`Tu sesión mediana: <b>${med} min</b>. No hay etapas en curso en Notion: el sprint corre, pero no se registra.`;
-      else why.innerHTML=`Tu sesión mediana: <b>${med} min</b>. Al terminar se registra en Notion con la hora real.`;
-      btn.innerHTML=pend?'↻&nbsp; REINTENTAR REGISTRO':'▶&nbsp; INICIAR SPRINT';
+      const f=editing?Math.max(0,+inF.value||0):x.focus;
+      code.textContent=mmss(f*60); state.textContent=cyc.n>1?blockTag:'';
+      lbl.hidden=true; pick.hidden=!targets.length; drop.hidden=true;
+      why.innerHTML=note||(describe(x)+(targets.length?'':' No hay etapas abiertas en Notion: corre, pero no se registra.'));
+      btn.innerHTML=cyc.n>1?`▶&nbsp; EMPEZAR BLOQUE ${x.every?((cyc.n-1)%x.every)+1:cyc.n}`:'▶&nbsp; INICIAR SPRINT';
+      document.title=BASE_TITLE;
     }
     btn.disabled=busy;
   }
-  function startTick(){ clearInterval(tick); tick=run?setInterval(paint,1000):null; }
+  function startTick(){ clearInterval(tick); tick=(run||load(LSB))?setInterval(paint,1000):null; }
 
+  // ---- registrar ----
   async function send(item,label,prevEst={}){
-    busy=true; btn.innerHTML='REGISTRANDO…'; btn.disabled=true;
+    busy=true; paint(); btn.innerHTML='REGISTRANDO…'; btn.disabled=true;
+    let msg='';
     try{
       const r=await fetch('/api/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(item)});
       const j=await r.json().catch(()=>({}));
       if(!r.ok||!j.ok) throw new Error(j.error||('HTTP '+r.status));   // nunca se pierde: queda pendiente
-      else {
-        save(LSP,null);
-        const mins=Math.round((Date.parse(item.fin)-Date.parse(item.inicio))/60000);
-        const moved=(j.moved||[]).map(k=>k==='etapa'?'la etapa':'la escena');
-        const willMove=[prevEst.etapa==='wait'&&'la etapa', prevEst.escena==='wait'&&'la escena'].filter(Boolean);
-        note=j.queued?`✓ Guardada: <b>${mins} min</b> en ${esc(label)}. Se registra en Notion en la próxima actualización (≤30 min)${willMove.length?` y ${willMove.join(' y ')} pasará a 🔵`:''}.`
-                     :`✓ Registrada en Notion: <b>${mins} min</b> en ${esc(label)}.${moved.length?` ${moved.join(' y ').replace(/^./,c=>c.toUpperCase())} pasó a 🔵 en proceso.`:''}${j.url?` <a href="${j.url}" target="_blank" rel="noopener">Ver</a>`:''}`;
-        setTimeout(()=>{ if(typeof loadLive==='function') loadLive(false); },90000);   // el tablero la muestra al reconstruirse
-      }
+      save(LSP,null);
+      const mins=Math.round((Date.parse(item.fin)-Date.parse(item.inicio))/60000);
+      const cap=t=>t.replace(/^./,c=>c.toUpperCase());
+      const moved=(j.moved||[]).map(k=>k==='etapa'?'la etapa':'la escena');
+      const willMove=[prevEst.etapa==='wait'&&'la etapa', prevEst.escena==='wait'&&'la escena'].filter(Boolean);
+      msg=j.queued?`✓ Guardada: <b>${mins} min</b> en ${esc(label)}. Llega a Notion en la próxima actualización (≤30 min)${willMove.length?` y ${willMove.join(' y ')} pasará a En proceso`:''}.`
+                  :`✓ Registrada: <b>${mins} min</b> en ${esc(label)}.${moved.length?` ${cap(moved.join(' y '))} pasó a En proceso.`:''}${j.url?` <a href="${j.url}" target="_blank" rel="noopener">Ver</a>`:''}`;
+      setTimeout(()=>{ if(typeof loadLive==='function') loadLive(false); },90000);   // el tablero la muestra al reconstruirse
     }catch(e){
       save(LSP,{item,label});
-      note=`No se pudo registrar (${esc(e.message||'sin conexión')}). Queda guardada en este dispositivo: reinténtalo o descártala.`;
+      msg=`No se pudo registrar (${esc(e.message||'sin conexión')}).`;
     }
-    busy=false; paint();
+    busy=false; note=msg; paint();
   }
 
   function finish(){
-    const r=run; run=null; save(LS,null); startTick();
-    // Notion cuenta en minutos: la DURACIÓN se redondea al minuto más cercano (30 s o más
-    // sube, menos baja) y Fin = Inicio + esa duración — así Notion muestra exactamente eso
+    const r=run; run=null; save(LS,null);
+    // Notion cuenta en minutos: la DURACIÓN se redondea al minuto más cercano (30 s o más sube,
+    // menos baja) y Fin = Inicio + esa duración — así Notion muestra exactamente eso
     const end=Date.now(), mins=Math.round((end-r.start)/60000), start=Math.round(r.start/60000)*60000;
-    if(mins<1){ note='Menos de 30 segundos: no se registró.'; paint(); return; }
-    if(!r.db){ note=`Sprint de <b>${mins} min</b>. Sin etapa en Notion: no se registró.`; paint(); return; }
+    if(mins<1){ note='Menos de 30 segundos: no se registró.'; startTick(); paint(); return; }
+    // el bloque contó: si el esquema tiene descanso, avanza el ciclo y arranca el descanso
+    const x=sch();
+    if(x.brk){ cyc={n:cyc.n+1, at:Date.now()}; save(LSC,cyc);
+      const long=!!(x.every && (cyc.n-1)%x.every===0);
+      save(LSB,{start:Date.now(), secs:(long?x.long:x.brk)*60, long}); }
+    startTick();
+    if(!r.db){ note=`Bloque de <b>${mins} min</b>. Sin etapa en Notion: no se registró.`; paint(); return; }
     const item={ id:r.id, db:r.db, stageId:r.stageId||null, inicio:isoLocal(start), fin:isoLocal(start+mins*60000),
                  tipo:r.tipo, escena:r.escena||null, ronda:r.ronda??null };
     send(item, destLabel(r), {etapa:r.stageEstado, escena:r.sceneEstado});
   }
 
-  btn.addEventListener('click',()=>{
-    if(busy) return;
-    if(run) return finish();
-    const pend=load(LSP); if(pend) return send(pend.item,pend.label);
-    const t=cur();
-    run={ id:(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2)), start:Date.now(), target:SPRINT_SECS,
+  function startBlock(){
+    const t=cur(), x=sch();
+    save(LSB,null);
+    const tag=x.every?` · BLOQUE ${((cyc.n-1)%x.every)+1} DE ${x.every}`:(cyc.n>1||x.brk?` · BLOQUE ${cyc.n}`:'');
+    run={ id:(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2)), start:Date.now(), target:x.focus*60, tag,
           db:t?t.db:null, stageId:t?t.stageId:null, stageEstado:t?t.estado:null,
           sceneEstado:t&&selE.value?((t.scenes.find(sc=>sc.id===selE.value)||{}).estado||null):null,
           wed:t?t.wed:'', etapa:t?t.etapa:'', escena:t?(selE.value||null):null,
           escenaNm:t&&selE.value?((t.scenes.find(sc=>sc.id===selE.value)||{}).nm||''):'', tipo, ronda:t?t.ronda:null };
-    note=''; save(LS,run); remember(); paint(); startTick();
-  });
+    note=''; editing=false; save(LS,run); remember(); startTick(); paint();
+  }
+
+  // ---- ajustar duración (esquema Propio) ----
+  function openEdit(){ if(run||load(LSB)) return; const x=sch();
+    inF.value=x.focus||mode.custom.focus; inB.value=x.brk||0; editing=true; paint(); inF.focus(); inF.select&&inF.select(); }
+  function applyEdit(){
+    const f=Math.min(240,Math.max(1,Math.round(+inF.value||0))), b=Math.min(60,Math.max(0,Math.round(+inB.value||0)));
+    mode={k:'custom', custom:{focus:f, brk:b}}; save(LSM,mode); editing=false; note=''; cyc={n:1, at:0}; save(LSC,cyc); paintModes(); paint(); }
+
+  // ---- eventos ----
+  btn.addEventListener('click',()=>{ unlock(); if(busy) return; if(run) return finish(); startBlock(); });
   drop.addEventListener('click',()=>{
-    if(run){ run=null; save(LS,null); startTick(); note='Sprint descartado: no se registró.'; }
-    else { save(LSP,null); note='Registro pendiente descartado.'; }
-    paint(); });
+    if(run){ run=null; save(LS,null); note='Bloque descartado: no se registró.'; }
+    else { save(LSB,null); cyc={n:1, at:0}; save(LSC,cyc); note='Ciclo terminado.'; }
+    startTick(); paint(); });
+  pendBox.addEventListener('click',e=>{ const b=e.target.closest('[data-a]'); if(!b||busy) return; const p=load(LSP); if(!p) return;
+    if(b.dataset.a==='retry') send(p.item,p.label); else { save(LSP,null); note='Registro pendiente descartado.'; paint(); } });
+  modeBox.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
+    if(b.dataset.k==='custom'){ mode.k='custom'; save(LSM,mode); paintModes(); openEdit(); } else { editing=false; setMode(b.dataset.k); } });
+  code.addEventListener('click',openEdit); adj.addEventListener('click',openEdit);
+  ok.addEventListener('click',applyEdit);
+  [inF,inB].forEach(i=>{ i.addEventListener('input',paint); i.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); applyEdit(); } if(e.key==='Escape'){ editing=false; paint(); } }); });
   selT.addEventListener('change',()=>{ fillScenes(); remember(); });
   selE.addEventListener('change',remember);
   seg.addEventListener('click',e=>{ const b=e.target.closest('button'); if(b){ setTipo(b.dataset.t); remember(); } });
   document.addEventListener('visibilitychange',()=>{ if(!document.hidden) paint(); });   // al volver a la app
 
   const saved=load(LSD); if(saved&&saved.tipo) setTipo(saved.tipo);
-  startTick();
+  paintModes(); startTick();
   return { update(M){
-    med=M.medMin||26; SPRINT_SECS=med*60;   // el sprint en curso guarda su propia meta (run.target)
+    med=M.medMin||26;                 // el bloque en curso guarda su propia meta (run.target)
     targets=M.sprintTargets||[]; fillTargets(); paint();
   } };
 })();

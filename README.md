@@ -45,8 +45,11 @@ con su `server.py` + launchd en el puerto 4599 — es **backup/dev** para probar
   (`drain_pending`) la crea antes de extraer. Dedup por id del sprint (`edicion:done:<id>`, 24 h).
   `server.py` expone `stages[].id`, `stages[].sessionDb`, `scenes[].id` y `sessionLog[].escena` para el selector del sprint.
   Lista blanca: `db` debe ser una `sessionDb`, `stageId` su etapa y `escena` una de sus escenas (`server.target_error`).
-  Tras crear la sesión, `set_in_progress` (JS: `setInProgress`) pasa etapa/escena ⚪️→🔵 y llena su fecha de inicio
-  vacía; nunca retrocede. El estado de escena es la fórmula `Estado` = `prop("Estado (Select)")`: `p_select` ahora
+  Tras crear la sesión, `set_in_progress` (JS: `setInProgress`) pasa etapa/escena de sin iniciar (⚪️ en Notion) a en
+  proceso (🔵) y llena su fecha de inicio vacía; nunca retrocede. Front (`Sprint`): esquemas Mediana/Pomodoro/52-17/90/
+  Libre/Propio y ciclos foco→descanso en localStorage (`scSprint`, `scSprintBrk`, `scSprintCyc`, `scSprintMode`,
+  `scSprintPend`, `scSprintDest`); solo los bloques de foco se registran. En la UI los estados van como palabras
+  agrupadas (optgroups), sin emojis. El estado de escena es la fórmula `Estado` = `prop("Estado (Select)")`: `p_select` ahora
   lee fórmulas de texto (antes todas las escenas salían ⚪️, también en el avance de los widgets).
 - `.github/workflows/publish.yml` — cron + `workflow_dispatch`. Secretos: `NOTION_TOKEN`, `CF_API_TOKEN`,
   `CF_ACCOUNT_ID`, `CF_KV_NAMESPACE_ID`. Lleva `env: TZ: America/Mexico_City` (el runner es UTC).
