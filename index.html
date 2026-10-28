@@ -10,7 +10,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Hub de Edición">
 <link rel="apple-touch-icon" href="/icon-180.png">
-<script>try{const t=localStorage.getItem('scTheme');if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<script>try{const t=localStorage.getItem('scTheme');if(t)document.documentElement.dataset.theme=t}catch(e){}
+if(/[?&]mini\b/.test(location.search))document.documentElement.classList.add('mini');</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -253,6 +254,121 @@ svg text{user-select:none}
   text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:4px 8px}
 .fdrop:hover{color:var(--ink)}
 .focuscard .why a{color:var(--ink);font-weight:600}
+/* sacar a ventana flotante (Mac) · en la ventana: volver al dashboard / cerrar */
+.focuscard .cl{align-items:center}
+.fbtns{margin-left:auto;display:flex;gap:4px}
+.fpop{display:grid;place-items:center;width:28px;height:28px;margin:-6px -8px -6px 0;border:0;border-radius:8px;background:none;
+  color:rgba(21,22,10,.55);cursor:pointer;transition:background-color .15s ease,color .15s ease,transform .16s var(--ease)}
+.fpop:hover{background:rgba(21,22,10,.08);color:var(--ink)}
+.fpop:active{transform:scale(.92)}
+.fpop svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.focuscard.floating .fpop{color:var(--ink);background:rgba(21,22,10,.1)}
+html.mini .fpop{margin:0}
+
+/* cerrar al terminar: escalera Pausa → Escena → Etapa (cada nivel incluye al anterior) */
+.fcut{display:flex;gap:2px;background:rgba(21,22,10,.06);border:1px solid rgba(21,22,10,.2);border-radius:10px;padding:2px}
+.fcut button{flex:1;min-width:0;border:0;background:none;color:rgba(21,22,10,.55);font-family:var(--f-m);font-weight:700;font-size:10px;
+  letter-spacing:.08em;text-transform:uppercase;padding:7px 4px;border-radius:8px;cursor:pointer;white-space:nowrap;
+  transition:background-color .18s ease,color .18s ease,transform .16s var(--ease)}
+.fcut button:hover{color:var(--ink)}
+.fcut button:active{transform:scale(.95)}
+.fcut button.on{background:rgba(21,22,10,.12);color:var(--ink)}
+.fcut button[aria-checked="true"]{background:var(--ink);color:var(--sun-block)}
+.flbl .fnm{transition:background-color .18s ease,color .18s ease}
+.flbl .fnm.cut{background:var(--ink);color:var(--sun-block);border-radius:5px;padding:0 5px;margin:0 -1px;
+  -webkit-box-decoration-break:clone;box-decoration-break:clone}
+.fgo .fcutk{font-style:normal;font-family:var(--f-m);font-weight:700;font-size:10px;letter-spacing:.08em;line-height:1;
+  background:var(--sun-block);color:var(--ink);border-radius:5px;padding:4px 6px;margin-left:-2px}
+.fcls{font-size:12px;line-height:1.45;color:rgba(21,22,10,.72);text-align:center}
+.fcd{display:inline-block;width:16px;height:3px;border-radius:2px;background:currentColor;vertical-align:middle;margin:0 2px;
+  transform-origin:left;animation:fcd var(--d) linear forwards}
+@keyframes fcd{to{transform:scaleX(0)}}
+
+/* ============ modo mini: la tarjeta del sprint sola, dentro de la ventana flotante ============
+   Tres zonas en cuadrícula: A destino/esquema · B reloj · C acción. Se reacomodan según la
+   forma de la ventana (vertical, apaisada, franja) y, si falta alto, se guardan piezas en este
+   orden: texto explicativo → esquemas → destino → extras. */
+html.mini,html.mini body{height:100%;margin:0;overflow:hidden;background:var(--sun-block)}
+html.mini body>*:not(#focus){display:none !important}
+html.mini #focus{position:fixed;inset:0;border-radius:0;padding:44px 16px 14px;
+  display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"a" "b" "c";gap:12px;
+  overflow-x:hidden;overflow-y:auto;scrollbar-width:none;overscroll-behavior:none;transform:none !important;opacity:1 !important;
+  -webkit-user-select:none;user-select:none}
+html.mini #focus::-webkit-scrollbar{display:none}
+html.mini #focus input{-webkit-user-select:text;user-select:text}
+html.mini #focus>div:nth-child(1){grid-area:a;min-width:0;display:flex;flex-direction:column;gap:10px}
+html.mini #focus>div:nth-child(2){grid-area:b;min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px}
+html.mini #focus>.fact{grid-area:c;min-width:0;gap:8px}
+/* franja superior = zona de arrastre de la ventana (la maneja la app nativa) */
+html.mini #focus .cl{position:fixed;top:0;left:0;right:0;height:34px;margin:0;padding:0 8px 0 16px;cursor:grab;z-index:2;background:var(--sun-block)}
+html.mini #focus .cl h3{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html.mini #focus .cl .u{flex:none;white-space:nowrap}
+@media (max-width:299px){ html.mini #focus .cl .u{display:none} }   /* el reloj que late y TERMINAR ya dicen que corre */
+html.mini #focus .fpick,html.mini #focus .fmode,html.mini #focus .flbl,html.mini #focus .why,html.mini #focus .fpend{margin:0}
+html.mini #focus .fpend{padding-top:0;border-top:0}
+/* esquemas: cuadrícula pareja (3 × 2, o 6 en línea si cabe) en vez de pastillas sueltas */
+html.mini #focus .fmode{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+html.mini #focus .fmode button{padding:7px 2px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (min-width:430px){ html.mini #focus .fmode{grid-template-columns:repeat(6,minmax(0,1fr))} }
+/* reloj centrado; "Ajustar" al lado (o debajo si no cabe) */
+html.mini #focus .ftime{justify-content:center;align-items:center;gap:8px 14px}
+html.mini #focus .fadj{margin:0}
+html.mini #focus .fedit{justify-content:center}
+html.mini #focus .tcode{font-size:clamp(34px,min(19vw,15vh),112px)}
+html.mini #focus .fgo{padding:12px 0}
+html.mini #focus .fdrop{padding:2px 8px}
+/* alto justo (vertical) */
+@media (max-height:500px){ html.mini #focus .why{display:none} }
+@media (max-height:420px){ html.mini #focus .fmode{display:none !important} }
+@media (max-height:300px){ html.mini #focus .fpick{display:none !important}
+  html.mini #focus .flbl small{display:none} html.mini #focus .flbl{font-size:13px} }
+@media (max-height:250px){ html.mini #focus .fdrop{display:none !important}
+  html.mini #focus{padding-bottom:10px;gap:8px} }
+/* diminuta (vertical): solo reloj, escalera y botón */
+@media (max-height:230px) and (max-width:419px){
+  html.mini #focus{padding:38px 12px 10px;gap:6px}
+  html.mini #focus>div:nth-child(1){position:absolute}          /* fuera de la cuadrícula; solo queda su barra superior */
+  html.mini #focus>div:nth-child(1)>:not(.cl),html.mini #focus .fadj,html.mini #focus .fedit{display:none !important}
+  html.mini #focus .tcode{font-size:clamp(30px,min(17vw,22vh),56px)}
+  html.mini #focus .fcut button{padding:5px 2px}
+  html.mini #focus .fgo{padding:9px 0}
+}
+
+/* apaisada: destino a la izquierda; reloj y acción a la derecha */
+@media (min-aspect-ratio:5/4) and (min-width:460px){
+  html.mini #focus{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;
+    grid-template-areas:"a b" "a c";column-gap:22px}
+  html.mini #focus>div:nth-child(1){overflow-y:auto;scrollbar-width:none;justify-content:center}
+  html.mini #focus>div:nth-child(1)::-webkit-scrollbar{display:none}
+  html.mini #focus .tcode{font-size:clamp(34px,min(10vw,19vh),104px)}
+  html.mini #focus .fmode{grid-template-columns:repeat(3,minmax(0,1fr))}
+  html.mini #focus .why{display:block}
+}
+@media (min-aspect-ratio:5/4) and (min-width:460px) and (max-height:380px){ html.mini #focus:not(.run) .why{display:none} }
+@media (min-aspect-ratio:5/4) and (min-width:460px) and (max-height:300px) and (min-height:231px){
+  html.mini #focus .fmode{display:none !important}
+  html.mini #focus .fpick:not([hidden]){display:flex !important} html.mini #focus .flbl small{display:block} }
+
+/* franja (muy baja y ancha): todo en una fila — destino · reloj · acción */
+@media (max-height:230px) and (min-width:420px){
+  html.mini #focus{grid-template-columns:auto minmax(0,1fr);grid-template-rows:minmax(0,1fr);grid-template-areas:"b c";
+    padding:38px 16px 12px;column-gap:20px;align-items:center}
+  html.mini #focus>div:nth-child(1){position:absolute}
+  html.mini #focus>div:nth-child(1)>:not(.cl){display:none}
+  html.mini #focus .tcode{font-size:clamp(34px,min(9vw,34vh),76px)}
+  html.mini #focus .fadj,html.mini #focus .fdrop,html.mini #focus .fedit{display:none !important}
+  html.mini #focus .fcls{text-align:left}
+}
+@media (max-height:230px) and (min-width:640px){
+  html.mini #focus{grid-template-columns:minmax(0,1.1fr) auto minmax(0,1fr);grid-template-areas:"a b c"}
+  html.mini #focus>div:nth-child(1){position:static;display:flex;justify-content:center;overflow:hidden}
+  html.mini #focus>div:nth-child(1)>:not(.cl){display:revert}
+  html.mini #focus .fpick:not([hidden]){display:flex !important;gap:6px}
+  html.mini #focus .fpick .fsel{padding-top:7px;padding-bottom:7px}
+  html.mini #focus .fseg button{padding:6px 8px}
+  html.mini #focus .fmode,html.mini #focus .why,html.mini #focus .fpend{display:none !important}
+  html.mini #focus .flbl small{display:block}
+}
 [hidden]{display:none !important}
 .focuscard.run .tcode{animation:pulse 1s steps(2,jump-none) infinite}
 @keyframes pulse{50%{opacity:.55}}
@@ -627,7 +743,15 @@ svg text{user-select:none}
   <div class="hoy">
     <div class="card focuscard" id="focus">
       <div>
-        <div class="cl"><h3>Sprint de enfoque</h3><span class="u" id="fState"></span></div>
+        <div class="cl"><h3>Sprint de enfoque</h3><span class="u" id="fState"></span>
+          <span class="fbtns">
+            <button class="fpop" id="fPop" type="button" hidden aria-label="Sacar a ventana flotante" title="Sacar a ventana flotante">
+              <svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg></button>
+            <button class="fpop" id="fBack" type="button" hidden aria-label="Volver al dashboard" title="Volver al dashboard">
+              <svg viewBox="0 0 24 24"><path d="M10 14l-6 6M4 14v6h6M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M10 4H6a2 2 0 0 0-2 2v4"/></svg></button>
+            <button class="fpop" id="fClose" type="button" hidden aria-label="Cerrar la ventana flotante" title="Cerrar">
+              <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+          </span></div>
         <div class="fpick" id="fPick" hidden>
           <select class="fsel" id="fTarget" aria-label="Etapa donde se registra la sesión"></select>
           <div class="frow">
@@ -654,8 +778,12 @@ svg text{user-select:none}
         </div>
       </div>
       <div class="fact">
+        <div class="fcut" id="fCut" role="radiogroup" aria-label="Al terminar, cerrar también en Notion" hidden>
+          <button type="button" role="radio" data-c="" aria-checked="true">Pausa</button><button type="button" role="radio" data-c="escena" aria-checked="false">Escena</button><button type="button" role="radio" data-c="etapa" aria-checked="false">Etapa</button>
+        </div>
         <button id="focusBtn" class="fgo" type="button">▶&nbsp; INICIAR SPRINT</button>
         <button id="fDrop" class="fdrop" type="button" hidden>Descartar sin registrar</button>
+        <div class="fcls" id="fCls" hidden></div>
       </div>
     </div>
     <div class="card plan">
@@ -1690,14 +1818,45 @@ function renderAll(model){
    - Todo vive en localStorage con horas reales: sobrevive a bloquear el iPhone o cerrar la PWA.
    - POST /api/session: server.py en local, Pages Function en la nube. Si falla, el registro
      queda pendiente en el dispositivo (reintentar / descartar); nunca se pierde. */
+// modo mini (?mini=1): la ventana flotante del Mac carga esta misma página y solo muestra la tarjeta
+const MINI=document.documentElement.classList.contains('mini');
+if(MINI) document.body.appendChild(document.getElementById('focus'));
 const Sprint=(function(){
   const $=id=>document.getElementById(id);
   const card=$('focus'), btn=$('focusBtn'), drop=$('fDrop'), code=$('tcode'), why=$('focusWhy'), adj=$('fAdj'),
         pick=$('fPick'), selT=$('fTarget'), selE=$('fScene'), seg=$('fTipo'), lbl=$('fLbl'), state=$('fState'),
-        modeBox=$('fMode'), edit=$('fEdit'), inF=$('fFoc'), inB=$('fBrk'), ok=$('fOk'), pendBox=$('fPend');
+        modeBox=$('fMode'), edit=$('fEdit'), inF=$('fFoc'), inB=$('fBrk'), ok=$('fOk'), pendBox=$('fPend'),
+        cutBox=$('fCut'), clsBox=$('fCls');
   const LS='scSprint', LSP='scSprintPend', LSD='scSprintDest', LSM='scSprintMode', LSB='scSprintBrk', LSC='scSprintCyc';
+  // cierre de escena/etapa al terminar: LSX = cierre en espera (8 s para deshacer) · LSK = ids ya
+  // cerrados aquí, que se ocultan/marcan hasta que el tablero de Notion se reconstruya
+  const LSX='scSprintClose', LSK='scSprintClosed', CLOSE_GRACE=8000, CLIENT=MINI?'mini':'dash';
+  // ---- sincronía con la ventana flotante del Mac (solo local: server.py guarda la copia común) ----
+  // gana la versión más reciente (rev = ms del último cambio); "chimed" es por cliente (cada uno suena una vez)
+  const SYNC_KEYS=[LS,LSP,LSD,LSM,LSB,LSC,LSX,LSK], LSR='scSprintRev', LSCH='scSprintChimed';
+  const SYNC_ON=/^https?:$/.test(location.protocol) && !/\.pages\.dev$/.test(location.hostname);
+  const SYNC_URL='/api/sprint-state'+(MINI?'?from=mini':'');
+  let pushT=null, floatOpen=false;
+  const localRev=()=>{ try{ return +localStorage.getItem(LSR)||0; }catch(e){ return 0; } };
+  const setRev=r=>{ try{ localStorage.setItem(LSR,String(r)); }catch(e){} };
+  function touch(){ setRev(Date.now()); clearTimeout(pushT); pushT=setTimeout(push,120); }
+  async function push(){ pushT=null; if(!SYNC_ON) return;
+    const data={}; SYNC_KEYS.forEach(k=>data[k]=load(k));
+    try{ const r=await fetch(SYNC_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rev:localRev(),data})});
+         if(r.ok) apply(await r.json(),true); }catch(e){} }
+  async function pull(){ if(!SYNC_ON||pushT) return;
+    try{ const r=await fetch(SYNC_URL,{cache:'no-store'}); if(r.ok) apply(await r.json(),false); }catch(e){} }
+  function apply(st,fromPush){ if(!st||typeof st.rev!=='number') return;
+    setFloating(!!st.miniOpen);
+    const mine=localRev();
+    if(st.rev>mine && !pushT){ SYNC_KEYS.forEach(k=>put(k,(st.data||{})[k]??null)); setRev(st.rev); reload(); }
+    else if(st.rev<mine && !fromPush) push();          // el server va atrás (recién arrancado): sube lo de aquí
+  }
+  function setFloating(on){ if(MINI||on===floatOpen) return; floatOpen=on; card.classList.toggle('floating',on);
+    const p=$('fPop'); p.title=on?'Ya está en la ventana flotante (traerla al frente)':'Sacar a ventana flotante'; }
   const load=k=>{ try{ return JSON.parse(localStorage.getItem(k)||'null'); }catch(e){ return null; } };
-  const save=(k,v)=>{ try{ v==null?localStorage.removeItem(k):localStorage.setItem(k,JSON.stringify(v)); }catch(e){} };
+  const put=(k,v)=>{ try{ v==null?localStorage.removeItem(k):localStorage.setItem(k,JSON.stringify(v)); }catch(e){} };
+  const save=(k,v)=>{ put(k,v); if(SYNC_KEYS.includes(k)) touch(); };
   const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
   const mmss=x=>{ x=Math.abs(Math.round(x)); return String(Math.floor(x/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0'); };
   const hhmm=ms=>new Date(ms).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false});
@@ -1706,6 +1865,8 @@ const Sprint=(function(){
     return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:00${off>=0?'+':'-'}${p(Math.floor(a/60))}:${p(a%60)}`; };
   const BASE_TITLE=document.title;
 
+  if(!localRev() && SYNC_KEYS.some(k=>load(k)!=null)) setRev(1);
+  let baseTargets=[], clsT=null, closing=false, clsMsg='';
   let targets=[], med=26, tipo='Edición', run=load(LS), tick=null, busy=false, note='', editing=false;
   let mode=load(LSM)||{k:'med', custom:{focus:30, brk:5}};
   let cyc=load(LSC)||{n:1, at:0};
@@ -1764,6 +1925,7 @@ const Sprint=(function(){
   // ---- aviso sonoro suave (se habilita con el primer toque: iOS lo exige) ----
   let ac=null;
   const unlock=()=>{ try{ ac=ac||new (window.AudioContext||window.webkitAudioContext)(); if(ac.state==='suspended') ac.resume(); }catch(e){} };
+  function chimeOnce(key){ if(load(LSCH)===key) return; put(LSCH,key); if(!floatOpen) chime(); }
   function chime(){ if(!ac||document.hidden) return; try{ const t=ac.currentTime;
     [[784,0],[1175,.16]].forEach(([f,d])=>{ const o=ac.createOscillator(), g=ac.createGain(); o.type='sine'; o.frequency.value=f;
       g.gain.setValueAtTime(0,t+d); g.gain.linearRampToValueAtTime(.1,t+d+.02); g.gain.exponentialRampToValueAtTime(.0001,t+d+.6);
@@ -1782,17 +1944,27 @@ const Sprint=(function(){
       const el=(Date.now()-run.start)/1000, left=run.target-el;
       code.textContent=run.target?(left<0?'+':'')+mmss(left):mmss(el);
       state.textContent=(run.target&&left<0?'· TIEMPO EXTRA':'· EN CURSO')+(run.tag||'');
-      if(run.target&&left<=0&&!run.chimed){ run.chimed=true; save(LS,run); chime(); }
+      if(run.target&&left<=0) chimeOnce(run.id);
       pick.hidden=true; lbl.hidden=false;
-      lbl.innerHTML=run.db?`${esc(destLabel(run))}<small>${esc(run.tipo.toUpperCase())}${run.wed?' · '+esc(run.wed.toUpperCase()):''}</small>`:'Sin etapa en Notion<small>NO SE REGISTRARÁ</small>';
+      // lo que se va a cerrar en Notion se marca en el propio nombre (tinta invertida)
+      const canE=!!(run.db&&run.escena), canS=!!(run.db&&run.stageId);
+      if((run.cerrar==='escena'&&!canE)||(run.cerrar==='etapa'&&!canS)) run.cerrar=null;
+      const lv=run.cerrar==='etapa'?2:run.cerrar==='escena'?1:0;
+      const nm=(t,on)=>`<span class="fnm${on?' cut':''}">${esc(t)}</span>`;
+      lbl.innerHTML=run.db?`${nm(run.etapa,lv>=2)}${run.escenaNm?' · '+nm(run.escenaNm,lv>=1):''}<small>${esc(run.tipo.toUpperCase())}${run.wed?' · '+esc(run.wed.toUpperCase()):''}</small>`:'Sin etapa en Notion<small>NO SE REGISTRARÁ</small>';
       why.innerHTML=note||`Empezaste a las <b>${hhmm(run.start)}</b>. Se registra con la hora real al terminar, aunque te pases.`;
-      btn.innerHTML='■&nbsp; TERMINAR Y REGISTRAR'; drop.hidden=false; drop.textContent='Descartar sin registrar';
+      cutBox.hidden=!(canE||canS);
+      cutBox.querySelectorAll('button').forEach(b=>{ const l=b.dataset.c==='etapa'?2:b.dataset.c==='escena'?1:0;
+        b.hidden=(l===1&&!canE)||(l===2&&!canS); b.classList.toggle('on',l<=lv); b.setAttribute('aria-checked',l===lv); });
+      btn.innerHTML='■&nbsp; TERMINAR'+(lv===2?'<i class="fcutk">+ ETAPA</i>':lv===1?'<i class="fcutk">+ ESCENA</i>':'');
+      drop.hidden=false; drop.textContent='Descartar sin registrar';
       document.title=`${code.textContent} · Sprint`;
     } else if(brk){
+      cutBox.hidden=true;
       const left=brk.secs-(Date.now()-brk.start)/1000;
       code.textContent=mmss(Math.max(0,left));
       state.textContent=(left>0?'· DESCANSO':'· DESCANSO TERMINADO')+blockTag;
-      if(left<=0&&!brk.chimed){ brk.chimed=true; save(LSB,brk); chime(); }
+      if(left<=0) chimeOnce('b'+brk.start);
       pick.hidden=!targets.length; lbl.hidden=true;   // puedes cambiar de escena para el siguiente bloque
       why.innerHTML=(note?note+'<br>':'')+(left>0?`Descanso${brk.long?' largo':''} de <b>${Math.round(brk.secs/60)} min</b>. No se registra.`:'Descanso terminado. Cuando quieras, el siguiente bloque.');
       btn.innerHTML=`▶&nbsp; EMPEZAR BLOQUE ${x.every?((cyc.n-1)%x.every)+1:cyc.n}`; drop.hidden=false; drop.textContent='Terminar ciclo';
@@ -1800,12 +1972,12 @@ const Sprint=(function(){
     } else {
       const f=editing?Math.max(0,+inF.value||0):x.focus;
       code.textContent=mmss(f*60); state.textContent=cyc.n>1?blockTag:'';
-      lbl.hidden=true; pick.hidden=!targets.length; drop.hidden=true;
+      lbl.hidden=true; pick.hidden=!targets.length; drop.hidden=true; cutBox.hidden=true;
       why.innerHTML=note||(describe(x)+(targets.length?'':' No hay etapas abiertas en Notion: corre, pero no se registra.'));
       btn.innerHTML=cyc.n>1?`▶&nbsp; EMPEZAR BLOQUE ${x.every?((cyc.n-1)%x.every)+1:cyc.n}`:'▶&nbsp; INICIAR SPRINT';
       document.title=BASE_TITLE;
     }
-    btn.disabled=busy;
+    btn.disabled=busy; paintCls();
   }
   function startTick(){ clearInterval(tick); tick=(run||load(LSB))?setInterval(paint,1000):null; }
 
@@ -1837,6 +2009,7 @@ const Sprint=(function(){
     // Notion cuenta en minutos: la DURACIÓN se redondea al minuto más cercano (30 s o más sube,
     // menos baja) y Fin = Inicio + esa duración — así Notion muestra exactamente eso
     const end=Date.now(), mins=Math.round((end-r.start)/60000), start=Math.round(r.start/60000)*60000;
+    if(r.cerrar && r.db) queueClose(r,end);
     if(mins<1){ note='Menos de 30 segundos: no se registró.'; startTick(); paint(); return; }
     // el bloque contó: si el esquema tiene descanso, avanza el ciclo y arranca el descanso
     const x=sch();
@@ -1850,6 +2023,58 @@ const Sprint=(function(){
     send(item, destLabel(r), {etapa:r.stageEstado, escena:r.sceneEstado});
   }
 
+  // ---- cerrar escena / etapa en Notion (con 8 s para deshacer) ----
+  function closedMap(){ const m=load(LSK)||{}, now=Date.now(); let ch=false;
+    for(const k in m) if(now-m[k]>30*60e3){ delete m[k]; ch=true; }       // para entonces el tablero ya lo trae de Notion
+    if(ch) save(LSK,Object.keys(m).length?m:null); return m; }
+  function withClosures(list){ const m=closedMap();
+    return list.filter(t=>!(t.stageId&&m[t.stageId])).map(t=>({...t, scenes:t.scenes.map(sc=>m[sc.id]?{...sc,estado:'done'}:sc)})); }
+  function refreshTargets(db){ targets=withClosures(baseTargets); if(db!==undefined) selT.value=db||''; fillTargets(); }
+  function queueClose(r,end){
+    const ids=[r.escena, r.cerrar==='etapa'?r.stageId:null].filter(Boolean);
+    const m=load(LSK)||{}; ids.forEach(id=>m[id]=Date.now()); save(LSK,m);
+    const prevDest=load(LSD);
+    // siguiente destino: misma etapa y la siguiente escena abierta · o la siguiente etapa de esa boda
+    let db=r.db;
+    if(r.cerrar==='etapa'){ const open=withClosures(baseTargets), me=baseTargets.find(t=>t.db===r.db);
+      const nx=open.filter(t=>t.wed===r.wed&&t.orden>(me?me.orden:-1)).sort((a,b)=>a.orden-b.orden)[0]||open[0];
+      db=nx?nx.db:''; }
+    save(LSD,{db, escena:null, tipo:r.tipo});
+    const item={ id:r.id+'-c', db:r.db, stageId:r.stageId||null, escena:r.escena||null, cerrar:r.cerrar, fin:isoLocal(end) };
+    save(LSX,{ item, ids, prevDest, by:CLIENT, due:Date.now()+CLOSE_GRACE,
+               label:r.cerrar==='etapa'?r.etapa:(r.escenaNm||'La escena') });
+    clsMsg=''; refreshTargets(db); schedClose();
+  }
+  function schedClose(){ clearTimeout(clsT); const x=load(LSX); if(!x||x.err) return;
+    // lo envía quien terminó el sprint; el otro cliente solo si aquel desapareció
+    clsT=setTimeout(sendClose, Math.max(0,x.due-Date.now())+(x.by===CLIENT?0:6000)+50); }
+  async function sendClose(){
+    const x=load(LSX); if(!x||x.err||closing) return;
+    if(Date.now()<x.due){ schedClose(); return; }
+    closing=true; paintCls();
+    try{
+      const r=await fetch('/api/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(x.item)});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok||!j.ok) throw new Error(j.error||('HTTP '+r.status));
+      save(LSX,null);
+      clsMsg=j.queued?`✓ <b>${esc(x.label)}</b> se cerrará en Notion en la próxima actualización.`:`✓ <b>${esc(x.label)}</b> cerrada en Notion.`;
+      setTimeout(()=>{ if(typeof loadLive==='function') loadLive(false); },60000);
+    }catch(e){ x.err=e.message||'sin conexión'; save(LSX,x); }
+    closing=false; paintCls();
+  }
+  function forgetClose(x){ const m=load(LSK)||{}; (x.ids||[]).forEach(id=>delete m[id]); save(LSK,Object.keys(m).length?m:null); }
+  function undoClose(){ const x=load(LSX); if(!x||closing) return; clearTimeout(clsT);
+    forgetClose(x); save(LSD,x.prevDest||null); save(LSX,null);
+    if(x.prevDest&&x.prevDest.tipo) setTipo(x.prevDest.tipo);
+    clsMsg='Cierre deshecho: no se tocó Notion.'; refreshTargets(x.prevDest?x.prevDest.db:undefined);
+    paint(); }
+  function paintCls(){ const x=load(LSX);
+    if(x&&x.err) clsBox.innerHTML=`No se pudo cerrar <b>${esc(x.label)}</b> en Notion (${esc(x.err)}). <button type="button" class="flink" data-a="cretry">Reintentar</button> · <button type="button" class="flink" data-a="cdrop">Descartar</button>`;
+    else if(x) clsBox.innerHTML=(closing||Date.now()>=x.due)?`Cerrando <b>${esc(x.label)}</b> en Notion…`
+      :`<b>${esc(x.label)}</b> se cierra en Notion <i class="fcd" style="--d:${Math.max(0,x.due-Date.now())}ms"></i> <button type="button" class="flink" data-a="undo">Deshacer</button>`;
+    else clsBox.innerHTML=clsMsg;
+    clsBox.hidden=!clsBox.innerHTML; }
+
   function startBlock(){
     const t=cur(), x=sch();
     save(LSB,null);
@@ -1859,7 +2084,7 @@ const Sprint=(function(){
           sceneEstado:t&&selE.value?((t.scenes.find(sc=>sc.id===selE.value)||{}).estado||null):null,
           wed:t?t.wed:'', etapa:t?t.etapa:'', escena:t?(selE.value||null):null,
           escenaNm:t&&selE.value?((t.scenes.find(sc=>sc.id===selE.value)||{}).nm||''):'', tipo, ronda:t?t.ronda:null };
-    note=''; editing=false; save(LS,run); remember(); startTick(); paint();
+    note=''; clsMsg=''; editing=false; save(LS,run); remember(); startTick(); paint();
   }
 
   // ---- ajustar duración (esquema Propio) ----
@@ -1875,6 +2100,13 @@ const Sprint=(function(){
     if(run){ run=null; save(LS,null); note='Bloque descartado: no se registró.'; }
     else { save(LSB,null); cyc={n:1, at:0}; save(LSC,cyc); note='Ciclo terminado.'; }
     startTick(); paint(); });
+  cutBox.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b||!run) return;
+    run.cerrar=b.dataset.c||null; save(LS,run); paint(); });
+  clsBox.addEventListener('click',e=>{ const b=e.target.closest('[data-a]'); if(!b) return; const x=load(LSX);
+    if(b.dataset.a==='undo') return undoClose();
+    if(!x) return;
+    if(b.dataset.a==='cretry'){ delete x.err; x.due=Date.now(); x.by=CLIENT; save(LSX,x); sendClose(); }
+    else if(b.dataset.a==='cdrop'){ forgetClose(x); save(LSX,null); clsMsg='Cierre descartado: no se tocó Notion.'; refreshTargets(); paint(); } });
   pendBox.addEventListener('click',e=>{ const b=e.target.closest('[data-a]'); if(!b||busy) return; const p=load(LSP); if(!p) return;
     if(b.dataset.a==='retry') send(p.item,p.label); else { save(LSP,null); note='Registro pendiente descartado.'; paint(); } });
   modeBox.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
@@ -1887,11 +2119,34 @@ const Sprint=(function(){
   seg.addEventListener('click',e=>{ const b=e.target.closest('button'); if(b){ setTipo(b.dataset.t); remember(); } });
   document.addEventListener('visibilitychange',()=>{ if(!document.hidden) paint(); });   // al volver a la app
 
+  // otro cliente cambió el sprint: releer todo de localStorage y repintar
+  function reload(){
+    run=load(LS); mode=load(LSM)||{k:'med', custom:{focus:30, brk:5}}; cyc=load(LSC)||{n:1, at:0};
+    const d=load(LSD);
+    if(d&&d.tipo) setTipo(d.tipo);
+    if(run||load(LSB)) editing=false;
+    refreshTargets(d&&d.db&&baseTargets.some(t=>t.db===d.db)?d.db:undefined);   // la escena la propone fillScenes (recordada si sigue abierta)
+    note=''; paintModes(); startTick(); schedClose(); paint();
+  }
+
+  // botones de la esquina: sacar (dashboard en Mac, local) · volver / cerrar (dentro de la ventana flotante)
+  const native=msg=>{ try{ window.webkit.messageHandlers.hub.postMessage(msg); }catch(e){} };
+  const isMacDesk=/Mac/.test(navigator.platform||navigator.userAgent) && (navigator.maxTouchPoints||0)<2;
+  $('fPop').hidden=MINI||!SYNC_ON||!isMacDesk;
+  $('fBack').hidden=$('fClose').hidden=!MINI;
+  $('fPop').addEventListener('click',()=>{ clearTimeout(pushT); push(); location.href='hubsprint://open'; });
+  $('fBack').addEventListener('click',()=>native('dashboard'));
+  $('fClose').addEventListener('click',()=>native('close'));
+  if(MINI){ unlock(); card.addEventListener('pointerdown',unlock,{passive:true}); }
+
   const saved=load(LSD); if(saved&&saved.tipo) setTipo(saved.tipo);
-  paintModes(); startTick();
+  paintModes(); startTick(); schedClose();
+  if(SYNC_ON){ pull(); setInterval(()=>{ if(!document.hidden) pull(); },1500);
+    document.addEventListener('visibilitychange',()=>{ if(!document.hidden) pull(); });
+    window.addEventListener('focus',pull); }
   return { update(M){
     med=M.medMin||26;                 // el bloque en curso guarda su propia meta (run.target)
-    targets=M.sprintTargets||[]; fillTargets(); paint();
+    baseTargets=M.sprintTargets||[]; refreshTargets(); paint();
   } };
 })();
 
@@ -1947,7 +2202,8 @@ document.addEventListener('toggle',e=>{ const d=e.target;
   if(d instanceof HTMLDetailsElement && d.open && d.classList.contains('tbl')) cascade(d.querySelectorAll('tr'),{step:35}); },true);
 
 /* ================= boot: snapshot → fetch vivo ================= */
-function bootRender(payload,isLive){ try{ const model=deriveModel(payload); model.live=isLive; renderAll(model); }catch(e){ console.error('derive',e); } }
+function bootRender(payload,isLive){ try{ const model=deriveModel(payload); model.live=isLive;
+  if(MINI){ M=model; Sprint.update(M); } else renderAll(model); }catch(e){ console.error('derive',e); } }
 // local (server.py) sirve /api/data; la nube (Cloudflare Pages) sirve /api/edicion desde KV.
 // Se prueba primero el del entorno en que corre la página; el otro queda de respaldo.
 const IS_CLOUD=/\.pages\.dev$/.test(location.hostname);

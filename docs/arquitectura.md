@@ -17,12 +17,15 @@
      GET  /api/data     payload completo             publish.py → importa server.py
      GET  /api/summary  resumen widgets                ├─ drain_pending(): cola de sprints → Notion
      POST /api/session  registra un sprint             ├─ build_data() / build_summary()
+     POST /api/close    cierra escena/etapa (🟢)       │  (drain_pending también aplica cierres)
+     GET/POST /api/sprint-state (ventana flotante)     │
      GET  /api/health                                  └─ escribe Cloudflare KV
      caché .cache.json + .archive.json             Cloudflare Pages (detrás de Access)
                                                      index.html
                                                      functions/api/edicion  → KV edicion:data
                                                      functions/api/summary  → KV edicion:summary
                                                      functions/api/session  → Notion o cola KV
+                                                     functions/api/close    → Notion o cola KV
           └────────────────────────┬────────────────────────┘
                      index.html (el MISMO archivo en ambos)
                      snapshot embebido → loadLive() → deriveModel() → render*
@@ -156,6 +159,45 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   se muestran como palabras agrupadas, sin emojis.
 - **Nube**: con el secreto `NOTION_TOKEN` en Pages escribe directo; sin él (o si Notion falla)
   deja `edicion:pending:<id>` y `publish.py` lo crea en la siguiente corrida (≤ 30 min).
+- **Cerrar al terminar** (escalera Pausa · Escena · Etapa, `run.cerrar`; vuelve a *Pausa* en cada
+  bloque): al terminar, `queueClose()` guarda el cierre en `scSprintClose` con **8 s de gracia**
+  (Deshacer) y lo envía `POST /api/close` `{id, db, stageId, escena, cerrar, fin}`. Lo envía el
+  cliente que terminó (el otro solo si aquel desapareció, +6 s). `validate_close` + la misma lista
+  blanca (`target_error`); dedup por `id`. **`set_done`**: Estado → 🟢 (nunca toca algo ya 🟢) y
+  fecha de fin vacía — escena "Fin" (con hora), etapa final de "Del → Al" (si no tenía inicio,
+  el mismo día). *Etapa* cierra escena + etapa. En la nube `functions/api/close.js` hace lo mismo
+  o deja `edicion:pending-close:<id>` (lo aplica `drain_pending`). Hasta que el tablero se
+  reconstruye, los ids cerrados (`scSprintClosed`, 30 min) se marcan terminados en el selector y
+  el destino salta a la siguiente escena abierta o a la siguiente etapa de esa boda (por `orden`).
+
+### 5.1 Ventana flotante del Mac (`mac/SprintFlotante/`)
+- **Por qué nativa:** la web app del Mac es de Safari, que no tiene *Document Picture-in-Picture*
+  (solo PiP de video, sin controles). La app es un `NSPanel` (`.floating`, `.nonactivatingPanel`,
+  `canJoinAllSpaces` + `fullScreenAuxiliary`) con un `WKWebView` que carga
+  **`http://localhost:4599/?mini=1`**: el MISMO `index.html`, nada reimplementado. Sin Dock
+  (`LSUIElement`), esquema de URL **`hubsprint://`** (el botón ⤢ navega a `hubsprint://open`).
+  Arrastre: franja superior de 34 px (menos los 84 px de botones a la derecha) → `performDrag`.
+  Puente JS → nativo: `webkit.messageHandlers.hub.postMessage('dashboard'|'close')`.
+  Frame recordado (`setFrameAutosaveName`). `./build.sh` compila con `swiftc` (sin Xcode), firma
+  ad-hoc, instala en `~/Applications` y registra el esquema. `HUB_SNAPSHOT=/ruta.png` (vía
+  `open --env`) guarda una captura del contenido al cargar (para pruebas).
+- **Modo mini (`?mini=1`)**: el `<head>` pone `html.mini` antes de pintar; la tarjeta `#focus`
+  se mueve a `<body>` (antes del reveal) y el CSS oculta todo lo demás; `bootRender` solo hace
+  `Sprint.update(M)` (sin gráficas). Cuadrícula de 3 zonas (A destino/esquema · B reloj ·
+  C acción): vertical `a/b/c`; apaisada (≥ 5:4 y ≥ 460 px) `a b / a c`; franja (≤ 230 px de alto,
+  ≥ 420 px) `b c`, y ≥ 640 px `a b c`. En vertical, por altura: < 500 sin `.why`, < 420 sin
+  esquemas, < 300 sin destino, ≤ 230 (angosta) solo reloj + escalera + botón. Esquemas en
+  cuadrícula 3×2 (6 en línea desde 430 px). Tamaño mínimo de la ventana: 240×170.
+- **Sincronía** (`GET/POST /api/sprint-state`, solo local; `.sprint-state.json`): cada cliente
+  sigue en su `localStorage`; `save()` de las claves del sprint marca `scSprintRev` = ms y sube
+  todo (debounce 120 ms). Cada 1,5 s a la vista (y al volver/enfocar) baja la copia común: si
+  su `rev` es mayor, la escribe en `localStorage` y `Sprint.reload()` relee variables y repinta;
+  si es menor, sube la suya (server recién arrancado). Gana el cambio más reciente. Un estado
+  previo a la sincronía cuenta como `rev` 1. La ventana pregunta con `?from=mini` (latido) →
+  `miniOpen` → clase `.floating` en la tarjeta del dashboard. El aviso sonoro es **por
+  cliente** (`scSprintChimed`, no se sincroniza) y el dashboard calla si la ventana está
+  abierta. Doble "Terminar" del mismo bloque no duplica: `/api/session` deduplica por `id`.
+  En la nube (`*.pages.dev`) no hay sincronía ni botón.
 
 ## 6. Claves de estado
 
@@ -166,10 +208,14 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
 | KV | `edicion:archive` | archivo histórico (estado persistente de la nube) |
 | KV | `edicion:pending:<id>` | sprint en cola (sin `NOTION_TOKEN` en Pages) |
 | KV | `edicion:done:<id>` | resultado de un sprint ya registrado (dedup, 24 h) |
+| KV | `edicion:pending-close:<id>` · `edicion:closed:<id>` | cierre de escena/etapa en cola · ya aplicado (dedup, 24 h) |
 | Mac | `.cache.json` · `.archive.json` | caché local · archivo histórico local |
+| Mac | `.sprint-state.json` | sprint compartido dashboard ⇄ ventana flotante (`{rev, data}`) |
 | Navegador | `scTheme` | tema claro/oscuro |
 | Navegador | `scSprint` · `scSprintBrk` · `scSprintCyc` | bloque en curso · descanso · ciclo |
 | Navegador | `scSprintMode` · `scSprintDest` · `scSprintPend` | esquema · último destino · registro pendiente |
+| Navegador | `scSprintClose` · `scSprintClosed` | cierre en espera (8 s para deshacer) · ids cerrados aún no reflejados en el tablero |
+| Navegador | `scSprintRev` · `scSprintChimed` | versión del sprint para la sincronía · último bloque que ya sonó (por cliente) |
 
 ## 7. Plantilla de Notion que espera
 

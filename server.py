@@ -7,6 +7,9 @@ importa este mismo archivo; cloud/server.py es una copia idéntica).
 - GET  /api/data     → payload completo del dashboard (Notion en vivo, caché 3 min)
 - GET  /api/summary  → resumen compacto para los widgets
 - POST /api/session  → registra un sprint de enfoque como sesión en Notion
+- POST /api/close    → al terminar un sprint, cierra su escena (y su etapa) en Notion: 🟢 + fecha de fin
+- GET/POST /api/sprint-state → estado compartido del sprint entre el dashboard y la
+  ventana flotante del Mac (mac/SprintFlotante); solo local, en .sprint-state.json
 - GET  /api/health   → {ok, hasToken}
 - El token de Notion NUNCA vive en el HTML: se lee de la variable de entorno
   NOTION_TOKEN o del archivo ~/.notion-dashboard-token
@@ -552,6 +555,73 @@ def set_in_progress(page_id, start_iso, kind):
     return moved
 
 
+def set_done(page_id, fin_iso, kind):
+    """Lo que harías a mano al acabar algo: Estado → 🟢 y su fecha de fin, si está vacía.
+    kind="escena": "Fin" (con hora) · kind="etapa": el final del rango "Del → Al" (solo día;
+    si tampoco tenía inicio, lo pone el mismo día). Devuelve True si cambió el estado."""
+    page = notion("GET", "/pages/%s" % page_id)
+    props = page.get("properties", {})
+    upd, moved = {}, False
+    est = next((n for n in ("Estado (Select)", "Estado")
+                if (props.get(n) or {}).get("type") in ("select", "status")), None)
+    if est:
+        t = props[est]["type"]
+        cur = (props[est].get(t) or {}).get("name")
+        if norm_estado(cur) != "done":
+            dbid = (page.get("parent") or {}).get("database_id")
+            opts = []
+            if dbid:
+                opts = notion("GET", "/databases/%s" % dbid).get("properties", {}).get(est, {}).get(t, {}).get("options", [])
+            green = next((o["name"] for o in opts if norm_estado(o["name"]) == "done"), None)
+            if green:
+                upd[est] = {t: {"name": green}}
+                moved = True
+    for name, v in props.items():
+        if v.get("type") != "date":
+            continue
+        d = v.get("date") or {}
+        if kind == "etapa":          # la etapa tiene una sola fecha (rango "Del → Al")
+            if not d.get("end"):
+                upd[name] = {"date": {"start": d.get("start") or fin_iso[:10], "end": fin_iso[:10]}}
+            break
+        if _sinacento(name) == "fin":
+            if not d.get("start"):
+                upd[name] = {"date": {"start": fin_iso}}
+            break
+    if upd:
+        notion("PATCH", "/pages/%s" % page_id, {"properties": upd})
+    return moved
+
+
+def validate_close(item):
+    """item = {id, db, cerrar: "escena"|"etapa", fin, stageId?, escena?}."""
+    if not isinstance(item, dict) or not item.get("db") or not item.get("id"):
+        return "Faltan datos del cierre"
+    if item.get("cerrar") not in ("escena", "etapa"):
+        return "Cierre inválido"
+    f = _iso_ok(item.get("fin"))
+    if not f or f.tzinfo is None:
+        return "Fin inválido"
+    if item["cerrar"] == "escena" and not item.get("escena"):
+        return "Falta la escena"
+    if item["cerrar"] == "etapa" and not item.get("stageId"):
+        return "Falta la etapa"
+    return None
+
+
+def close_targets(item):
+    """Cierra la escena (y la etapa si cerrar="etapa") al terminar un sprint.
+    Devuelve las que pasaron a 🟢: ["escena", "etapa"]."""
+    done = []
+    order = [("escena", item.get("escena"))]
+    if item.get("cerrar") == "etapa":
+        order.append(("etapa", item.get("stageId")))
+    for kind, pid in order:
+        if pid and set_done(pid, item["fin"], kind):
+            done.append(kind)
+    return done
+
+
 def session_targets(data):
     """DB de Sesiones → {etapa: id de su página, escenas: ids}. Es la lista blanca del
     registro: solo se escribe en etapas/escenas que existen en el tablero."""
@@ -1005,6 +1075,43 @@ def get_data(fresh=False):
 
 # ── Servidor HTTP ────────────────────────────────────────────────────────────
 _session_done = {}   # id del sprint -> resultado (evita duplicados si el navegador reintenta)
+_close_done = {}     # id del cierre -> resultado (ídem)
+
+
+# ── Estado compartido del sprint (dashboard ⇄ ventana flotante del Mac) ─────
+# Cada cliente guarda su sprint en localStorage; aquí vive la copia común. Gana la
+# versión con "rev" (ms) más reciente. La ventana flotante pregunta con ?from=mini y
+# eso sirve de latido: el dashboard sabe si está abierta (miniOpen).
+SPRINT_FILE = os.path.join(HERE, ".sprint-state.json")
+SPRINT_KEYS = ("scSprint", "scSprintPend", "scSprintDest", "scSprintMode", "scSprintBrk", "scSprintCyc")
+_sprint_lock = threading.Lock()
+_sprint = {"rev": 0, "data": {}}
+_mini_seen = [0.0]
+try:
+    with open(SPRINT_FILE, "r") as f:
+        _prev = json.load(f)
+    if isinstance(_prev, dict) and isinstance(_prev.get("data"), dict):
+        _sprint = {"rev": int(_prev.get("rev") or 0), "data": _prev["data"]}
+except Exception:
+    pass
+
+
+def sprint_state(from_mini=False, incoming=None):
+    with _sprint_lock:
+        if from_mini:
+            _mini_seen[0] = time.time()
+        if incoming is not None:
+            rev, data = incoming.get("rev"), incoming.get("data")
+            if isinstance(rev, (int, float)) and isinstance(data, dict) and rev > _sprint["rev"]:
+                _sprint["rev"] = int(rev)
+                _sprint["data"] = {k: data.get(k) for k in SPRINT_KEYS}
+                try:
+                    with open(SPRINT_FILE, "w") as f:
+                        json.dump(_sprint, f, ensure_ascii=False)
+                except Exception as e:
+                    sys.stderr.write("[sprint] no se pudo guardar: %s\n" % e)
+        return {"rev": _sprint["rev"], "data": _sprint["data"],
+                "miniOpen": time.time() - _mini_seen[0] < 6}
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -1034,8 +1141,50 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except Exception as e:
             self._send(200, json.dumps({"error": str(e)}, ensure_ascii=False))
 
+    def _close(self):
+        """POST /api/close: cierra la escena (y la etapa) del sprint que acaba de terminar."""
+        try:
+            n = int(self.headers.get("Content-Length") or 0)
+            item = json.loads(self.rfile.read(min(n, 20000)).decode("utf-8") or "{}")
+        except Exception:
+            self._send(400, json.dumps({"ok": False, "error": "JSON inválido"}))
+            return
+        err = validate_close(item)
+        if err:
+            self._send(400, json.dumps({"ok": False, "error": err}, ensure_ascii=False))
+            return
+        if item["id"] in _close_done:
+            self._send(200, json.dumps(_close_done[item["id"]]))
+            return
+        targets = session_targets(_cache.get("data"))      # misma lista blanca que /api/session
+        terr = target_error(item, targets)
+        if terr:
+            self._send(400, json.dumps({"ok": False, "error": terr}, ensure_ascii=False))
+            return
+        try:
+            closed = close_targets(item)
+        except Exception as e:
+            self._send(502, json.dumps({"ok": False, "error": str(e)[:300]}, ensure_ascii=False))
+            return
+        out = {"ok": True, "closed": closed}
+        _close_done[item["id"]] = out
+        _refresh_in_background()
+        self._send(200, json.dumps(out))
+
     def do_POST(self):
         path = self.path.split("?")[0]
+        if path == "/api/sprint-state":
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+                body = json.loads(self.rfile.read(min(n, 50000)).decode("utf-8") or "{}")
+            except Exception:
+                self._send(400, json.dumps({"ok": False, "error": "JSON inválido"}))
+                return
+            self._send(200, json.dumps(sprint_state("from=mini" in self.path, body), ensure_ascii=False))
+            return
+        if path == "/api/close":
+            self._close()
+            return
         if path != "/api/session":
             self._send(404, json.dumps({"ok": False, "error": "No existe"}))
             return
@@ -1084,6 +1233,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         if path == "/api/health":
             self._send(200, json.dumps({"ok": True, "hasToken": bool(get_token())}))
+            return
+        if path == "/api/sprint-state":
+            self._send(200, json.dumps(sprint_state("from=mini" in self.path), ensure_ascii=False))
             return
         fresh = "fresh=1" in self.path
         if path == "/api/data":

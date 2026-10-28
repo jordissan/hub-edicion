@@ -23,6 +23,8 @@ Cloudflare Pages  (siempre encendido, gratis)
   functions/api/session   → POST: registra un sprint como sesión en Notion
                             (directo con el secreto NOTION_TOKEN; si no, cola KV edicion:pending:<id>
                              que publish.py vacía al inicio de cada corrida)
+  functions/api/close     → POST: al terminar un sprint, cierra su escena/etapa en Notion (🟢 + fecha fin)
+                            (directo con NOTION_TOKEN; si no, cola KV edicion:pending-close:<id>)
   Cloudflare Access (PIN) → protege TODO; los widgets entran con un Service Token
         │
 iPhone / navegador → https://hub-edicion.pages.dev
@@ -41,6 +43,8 @@ con su `server.py` + launchd en el puerto 4599 — es **backup/dev** para probar
 - `functions/api/edicion.js`, `functions/api/summary.js` — leen de KV (binding `HUB_KV`).
 - `functions/api/session.js` — `POST /api/session`: registra un **sprint de enfoque** como sesión en Notion
   (valida contra la lista blanca de `edicion:data`; directo con `NOTION_TOKEN`, si no cola `edicion:pending:<id>`).
+- `functions/api/close.js` — `POST /api/close`: cierra la escena (y la etapa) del sprint que terminó
+  (misma lista blanca; directo con `NOTION_TOKEN`, si no cola `edicion:pending-close:<id>`).
 - `docs/arquitectura.md` — referencia técnica completa (la copia `sync-cloud.sh`).
 - `.github/workflows/publish.yml` — cron + `workflow_dispatch`. Secretos: `NOTION_TOKEN`, `CF_API_TOKEN`,
   `CF_ACCOUNT_ID`, `CF_KV_NAMESPACE_ID`. Lleva `env: TZ: America/Mexico_City` (el runner es UTC).
