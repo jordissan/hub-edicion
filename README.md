@@ -29,7 +29,7 @@ con su `server.py` + launchd en el puerto 4599 — es **backup/dev** para probar
 
 ## Archivos
 - `server.py` — extracción de Notion (mismo que el local). Devuelve el modelo del dashboard
-  (incluye `archive`: stats compactas de bodas entregadas — el estado persistente vive en KV
+  (incluye `archive`: stats compactas + curva `ghost` de bodas entregadas — el estado persistente vive en KV
   `edicion:archive`; el `.archive.json` local que escribe en Actions es descartable).
 - `publish.py` — corre en Actions: lee `edicion:archive` de KV (`prev_archive`), llama
   `build_data(prev_archive=...)` + `build_summary` → escribe `edicion:data`, `edicion:summary`
@@ -121,7 +121,11 @@ barra de navegación flotante inferior).
   bodas con `>0 h` de edición efectiva (las de solo correcciones no son referencia válida).
   **Historia a largo plazo:** el archivo histórico (`archive` en el payload, `.archive.json` local /
   KV `edicion:archive`) viaja siempre; `deriveModel` lo usa para que la comparación (Carrera / $/h) no
-  pierda bodas cuando salen del tablero a los 45 días. Con los años, el fantasma pasará de "la anterior"
+  pierda bodas cuando salen del tablero a los 45 días: cada entrada lleva un `ghost` (`server.wedding_ghost`:
+  por etapa horas, `nScenes` y minutos por día) y el front la reconstruye como boda terminada para
+  `refCur`/`refGhost` (nunca para Proyectos). Entradas viejas sin `ghost` → `server.backfill_ghosts` las
+  rehace desde Notion con las páginas que el descubrimiento dejó fuera (`DROPPED_DONE_PAGES`, máx.
+  `BACKFILL_MAX`=2 por extracción: cada una ~1 min y el job tiene 10 min de límite). Con los años, el fantasma pasará de "la anterior"
   a la **mediana del historial** (pendiente); el heatmap ya crece solo.
 - **Bodas incluidas:** todas (Tipo = Boda) **menos las finalizadas inactivas > `RECENT_DONE_DAYS` (45) días**
   (`discover_wedding_pages`). El filtro de "finalizada" se hace en Python contra `DONE_STATUSES`

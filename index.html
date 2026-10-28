@@ -947,13 +947,26 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
     // (retrospectivo — siempre significativo, no depende de que la actual esté avanzada).
     // "edición terminada" = medida y sin etapas live (puede estar en correcciones).
     const lastEffDate = w => { let m=null; for(const s of (w.stages||[])){ if(isCorr(s))continue; for(const x of (s.sessionLog||[])){ if(x.inicio&&(m==null||x.inicio.slice(0,10)>m))m=x.inicio.slice(0,10);} } return m||w.projectEnd||w.projectStart||''; };
-    const editComplete = measured.filter(w=> !hasLive(w));
+    // bodas entregadas que ya salieron del tablero (45 días sin cambios): se
+    // reconstruyen desde su "ghost" del archivo para que sigan sirviendo de fantasma
+    const onBoard = new Set(weddings.map(w=>(w.name||'').trim().toLowerCase()));
+    const fromArchive = archive
+      .filter(a=> a.ghost && a.name && !onBoard.has(a.name.trim().toLowerCase()))
+      .map(a=>({ name:a.name, icon:a.icon, price:a.price, archived:true,
+        projectStart:a.ghost.projectStart, projectEnd:a.ghost.projectEnd,
+        stages:(a.ghost.stages||[]).map(s=>({ etapa:s.etapa, fase:s.fase, isCorrections:!!s.isCorrections,
+          estado:'done', hours:s.hours, scenes:Array.from({length:s.nScenes||0},()=>({})),
+          sessionLog:Object.keys(s.days||{}).sort().map(d=>({inicio:d, min:s.days[d]})) })) }))
+      .filter(w=> effH(w)>0);
+    const editComplete = measured.filter(w=> !hasLive(w)).concat(fromArchive);
     editComplete.sort((a,b)=> lastEffDate(b).localeCompare(lastEffDate(a)));
     const refCur   = editComplete[0] || null;   // p.ej. Lourdes
     const refGhost = editComplete[1] || null;    // p.ej. Camila
 
     // por defecto el selector de Proyectos abre la boda en curso; si no hay, la última terminada
-    const currentKey = liveW ? slug(liveW.name) : (refCur ? slug(refCur.name) : (measSorted[0]?slug(measSorted[0].name):null));
+    // (solo bodas del tablero: las reconstruidas del archivo no están en Proyectos)
+    const boardRef = editComplete.find(w=> !w.archived) || null;
+    const currentKey = liveW ? slug(liveW.name) : (boardRef ? slug(boardRef.name) : (measSorted[0]?slug(measSorted[0].name):null));
 
     let race=null, hero=null;
     if (refCur){
@@ -981,7 +994,9 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
                curName:race.curName, ghostName:race.ghostName, hasGhost:true, excluded:race.excluded };
       } else {
         // solo una boda medida terminada: sin comparación, hero informativo
-        hero={ hasGhost:false, curName:race.curName, curEditDay:race.curEditDay, curEff:race.curEff };
+        const curK=race.curName.toLowerCase();
+        const prevKnown = archive.some(a=> a.name && a.name.trim().toLowerCase()!==curK && (a.hours||0)>0);
+        hero={ hasGhost:false, prevKnown, curName:race.curName, curEditDay:race.curEditDay, curEff:race.curEff };
       }
     }
 
@@ -1107,6 +1122,11 @@ function renderHero(M){
       `<div class="s"><div class="v">${signed(H.dH,' h')}</div><div class="l">EDICIÓN · ${signed(H.dPct,' %')}</div></div>`+
       (H.dHpe!=null?`<div class="s"><div class="v">${signed(H.dHpe,' %')}</div><div class="l">HORAS POR ESCENA</div></div>`:'')+
       `<div class="s"><div class="v">D${H.curEditDay}</div><div class="l">EDICIÓN LISTA</div></div>`;
+  } else if(H && !H.hasGhost && H.prevKnown){
+    // hay bodas anteriores en el archivo, pero sin curva todavía (se rellena en la próxima extracción)
+    h1.innerHTML=`${fmt(H.curEff)} <em>h</em><br>tu última<br>edición`;
+    lede.innerHTML=`<b>${H.curName}</b> es tu última edición terminada. La curva de tu boda anterior aún no está en el historial; la carrera vuelve en la próxima actualización.`;
+    stats.innerHTML=`<div class="s"><div class="v">D${H.curEditDay}</div><div class="l">EDICIÓN LISTA</div></div>`;
   } else if(H && !H.hasGhost){
     h1.innerHTML=`${fmt(H.curEff)} <em>h</em><br>tu primera<br>boda medida`;
     lede.innerHTML=`<b>${H.curName}</b> es tu primera boda con horas trackeadas — aún no hay una anterior para comparar. La próxima correrá contra esta.`;
