@@ -834,8 +834,17 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
     const bestDowIdx = wkMin.indexOf(Math.max(...wkMin));
 
     // ---- cronotipo: heatmap (intensidad diaria) ----
+    // incluye el historial: los minutos por día de las bodas entregadas que ya salieron
+    // del tablero (archivo → ghost), para que el año se vaya llenando con todo lo medido
+    const heatMin = {};
+    for (const s of sess) heatMin[s.date] = (heatMin[s.date]||0) + s.min;
+    const boardNames = new Set(weddings.map(w=>(w.name||'').trim().toLowerCase()));
+    for (const a of archive){
+      if (!a.ghost || !a.name || boardNames.has(a.name.trim().toLowerCase())) continue;
+      for (const st of (a.ghost.stages||[])) for (const d in (st.days||{})) heatMin[d] = (heatMin[d]||0) + st.days[d];
+    }
     const heat = {};
-    for (const s of sess) heat[s.date] = round1((heat[s.date]||0)+s.min/60);
+    for (const d in heatMin) if (heatMin[d]>0) heat[d] = round1(heatMin[d]/60);
     // mejor día y rango medido
     let bestDay=null, bestH=0, firstDay=null;
     for (const k in heat){ if(heat[k]>bestH){bestH=heat[k];bestDay=k;} if(!firstDay||k<firstDay)firstDay=k; }
@@ -869,7 +878,7 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
       if(!met(isoOf(d))) d.setDate(d.getDate()-1);
       for(let i=0;i<160;i++){ const iso=isoOf(d); if(d.getDay()!==0){ if(metaH(iso)===0||met(iso))streak+= (metaH(iso)>0?1:0); else break; } d.setDate(d.getDate()-1); }
     }
-    const activeDays = Object.keys(dayTot).length;
+    const activeDays = Object.keys(heat).length;   // mismo rango que firstDay (incluye historial)
     const spanDays = firstDay ? daysBetween(firstDay, today)+1 : 0;
     const todayMin = dayTot[today]||0;
     const todaySes = sess.filter(s=>s.date===today).length;

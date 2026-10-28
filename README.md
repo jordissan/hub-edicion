@@ -130,7 +130,8 @@ barra de navegación flotante inferior).
   `sessions` por etapa. Entradas sin `ghost` o con versión vieja → `server.backfill_ghosts` las
   rehace desde Notion con las páginas que el descubrimiento dejó fuera (`DROPPED_DONE_PAGES`, máx.
   `BACKFILL_MAX`=2 por extracción: cada una ~1 min y el job tiene 10 min de límite). Con los años, el fantasma pasará de "la anterior"
-  a la **mediana del historial** (pendiente); el heatmap ya crece solo.
+  a la **mediana del historial** (pendiente); el heatmap ya crece solo: suma `ghost.stages[].days` de las
+  bodas archivadas fuera del tablero (sin duplicar las del tablero), y `activeDays`/`firstDay` salen de ahí.
 - **Bodas incluidas:** todas (Tipo = Boda) **menos las finalizadas inactivas > `RECENT_DONE_DAYS` (45) días**
   (`discover_wedding_pages`). El filtro de "finalizada" se hace en Python contra `DONE_STATUSES`
   (`Finalizadas`/`Hecho`/`Complete`…), **no en la consulta a Notion** — así renombrar la opción de Status
