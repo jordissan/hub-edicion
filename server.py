@@ -170,6 +170,7 @@ def _is_sesion(title_prop):
 
 
 _db_meta_cache = {}
+_db_has_dates = {}   # db_id -> tiene fechas "Inicio" y "Fin" (= registro de sesiones de verdad)
 def db_title_prop(db_id):
     if db_id in _db_meta_cache:
         return _db_meta_cache[db_id]
@@ -180,7 +181,19 @@ def db_title_prop(db_id):
             name = k
             break
     _db_meta_cache[db_id] = name
+    dates = {_sinacento(k) for k, v in d.get("properties", {}).items() if v.get("type") == "date"}
+    _db_has_dates[db_id] = {"inicio", "fin"} <= dates
     return name
+
+
+def is_session_log_db(db_id):
+    """OJO: la DB "Tiempo total" de cada etapa TAMBIÉN titula su columna "Sesión"; solo
+    la DB de Sesiones de verdad tiene fechas Inicio y Fin. El sprint escribe solo en esa."""
+    try:
+        db_title_prop(db_id)
+    except Exception:
+        return False
+    return _db_has_dates.get(db_id, False)
 
 
 # ── Extractores de propiedades ───────────────────────────────────────────────
@@ -298,12 +311,17 @@ def read_session_db(sb_id):
         if h:
             total_h += h; nsess += 1
             ini_local = parse_iso_local(ini)
+            esc = None
+            for k, v in pp.items():
+                if v.get("type") == "relation" and _sinacento(k).startswith("escena") and v.get("relation"):
+                    esc = v["relation"][0]["id"]; break
             log.append({
                 "name": p_title(pp, "Sesion") or title_any(pp),
                 "inicio": ini_local.strftime("%Y-%m-%dT%H:%M") if ini_local else ini,
                 "min": int(round(h * 60)),
                 "tipo": p_select(pp, "Tipo"),
                 "ronda": p_number(pp, "Ronda"),
+                "escena": esc,   # para que el sprint proponga la última escena trabajada
             })
     return log, total_h, nsess
 
@@ -349,7 +367,7 @@ def build_wedding(page):
                         "etapa": "Correcciones", "fase": None,
                         "estado": "done", "orden": 99,
                         "start": None, "end": None,
-                        "isCorrections": True,
+                        "isCorrections": True, "sessionDb": bid if is_session_log_db(bid) else None,
                         "scenes": [], "hours": round(th, 1), "sessions": ns, "sessionLog": log,
                     })
         return wedding
@@ -369,6 +387,7 @@ def build_wedding(page):
             # "Corrección de Color y Finalización" (etapa normal de edición, singular).
             "isCorrections": ("cambios" in s_etapa.lower()) or ("correcciones" in s_etapa.lower()),
             "scenes": [], "hours": None, "sessions": 0, "sessionLog": [],
+            "sessionDb": None,   # DB "Sesiones" de la etapa (el sprint registra aquí)
         }
         total_h = 0.0
         nsess = 0
@@ -390,6 +409,7 @@ def build_wedding(page):
                     scp = sc.get("properties", {})
                     c_start, c_end = first_date(scp)
                     stage["scenes"].append({
+                        "id": sc["id"],
                         "escena": p_title(scp, "Escena") or title_any(scp),
                         "estado": norm_estado(p_select(scp, "Estado")),
                         "orden": p_number(scp, "Orden") if p_number(scp, "Orden") is not None else 99,
@@ -399,6 +419,8 @@ def build_wedding(page):
             elif _is_sesion(title_prop) or "sesion" in _sinacento(sb_title):
                 log, th, ns = read_session_db(sb_id)
                 stage["sessionLog"].extend(log); total_h += th; nsess += ns
+                if not stage["sessionDb"] and is_session_log_db(sb_id):
+                    stage["sessionDb"] = sb_id
         if nsess:
             stage["hours"] = round(total_h, 1)
             stage["sessions"] = nsess
@@ -406,6 +428,73 @@ def build_wedding(page):
         wedding["stages"].append(stage)
     wedding["stages"].sort(key=lambda x: x["orden"])
     return wedding
+
+
+# ── Registrar una sesión (sprint de enfoque) ─────────────────────────────────
+def _iso_ok(v):
+    try:
+        return datetime.datetime.fromisoformat(v) if isinstance(v, str) else None
+    except ValueError:
+        return None
+
+
+def validate_session(item):
+    """Devuelve un mensaje de error o None. item = {id, db, inicio, fin, tipo, escena?, ronda?}."""
+    if not isinstance(item, dict) or not item.get("db") or not item.get("id"):
+        return "Faltan datos de la sesión"
+    a, b = _iso_ok(item.get("inicio")), _iso_ok(item.get("fin"))
+    if not a or not b or a.tzinfo is None or b.tzinfo is None:
+        return "Inicio/Fin inválidos"
+    mins = (b - a).total_seconds() / 60
+    if mins < 1:
+        return "Sesión de menos de 1 minuto"
+    if mins > 8 * 60:
+        return "Sesión de más de 8 horas"
+    if item.get("tipo") not in (None, "Edición", "Gestión"):
+        return "Tipo inválido"
+    return None
+
+
+def create_session(item):
+    """Crea una fila en la DB "Sesiones" de una etapa IGUAL que el registro manual:
+    título "Sesión", Inicio, Fin, Tipo, Escena (relación) y Total (relación a la fila
+    de "Tiempo total" de la etapa que corresponde a su Tipo: Edición / Gestión).
+    Solo llena las propiedades que existen en esa DB (las plantillas varían)."""
+    db = item["db"]; tipo = item.get("tipo") or "Edición"
+    schema = notion("GET", "/databases/%s" % db).get("properties", {})
+    dates = {_sinacento(k) for k, v in schema.items() if v.get("type") == "date"}
+    if not {"inicio", "fin"} <= dates:      # salvaguarda: nunca escribir en "Tiempo total" u otra DB
+        raise RuntimeError("Esa DB no es un registro de Sesiones (sin Inicio/Fin)")
+    props = {}
+    for name, p in schema.items():
+        t, n = p.get("type"), _sinacento(name)
+        if t == "title":
+            props[name] = {"title": [{"text": {"content": "Sesión"}}]}
+        elif t == "date" and n == "inicio":
+            props[name] = {"date": {"start": item["inicio"]}}
+        elif t == "date" and n == "fin":
+            props[name] = {"date": {"start": item["fin"]}}
+        elif t == "select" and n == "tipo":
+            if tipo in [o["name"] for o in p["select"].get("options", [])]:
+                props[name] = {"select": {"name": tipo}}
+        elif t == "number" and n == "ronda" and item.get("ronda") is not None:
+            props[name] = {"number": item["ronda"]}
+        elif t == "relation" and n.startswith("escena") and item.get("escena"):
+            props[name] = {"relation": [{"id": item["escena"]}]}
+        elif t == "relation" and n == "total":
+            tid = p["relation"].get("database_id")
+            if tid:
+                for r in query_db(tid):
+                    if _sinacento(title_any(r.get("properties", {}))) == _sinacento(tipo):
+                        props[name] = {"relation": [{"id": r["id"]}]}
+                        break
+    page = notion("POST", "/pages", {"parent": {"database_id": db}, "properties": props})
+    return {"id": page.get("id"), "url": page.get("url")}
+
+
+def known_session_dbs(data):
+    return {s.get("sessionDb") for w in (data or {}).get("weddings", [])
+            for s in w.get("stages", []) if s.get("sessionDb")}
 
 
 RECENT_DONE_DAYS = 45  # bodas finalizadas editadas en los últimos N días siguen en el tablero
@@ -820,6 +909,9 @@ def get_data(fresh=False):
 
 
 # ── Servidor HTTP ────────────────────────────────────────────────────────────
+_session_done = {}   # id del sprint -> resultado (evita duplicados si el navegador reintenta)
+
+
 class Handler(http.server.BaseHTTPRequestHandler):
     def _send(self, code, body, ctype="application/json; charset=utf-8"):
         if isinstance(body, str):
@@ -831,6 +923,44 @@ class Handler(http.server.BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
+
+    def do_POST(self):
+        global _refreshing
+        path = self.path.split("?")[0]
+        if path != "/api/session":
+            self._send(404, json.dumps({"ok": False, "error": "No existe"}))
+            return
+        try:
+            n = int(self.headers.get("Content-Length") or 0)
+            item = json.loads(self.rfile.read(min(n, 20000)).decode("utf-8") or "{}")
+        except Exception:
+            self._send(400, json.dumps({"ok": False, "error": "JSON inválido"}))
+            return
+        err = validate_session(item)
+        if err:
+            self._send(400, json.dumps({"ok": False, "error": err}, ensure_ascii=False))
+            return
+        if item["id"] in _session_done:
+            self._send(200, json.dumps(_session_done[item["id"]]))
+            return
+        # solo DBs de Sesiones de etapas del tablero (no escribe en cualquier DB que le pidan)
+        if item["db"] not in known_session_dbs(_cache.get("data")):
+            if not known_session_dbs(_cache.get("data")):
+                _do_build()      # caché de antes del sprint (sin sessionDb) → reconstruir una vez
+            if item["db"] not in known_session_dbs(_cache.get("data")):
+                self._send(400, json.dumps({"ok": False, "error": "Etapa desconocida"}, ensure_ascii=False))
+                return
+        try:
+            res = create_session(item)
+        except Exception as e:
+            self._send(502, json.dumps({"ok": False, "error": str(e)[:300]}, ensure_ascii=False))
+            return
+        out = {"ok": True, "url": res.get("url")}
+        _session_done[item["id"]] = out
+        if not _refreshing:      # que el tablero la muestre en cuanto termine de reconstruirse
+            _refreshing = True
+            threading.Thread(target=_do_build, daemon=True).start()
+        self._send(200, json.dumps(out))
 
     def do_GET(self):
         path = self.path.split("?")[0]
