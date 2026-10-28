@@ -257,6 +257,17 @@ svg text{user-select:none}
 /* ============ en la mesa · proyectos ============ */
 .prow{display:grid;grid-template-columns:190px 1fr auto;gap:16px;align-items:center;padding:12px 10px;border-radius:12px;cursor:pointer}
 .prow+.prow{margin-top:2px}
+.parch{display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:10px;padding:14px 10px 10px;
+  border:0;border-top:1px solid var(--hair2);background:none;color:var(--dim);cursor:pointer;
+  font-family:var(--f-m);font-size:10.5px;font-weight:700;letter-spacing:.14em;text-align:left}
+.parch i{font-style:normal;font-size:15px;line-height:1;transition:transform .2s var(--ease)}
+.parch[aria-expanded="true"] i{transform:rotate(90deg)}
+.parch:focus-visible{outline:2px solid var(--sun);outline-offset:2px;border-radius:8px}
+.parchl[hidden]{display:none}
+.prow.arch .pnm{font-weight:600;color:var(--mut)}
+.prow.arch.sel .pnm{color:var(--txt)}
+.prow.arch .ptrack i{background:color-mix(in srgb,var(--sun-block) 40%,var(--panel))}
+.prow.arch.sel .ptrack i{background:var(--sun-block)}
 .prow.sel{background:color-mix(in srgb,var(--violeta) 7%,transparent)}
 .prow .pnm{font-family:var(--f-d);font-weight:700;font-size:13.5px;display:flex;align-items:center;gap:8px;min-width:0}
 .prow .pnm span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -380,6 +391,7 @@ svg text{user-select:none}
   .anat .arow:hover .bar{filter:brightness(1.18)}
   .prow{transition:background-color .15s ease}
   .prow:hover{background:color-mix(in srgb,var(--violeta) 6%,transparent)}
+  .parch:hover{color:var(--txt)}
   .erow .en{transition:color .15s ease}
   .erow:hover .en{color:var(--txt)}
   .erow:hover .dot{transform:scale(1.3)}
@@ -627,7 +639,7 @@ svg text{user-select:none}
   <p class="sub">La lista <b>es</b> el selector: toca una boda y todo lo de abajo se vuelve ese proyecto. En la versión final, esta es su propia pestaña.</p>
   <div class="card">
     <div id="proj"></div>
-    <p class="note">Lo hecho es sólido; lo pendiente, <b>rayado</b>. Solo aparecen bodas con sesiones medidas.</p>
+    <p class="note">Lo hecho es sólido; lo pendiente, <b>rayado</b>. Solo aparecen bodas con sesiones medidas; las entregadas que llevan 45 días sin cambios pasan al <b>Archivo</b>.</p>
   </div>
   <div class="mesa2">
     <div class="card" id="donutCard">
@@ -954,10 +966,18 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
       .filter(a=> a.ghost && a.name && !onBoard.has(a.name.trim().toLowerCase()))
       .map(a=>({ name:a.name, icon:a.icon, price:a.price, archived:true,
         projectStart:a.ghost.projectStart, projectEnd:a.ghost.projectEnd,
+        lastEnd:a.lastEnd||a.ghost.projectEnd||'',
         stages:(a.ghost.stages||[]).map(s=>({ etapa:s.etapa, fase:s.fase, isCorrections:!!s.isCorrections,
-          estado:'done', hours:s.hours, scenes:Array.from({length:s.nScenes||0},()=>({})),
+          estado:s.estado||'done', sessions:s.sessions||0,
+          hours:s.hours, scenes:Array.from({length:s.nScenes||0},()=>({})),
           sessionLog:Object.keys(s.days||{}).sort().map(d=>({inicio:d, min:s.days[d]})) })) }))
       .filter(w=> effH(w)>0);
+    for (const w of fromArchive) for (const s of w.stages) if (s.estado==='live') s.estado='done';
+    // Archivo de Proyectos: las entregadas que ya salieron del tablero, la más reciente primero
+    const archOrder=[];
+    for (const w of fromArchive.slice().sort((a,b)=>(b.lastEnd||'').localeCompare(a.lastEnd||''))){
+      const pm=projModel(w); pm.archived=true; pm.chip=['done','ENTREGADA'];
+      if(!projects[pm.key]){ projects[pm.key]=pm; archOrder.push(pm.key); } }
     const editComplete = measured.filter(w=> !hasLive(w)).concat(fromArchive);
     editComplete.sort((a,b)=> lastEffDate(b).localeCompare(lastEffDate(a)));
     const refCur   = editComplete[0] || null;   // p.ej. Lourdes
@@ -1041,7 +1061,7 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
       bestDowName, todayMin, todaySes, thisWeekH, activeStage, activeStages, activeWed, metaTodayH: metaH(today),
       sprints, medMin, over2h,
       dia7,
-      projects, projOrder, currentKey,
+      projects, projOrder, archOrder, currentKey,
       liveName: liveW?(liveW.name||'').trim():null,
       race, hero, anat, money,
       colFor, PHASES, PHASE_ORDER
@@ -1449,9 +1469,19 @@ function renderMesa(M){
   let html='';
   M.projOrder.forEach((key,i)=>{ const p=M.projects[key];
     html+=`<div class="prow" data-key="${key}" role="button" tabindex="0" aria-pressed="false" data-tip="<b>${p.nm}</b><br>${p.prog} · ${p.extra} trabajadas${p.teaser?' · con teaser':''}${p.days>1?' · boda de '+p.days+' días':''} — toca para abrir"><div class="pnm">${p.ic} <span>${p.nm}</span></div><div class="ptrack"><i style="--w:${p.w}%;--i:${i}"></i></div><div class="pmeta"><b>${p.w} %</b>${p.teaser?'<span class="pchip tag">TEASER</span>':''}${p.days>1?`<span class="pchip tag">${p.days} DÍAS</span>`:''}<span class="pchip ${p.chip[0]}">${p.chip[1]}</span><span>${p.extra}</span></div></div>`; });
+  if(M.archOrder.length){
+    const open=!!renderMesa._archOpen, n=M.archOrder.length;
+    html+=`<button type="button" class="parch" aria-expanded="${open}" aria-controls="projArch"><span>ARCHIVO · ${n} ${n===1?'BODA ENTREGADA':'BODAS ENTREGADAS'}</span><i aria-hidden="true">›</i></button><div id="projArch" class="parchl"${open?'':' hidden'}>`;
+    M.archOrder.forEach((key,i)=>{ const p=M.projects[key];
+      html+=`<div class="prow arch" data-key="${key}" role="button" tabindex="0" aria-pressed="false" data-tip="<b>${p.nm}</b><br>${p.prog} · ${p.extra} trabajadas${p.teaser?' · con teaser':''} — toca para abrir"><div class="pnm">${p.ic} <span>${p.nm}</span></div><div class="ptrack"><i style="--w:${p.w}%;--i:${i}"></i></div><div class="pmeta">${p.teaser?'<span class="pchip tag">TEASER</span>':''}<span class="pchip ${p.chip[0]}">${p.chip[1]}</span><span>${p.extra}</span></div></div>`; });
+    html+=`</div>`;
+  }
   projBox.innerHTML=html;
   if(!renderMesa._bound){ renderMesa._bound=true;
-    projBox.addEventListener('click',e=>{const r=e.target.closest('.prow');if(r)renderMesa._select(r.dataset.key);});
+    projBox.addEventListener('click',e=>{
+      const t=e.target.closest('.parch');
+      if(t){ const l=document.getElementById('projArch'), open=l.hidden; l.hidden=!open; t.setAttribute('aria-expanded',open); renderMesa._archOpen=open; return; }
+      const r=e.target.closest('.prow');if(r)renderMesa._select(r.dataset.key);});
     projBox.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const r=e.target.closest('.prow');if(r){e.preventDefault();renderMesa._select(r.dataset.key);}}}); }
   const openKey = M.projOrder.includes(M.currentKey)?M.currentKey:M.projOrder[0];
   if(openKey) select(openKey);
