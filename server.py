@@ -424,6 +424,11 @@ DONE_STATUSES = {"hecho", "finalizadas", "finalizada", "complete", "completado",
 # se niega a sobrescribir la nube con datos degradados.
 DISCOVERY_DEGRADED = [False]
 
+# Páginas de bodas finalizadas que la última consulta dejó FUERA del tablero (más de
+# RECENT_DONE_DAYS sin cambios). build_data las usa para rellenar, una sola vez, la
+# curva ("ghost") de las entradas del archivo que aún no la tienen.
+DROPPED_DONE_PAGES = []
+
 
 def discover_wedding_pages():
     """Trae TODAS las páginas Tipo=Boda y descarta solo las finalizadas que llevan
@@ -431,6 +436,7 @@ def discover_wedding_pages():
     cerrados (p.ej. correcciones post-entrega que acabas hoy) ni las que siguen en
     curso o en correcciones. Robusto ante renombrados del estado en Notion."""
     DISCOVERY_DEGRADED[0] = False
+    del DROPPED_DONE_PAGES[:]
     cutoff = (datetime.date.today() - datetime.timedelta(days=RECENT_DONE_DAYS)).isoformat()
     filt = {"property": "Tipo", "select": {"equals": "Boda"}}
     try:
@@ -441,6 +447,7 @@ def discover_wedding_pages():
                 status = (p_select(p.get("properties", {}), "Status") or "").strip().lower()
                 edited = (p.get("last_edited_time") or "")[:10]
                 if status in DONE_STATUSES and edited < cutoff:
+                    DROPPED_DONE_PAGES.append(p)  # para rellenar su curva en el archivo
                     continue  # finalizada y sin actividad reciente → fuera del tablero
                 kept.append(p)
             if kept:
@@ -470,6 +477,27 @@ def discover_wedding_pages():
 ARCHIVE_FILE = os.path.join(HERE, ".archive.json")
 
 
+def wedding_ghost(w):
+    """Esqueleto compacto de una boda para que la Carrera ("Contra tu fantasma"), el
+    ADN y Dinero puedan seguir usándola cuando sale del tablero: por etapa, sus horas,
+    nº de escenas y los minutos trabajados por día (no cada sesión)."""
+    stages = []
+    for s in w.get("stages") or []:
+        days = {}
+        for x in (s.get("sessionLog") or []):
+            if x.get("inicio"):
+                d = x["inicio"][:10]
+                days[d] = days.get(d, 0) + (x.get("min") or 0)
+        stages.append({
+            "etapa": s.get("etapa"), "fase": s.get("fase"),
+            "isCorrections": bool(s.get("isCorrections")),
+            "hours": s.get("hours"), "nScenes": len(s.get("scenes") or []),
+            "days": days,
+        })
+    return {"projectStart": w.get("projectStart"), "projectEnd": w.get("projectEnd"),
+            "stages": stages}
+
+
 def wedding_archive_stats(w):
     """Stats compactas de una boda (mismas semánticas que weddingStats del front)."""
     edit = [s for s in w["stages"] if not s.get("isCorrections")]
@@ -497,6 +525,7 @@ def wedding_archive_stats(w):
         "hours": hours, "scenes": scenes, "span": span,
         "price": w.get("price"), "rounds": len(rondas) or (1 if any_corr else 0),
         "lastEnd": days[-1] if days else None,
+        "ghost": wedding_ghost(w),
     }
 
 
@@ -537,6 +566,31 @@ def merge_archive(prev, weddings):
     return sorted(by.values(), key=lambda e: e.get("lastEnd") or e.get("archivedAt") or "")
 
 
+BACKFILL_MAX = 2  # bodas viejas a reconstruir por extracción (~1 min c/u: cabe en los 10 min de Actions)
+
+
+def backfill_ghosts(archive):
+    """Entradas archivadas ANTES de existir "ghost" (bodas ya fuera del tablero): se
+    reconstruyen desde Notion una sola vez. Después viajan en el archivo y no se vuelven
+    a consultar."""
+    missing = {e["name"].strip().lower(): e for e in archive
+               if e.get("name") and not e.get("ghost")}
+    done = 0
+    for p in DROPPED_DONE_PAGES:
+        if not missing or done >= BACKFILL_MAX:
+            break
+        props = p.get("properties", {})
+        key = ((p_title(props, "Nombre") or title_any(props)) or "").strip().lower()
+        entry = missing.pop(key, None)
+        if not entry:
+            continue
+        try:
+            entry["ghost"] = wedding_ghost(build_wedding(p))
+            done += 1
+        except Exception as e:
+            sys.stderr.write("[archivo] no se pudo reconstruir %s (%s)\n" % (key, e))
+
+
 def build_data(prev_archive=None):
     pages = discover_wedding_pages()
     weddings = [build_wedding(p) for p in pages]
@@ -545,6 +599,7 @@ def build_data(prev_archive=None):
     # archivo histórico: local se persiste en disco; el extractor de la nube pasa
     # el previo leído de KV (prev_archive) y publica el resultado él mismo.
     archive = merge_archive(load_archive() if prev_archive is None else prev_archive, weddings)
+    backfill_ghosts(archive)
     save_archive(archive)
     now = datetime.datetime.now()
     return {
