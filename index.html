@@ -147,7 +147,8 @@ svg text{user-select:none}
 .card .note b{color:var(--mut);font-weight:600}
 
 /* ============ hero ============ */
-.hero{margin-top:56px;display:grid;grid-template-columns:340px 1fr;gap:44px;align-items:end}
+.hero{margin-top:56px;display:grid;grid-template-columns:340px 1fr;gap:0 44px;align-items:end}
+.hero .herotbl{grid-column:2;min-width:0;align-self:start}
 .hero .eyebrow{display:flex;align-items:center;gap:10px;font-family:var(--f-m);font-size:11px;font-weight:700;
   letter-spacing:.22em;color:var(--sun-tx);margin-bottom:18px}
 .hero h1{font-family:var(--f-d);font-weight:900;font-size:clamp(44px,6vw,74px);line-height:.95;letter-spacing:-.03em;
@@ -405,6 +406,7 @@ svg text{user-select:none}
 /* ============ responsive ============ */
 @media(max-width:980px){
   .hero{grid-template-columns:1fr;gap:30px}
+  .hero .herotbl{grid-column:auto;margin-top:-16px}
   .hoy{grid-template-columns:1fr 1fr}
   .hoy .mini{grid-column:1/-1;flex-direction:row}
   .tiles{grid-template-columns:1fr 1fr}
@@ -418,6 +420,7 @@ svg text{user-select:none}
 @media(max-width:640px){
   .wrap{padding:0 16px}
   .hero{margin-top:36px;gap:26px}
+  .hero .herotbl{margin-top:-12px}
   .hero .eyebrow{margin-bottom:12px}
   .hero h1{font-size:clamp(54px,19.5vw,78px);line-height:.9;letter-spacing:-.035em}
   .hero .lede{max-width:none;margin-top:14px;font-size:14.5px}
@@ -537,8 +540,9 @@ svg text{user-select:none}
     <div class="legend" id="raceLegend"></div>
     <p class="scalenote">Tu <b>última edición terminada</b> corre contra la anterior como fantasma; con más bodas
       será la <b>mediana de tu historial</b>, las demás como ecos tenues detrás.</p>
-    <details class="tbl"><summary>VER LOS DATOS ▾</summary><div id="raceTbl"></div></details>
   </div>
+  <!-- fila propia: al desplegarse crece hacia abajo sin mover el texto ni la gráfica -->
+  <details class="tbl herotbl"><summary>VER LOS DATOS ▾</summary><div id="raceTbl"></div></details>
 </section>
 
 <!-- ============ HOY ============ -->
