@@ -1125,18 +1125,21 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
       }
     }
 
-    // ---- SPRINT: etapas en curso con DB de Sesiones (la última trabajada primero) ----
+    // ---- SPRINT: etapas sin terminar con DB de Sesiones — 🔵 en curso (la última trabajada
+    // primero) y ⚪️ por empezar (en el orden de Notion). Las 🟢 no se ofrecen. ----
     const sprintTargets=[];
     for (const w of weddings) for (const s of (w.stages||[])){
-      if (s.estado!=='live' || !s.sessionDb) continue;
+      if (s.estado==='done' || !s.sessionDb) continue;
       const log=(s.sessionLog||[]).slice().sort((a,b)=>(a.inicio||'').localeCompare(b.inicio||''));
       const last=log[log.length-1]||null, rondas=log.map(x=>x.ronda).filter(r=>r!=null);
-      sprintTargets.push({ db:s.sessionDb, wed:(w.name||'').trim(), etapa:shortName(s.etapa), corr:isCorr(s),
+      sprintTargets.push({ db:s.sessionDb, stageId:s.id||null, estado:s.estado, orden:s.orden??99,
+        wed:(w.name||'').trim(), etapa:shortName(s.etapa), corr:isCorr(s),
         ronda: rondas.length?Math.max(...rondas):null,
-        scenes:(s.scenes||[]).filter(sc=>sc.id).map(sc=>({id:sc.id, nm:(sc.escena||'').trim()})),
+        scenes:(s.scenes||[]).filter(sc=>sc.id&&(sc.escena||'').trim()).map(sc=>({id:sc.id, nm:(sc.escena||'').trim(), estado:sc.estado||'wait'})),
         lastScene:(last&&last.escena)||null, lastAt:(last&&last.inicio)||'' });
     }
-    sprintTargets.sort((a,b)=>b.lastAt.localeCompare(a.lastAt));
+    sprintTargets.sort((a,b)=> (a.estado==='live'?0:1)-(b.estado==='live'?0:1)
+      || (a.estado==='live' ? b.lastAt.localeCompare(a.lastAt) : (a.orden-b.orden)));
 
     return {
       today, generatedAt:P.generatedAt, live:!!P.live, sprintTargets,
@@ -1658,16 +1661,24 @@ const Sprint=(function(){
   const cur=()=>targets.find(t=>t.db===selT.value)||null;
   const destLabel=d=>[d.etapa, d.escenaNm].filter(Boolean).join(' · ');
 
+  const DOT={live:'🔵',wait:'⚪️',done:'🟢'};
+  // escena propuesta: la que recordabas o la de tu última sesión si NO está terminada;
+  // si no, la primera 🔵 en curso; si no, la siguiente ⚪️ por empezar (orden de Notion)
   function fillScenes(){
     const t=cur(); if(!t){ selE.hidden=true; return; }
+    const open=id=>t.scenes.some(sc=>sc.id===id && sc.estado!=='done');
     const remembered=(load(LSD)||{}).escena;
-    selE.innerHTML=`<option value="">Sin escena</option>`+t.scenes.map(sc=>`<option value="${sc.id}">${esc(sc.nm)}</option>`).join('');
-    const want=[remembered,t.lastScene].find(id=>id&&t.scenes.some(sc=>sc.id===id));
+    selE.innerHTML=`<option value="">Sin escena</option>`+t.scenes.map(sc=>`<option value="${sc.id}">${DOT[sc.estado]||'⚪️'} ${esc(sc.nm)}</option>`).join('');
+    const want=[remembered,t.lastScene].find(id=>id&&open(id))
+      || (t.scenes.find(sc=>sc.estado==='live')||t.scenes.find(sc=>sc.estado==='wait')||{}).id;
     selE.value=want||''; selE.hidden=!t.scenes.length;
   }
   function fillTargets(){
     const multiWed=new Set(targets.map(t=>t.wed)).size>1, prev=selT.value||(load(LSD)||{}).db;
-    selT.innerHTML=targets.map(t=>`<option value="${t.db}">${esc(t.etapa)}${multiWed?' · '+esc(t.wed):''}${t.corr&&t.ronda?' · ronda '+t.ronda:''}</option>`).join('');
+    const opt=t=>`<option value="${t.db}">${DOT[t.estado]||'⚪️'} ${esc(t.etapa)}${multiWed?' · '+esc(t.wed):''}${t.corr&&t.ronda?' · ronda '+t.ronda:''}</option>`;
+    const live=targets.filter(t=>t.estado==='live'), next=targets.filter(t=>t.estado!=='live');
+    selT.innerHTML=(live.length?`<optgroup label="En curso">${live.map(opt).join('')}</optgroup>`:'')
+                  +(next.length?`<optgroup label="Por empezar · pasa a 🔵 al registrar">${next.map(opt).join('')}</optgroup>`:'');
     selT.value=targets.some(t=>t.db===prev)?prev:(targets[0]?targets[0].db:'');
     fillScenes();
   }
@@ -1684,10 +1695,11 @@ const Sprint=(function(){
       pick.hidden=true; lbl.hidden=false;
       lbl.innerHTML=run.db?`${esc(destLabel(run))}<small>${esc(run.tipo.toUpperCase())}${run.wed?' · '+esc(run.wed.toUpperCase()):''}</small>`:'Sin etapa en curso<small>NO SE REGISTRARÁ</small>';
       why.innerHTML=`Empezaste a las <b>${new Date(run.start).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false})}</b>. Se registra con la hora real al terminar, aunque te pases.`;
-      btn.innerHTML='■&nbsp; TERMINAR Y REGISTRAR'; drop.hidden=false;
+      btn.innerHTML='■&nbsp; TERMINAR Y REGISTRAR'; drop.hidden=false; drop.textContent='Descartar sin registrar';
     } else {
-      code.textContent=mmss(SPRINT_SECS); state.textContent='';
-      lbl.hidden=true; pick.hidden=!targets.length; drop.hidden=true;
+      code.textContent=mmss(SPRINT_SECS); state.textContent=pend?'· PENDIENTE':'';
+      lbl.hidden=true; pick.hidden=!targets.length||!!pend; drop.hidden=!pend;
+      drop.textContent='Descartar registro pendiente';
       if(note) why.innerHTML=note;
       else if(!targets.length) why.innerHTML=`Tu sesión mediana: <b>${med} min</b>. No hay etapas en curso en Notion: el sprint corre, pero no se registra.`;
       else why.innerHTML=`Tu sesión mediana: <b>${med} min</b>. Al terminar se registra en Notion con la hora real.`;
@@ -1697,35 +1709,38 @@ const Sprint=(function(){
   }
   function startTick(){ clearInterval(tick); tick=run?setInterval(paint,1000):null; }
 
-  async function send(item,label){
+  async function send(item,label,prevEst={}){
     busy=true; btn.innerHTML='REGISTRANDO…'; btn.disabled=true;
     try{
       const r=await fetch('/api/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(item)});
       const j=await r.json().catch(()=>({}));
-      if(!r.ok||!j.ok){
-        if(r.status>=400&&r.status<500){ save(LSP,null); note=`No se registró: ${esc(j.error||'datos inválidos')}.`; }
-        else throw new Error(j.error||('HTTP '+r.status));
-      } else {
+      if(!r.ok||!j.ok) throw new Error(j.error||('HTTP '+r.status));   // nunca se pierde: queda pendiente
+      else {
         save(LSP,null);
         const mins=Math.round((Date.parse(item.fin)-Date.parse(item.inicio))/60000);
-        note=j.queued?`✓ Guardada: <b>${mins} min</b> en ${esc(label)}. Se registra en Notion en la próxima actualización (≤30 min).`
-                     :`✓ Registrada en Notion: <b>${mins} min</b> en ${esc(label)}.${j.url?` <a href="${j.url}" target="_blank" rel="noopener">Ver</a>`:''}`;
+        const moved=(j.moved||[]).map(k=>k==='etapa'?'la etapa':'la escena');
+        const willMove=[prevEst.etapa==='wait'&&'la etapa', prevEst.escena==='wait'&&'la escena'].filter(Boolean);
+        note=j.queued?`✓ Guardada: <b>${mins} min</b> en ${esc(label)}. Se registra en Notion en la próxima actualización (≤30 min)${willMove.length?` y ${willMove.join(' y ')} pasará a 🔵`:''}.`
+                     :`✓ Registrada en Notion: <b>${mins} min</b> en ${esc(label)}.${moved.length?` ${moved.join(' y ').replace(/^./,c=>c.toUpperCase())} pasó a 🔵 en proceso.`:''}${j.url?` <a href="${j.url}" target="_blank" rel="noopener">Ver</a>`:''}`;
         setTimeout(()=>{ if(typeof loadLive==='function') loadLive(false); },90000);   // el tablero la muestra al reconstruirse
       }
     }catch(e){
       save(LSP,{item,label});
-      note=`No se pudo registrar (${esc(e.message||'sin conexión')}). Queda guardada en este dispositivo.`;
+      note=`No se pudo registrar (${esc(e.message||'sin conexión')}). Queda guardada en este dispositivo: reinténtalo o descártala.`;
     }
     busy=false; paint();
   }
 
   function finish(){
     const r=run; run=null; save(LS,null); startTick();
-    const end=Date.now(), mins=(end-r.start)/60000;
-    if(mins<1){ note='Menos de 1 minuto: no se registró.'; paint(); return; }
-    if(!r.db){ note=`Sprint de <b>${Math.round(mins)} min</b>. Sin etapa en curso en Notion: no se registró.`; paint(); return; }
-    const item={ id:r.id, db:r.db, inicio:isoLocal(r.start), fin:isoLocal(end), tipo:r.tipo, escena:r.escena||null, ronda:r.ronda??null };
-    send(item, destLabel(r));
+    // Notion cuenta en minutos: la DURACIÓN se redondea al minuto más cercano (30 s o más
+    // sube, menos baja) y Fin = Inicio + esa duración — así Notion muestra exactamente eso
+    const end=Date.now(), mins=Math.round((end-r.start)/60000), start=Math.round(r.start/60000)*60000;
+    if(mins<1){ note='Menos de 30 segundos: no se registró.'; paint(); return; }
+    if(!r.db){ note=`Sprint de <b>${mins} min</b>. Sin etapa en Notion: no se registró.`; paint(); return; }
+    const item={ id:r.id, db:r.db, stageId:r.stageId||null, inicio:isoLocal(start), fin:isoLocal(start+mins*60000),
+                 tipo:r.tipo, escena:r.escena||null, ronda:r.ronda??null };
+    send(item, destLabel(r), {etapa:r.stageEstado, escena:r.sceneEstado});
   }
 
   btn.addEventListener('click',()=>{
@@ -1734,11 +1749,16 @@ const Sprint=(function(){
     const pend=load(LSP); if(pend) return send(pend.item,pend.label);
     const t=cur();
     run={ id:(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2)), start:Date.now(), target:SPRINT_SECS,
-          db:t?t.db:null, wed:t?t.wed:'', etapa:t?t.etapa:'', escena:t?(selE.value||null):null,
-          escenaNm:t&&selE.value?selE.options[selE.selectedIndex].text:'', tipo, ronda:t?t.ronda:null };
+          db:t?t.db:null, stageId:t?t.stageId:null, stageEstado:t?t.estado:null,
+          sceneEstado:t&&selE.value?((t.scenes.find(sc=>sc.id===selE.value)||{}).estado||null):null,
+          wed:t?t.wed:'', etapa:t?t.etapa:'', escena:t?(selE.value||null):null,
+          escenaNm:t&&selE.value?((t.scenes.find(sc=>sc.id===selE.value)||{}).nm||''):'', tipo, ronda:t?t.ronda:null };
     note=''; save(LS,run); remember(); paint(); startTick();
   });
-  drop.addEventListener('click',()=>{ run=null; save(LS,null); startTick(); note='Sprint descartado: no se registró.'; paint(); });
+  drop.addEventListener('click',()=>{
+    if(run){ run=null; save(LS,null); startTick(); note='Sprint descartado: no se registró.'; }
+    else { save(LSP,null); note='Registro pendiente descartado.'; }
+    paint(); });
   selT.addEventListener('change',()=>{ fillScenes(); remember(); });
   selE.addEventListener('change',remember);
   seg.addEventListener('click',e=>{ const b=e.target.closest('button'); if(b){ setTipo(b.dataset.t); remember(); } });

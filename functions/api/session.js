@@ -36,6 +36,33 @@ async function notion(token, method, path, body) {
   return j;
 }
 
+// ⚪️ / vacío → 🔵 (nunca retrocede) + fecha de inicio si está vacía — mismo criterio que server.set_in_progress
+const estadoOf = s => { if (!s) return "wait"; const t = s.toLowerCase();
+  if (s.includes("🟢") || /complet|hecho/.test(t)) return "done";
+  if (s.includes("🔵") || /progreso|curso/.test(t)) return "live"; return "wait"; };
+async function setInProgress(token, pageId, startIso, kind) {
+  const page = await notion(token, "GET", `/pages/${pageId}`);
+  const props = page.properties || {}, upd = {};
+  let moved = false;
+  const est = ["Estado (Select)", "Estado"].find(n => props[n] && ["select", "status"].includes(props[n].type));
+  if (est) {
+    const t = props[est].type, cur = (props[est][t] || {}).name;
+    if (estadoOf(cur) === "wait" && page.parent && page.parent.database_id) {
+      const db = await notion(token, "GET", `/databases/${page.parent.database_id}`);
+      const opts = ((db.properties[est] || {})[t] || {}).options || [];
+      const blue = opts.find(o => estadoOf(o.name) === "live");
+      if (blue) { upd[est] = { [t]: { name: blue.name } }; moved = true; }
+    }
+  }
+  for (const [name, v] of Object.entries(props)) {
+    if (v.type !== "date" || v.date) continue;
+    if (kind === "etapa") { upd[name] = { date: { start: startIso.slice(0, 10) } }; break; }
+    if (norm(name) === "inicio") { upd[name] = { date: { start: startIso } }; break; }
+  }
+  if (Object.keys(upd).length) await notion(token, "PATCH", `/pages/${pageId}`, { properties: upd });
+  return moved;
+}
+
 // mismo criterio que server.create_session
 async function createSession(token, it) {
   const tipo = it.tipo || "Edición";
@@ -62,7 +89,13 @@ async function createSession(token, it) {
       if (row) props[name] = { relation: [{ id: row.id }] };
     }
   }
-  return notion(token, "POST", "/pages", { parent: { database_id: it.db }, properties: props });
+  const page = await notion(token, "POST", "/pages", { parent: { database_id: it.db }, properties: props });
+  const moved = [];
+  for (const [kind, id] of [["etapa", it.stageId], ["escena", it.escena]]) {
+    if (!id) continue;
+    try { if (await setInProgress(token, id, it.inicio, kind)) moved.push(kind); } catch (e) { /* la sesión ya quedó */ }
+  }
+  return { url: page.url, moved };
 }
 
 export async function onRequestPost({ request, env }) {
@@ -79,14 +112,18 @@ export async function onRequestPost({ request, env }) {
   // solo DBs de Sesiones de etapas del tablero publicado
   let data = {};
   try { data = JSON.parse((await env.HUB_KV.get("edicion:data")) || "{}"); } catch {}
-  const dbs = new Set();
-  for (const w of data.weddings || []) for (const s of w.stages || []) if (s.sessionDb) dbs.add(s.sessionDb);
-  if (!dbs.has(it.db)) return json({ ok: false, error: "Etapa desconocida" }, 400);
+  // lista blanca: DB de Sesiones → su etapa y sus escenas (igual que server.target_error)
+  let target = null;
+  for (const w of data.weddings || []) for (const s of w.stages || [])
+    if (s.sessionDb === it.db) target = { stage: s.id, scenes: new Set((s.scenes || []).map(x => x.id).filter(Boolean)) };
+  if (!target) return json({ ok: false, error: "Etapa desconocida" }, 400);
+  if (it.stageId && target.stage && it.stageId !== target.stage) return json({ ok: false, error: "La etapa no corresponde a esa DB de Sesiones" }, 400);
+  if (it.escena && !target.scenes.has(it.escena)) return json({ ok: false, error: "La escena no es de esa etapa" }, 400);
 
   if (env.NOTION_TOKEN) {
     try {
-      const page = await createSession(env.NOTION_TOKEN, it);
-      const out = { ok: true, url: page.url };
+      const r = await createSession(env.NOTION_TOKEN, it);
+      const out = { ok: true, url: r.url, moved: r.moved };
       await env.HUB_KV.put(doneKey, JSON.stringify(out), { expirationTtl: 86400 });
       return json(out);
     } catch (e) { /* Notion falló: cae a la cola, no se pierde */ }
