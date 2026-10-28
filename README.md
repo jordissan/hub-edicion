@@ -78,7 +78,10 @@ los `transform` de hover de `.card`/`.m`. Dos IntersectionObserver: entra al cru
 (las que entran juntas, escalonadas 70 ms por posición) y se **rearma solo al salir del todo**
 (`.up` si salió por arriba → reentra bajando). `.in` dispara las transiciones internas de siempre
 (`.in .gbar`, `.in .heat .cell`…); `.settled` llega 1,6 s después. Ganchos: `__playRace`/`__resetRace`
-(curva) y `__swirlDonut`. Clics: `cascade(nodes,opts)` (WAAPI, `fill:'backwards'`) en `select(key,true)`
+(curva) y `__swirlDonut`. Paneles-lista (`LIST_ROWS`): la tarjeta solo hace fade y sus filas entran con
+`cascade` (por defecto −12 px en X + fade, 560 ms, 45 ms entre filas, `EASE_SOFT`). Ojo: si la tarjeta
+misma lleva la clase del componente (`.card.anat`), los selectores `.in .anat …` no casan → `.anat.in …`.
+Clics: `cascade(nodes,opts)` (WAAPI, `fill:'backwards'`) en `select(key,true)`
 de Proyectos, Archivo y `toggle` de `details.tbl`; solo anima lo que está a la vista (`inView`). Ojo al
 verificar en el panel de preview: si está oculto no corre frames y el observer no dispara (una
 captura fuerza un frame).
