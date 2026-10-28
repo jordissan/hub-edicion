@@ -76,7 +76,10 @@ svg text{user-select:none}
 .refreshbtn{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;border:1px solid var(--hair);
   background:var(--panel);color:var(--mut);cursor:pointer;font-size:16px;line-height:1;transition:color .15s ease,border-color .15s ease,transform .5s var(--ease)}
 .refreshbtn:hover{color:var(--txt);border-color:var(--hair2)}
-.refreshbtn.spin{color:var(--sun-tx);animation:spin 1s linear infinite}
+.refreshbtn .rfi{width:16px;height:16px;display:block;transform-origin:50% 50%}
+/* el botón se queda quieto: solo gira la flecha */
+.refreshbtn.spin{color:var(--sun-tx)}
+.refreshbtn.spin .rfi{animation:spin 1s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 .rec.snap i{background:var(--naranja)}
 .rec.err i{background:#e5484d}
@@ -519,7 +522,7 @@ svg text{user-select:none}
   <div class="logo"><div class="nm">SALA&nbsp;DE&nbsp;CORTE <span>· hub de edición</span></div></div>
   <div class="sp"></div>
   <div class="date" id="hdrDate">—</div>
-  <button class="refreshbtn" id="refreshBtn" type="button" aria-label="Actualizar datos desde Notion">↻</button>
+  <button class="refreshbtn" id="refreshBtn" type="button" aria-label="Actualizar datos desde Notion"><svg class="rfi" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.2 8a5.2 5.2 0 1 1-1.6-3.75" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12.3 1.6v3.2H9.1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   <div class="rec" id="stamp"><i></i>—</div>
   <button class="thm" id="thmBtn" type="button" aria-label="Cambiar tema claro u oscuro">
     <svg class="ic i-sol-u"><use href="#i-sol"/></svg>
