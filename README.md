@@ -71,6 +71,18 @@ tema llama `renderAll(M)` para repintar los SVG con los colores nuevos. También
 con `curl localhost:4599/api/data`; en el panel estático (8753) cae al `SNAPSHOT_DATA` embebido (sello
 "SNAPSHOT"), que ES el payload real más reciente, así que los números siguen siendo válidos para verificar.
 
+**Movimiento (reveal):** el IIFE `reveal` toma como unidades los hijos de `.hero`/`.sec` (y los
+hijos de las rejillas `.hoy,.ritmo,.adn,.mesa2,.dinero,.tiles`) y les pone `.rv`. CSS solo oculta
+(`.rv:not(.in){opacity:0}`); la entrada es WAAPI (translateY 16px→0 + opacity, 700 ms) para no pisar
+los `transform` de hover de `.card`/`.m`. Dos IntersectionObserver: entra al cruzar el 8 % inferior
+(las que entran juntas, escalonadas 70 ms por posición) y se **rearma solo al salir del todo**
+(`.up` si salió por arriba → reentra bajando). `.in` dispara las transiciones internas de siempre
+(`.in .gbar`, `.in .heat .cell`…); `.settled` llega 1,6 s después. Ganchos: `__playRace`/`__resetRace`
+(curva) y `__swirlDonut`. Clics: `cascade(nodes,opts)` (WAAPI, `fill:'backwards'`) en `select(key,true)`
+de Proyectos, Archivo y `toggle` de `details.tbl`; solo anima lo que está a la vista (`inView`). Ojo al
+verificar en el panel de preview: si está oculto no corre frames y el observer no dispara (una
+captura fuerza un frame).
+
 **Gotchas iOS (PWA):** `backdrop-filter` + animación de `transform` exige `will-change:transform`
 y animar solo transform (si no, WebKit descarta el blur → "se esfuma"); además el tabbar usa
 **curvas de easing distintas por dirección** — reaparecer decelera (`--ease-out`) y ocultarse

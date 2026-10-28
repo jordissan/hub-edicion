@@ -128,9 +128,13 @@ svg text{user-select:none}
 .sec>.sub{color:var(--mut);font-size:14px;max-width:640px;margin-bottom:22px}
 .sec .sub b{color:var(--txt);font-weight:600}
 
-/* reveal + animación de entrada */
-.rv{opacity:0;transform:translateY(14px);transition:opacity .6s var(--ease),transform .6s var(--ease)}
-.rv.in{opacity:1;transform:none}
+/* reveal + animación de entrada
+   Unidades = cada pieza (titular, subtítulo, tarjeta, tile). CSS solo pone el estado oculto;
+   la entrada la anima JS con WAAPI (transform/opacity) para no pisar los transform de hover
+   de las tarjetas. Al salir de pantalla se rearman y vuelven a entrar al regresar. */
+.rv:not(.in){opacity:0}
+.tc-head .rule{transform-origin:left center;transform:scaleX(0);transition:transform .9s var(--ease) .12s}
+.tc-head.in .rule{transform:none}
 .gbar{transform:scaleY(0);transform-origin:bottom;transform-box:fill-box;
   transition:transform .7s var(--ease);transition-delay:calc(var(--i,0)*60ms)}
 .in .gbar{transform:none}
@@ -406,6 +410,18 @@ svg text{user-select:none}
   .plan .row:hover p{color:var(--txt)}
 }
 
+/* ============ micro-interacciones ============
+   Fuera del gate de hover a propósito: así el :active táctil también anima en el iPhone. */
+.refreshbtn,.thm{transition:color .15s ease,border-color .15s ease,transform .16s var(--ease)}
+.refreshbtn:active,.thm:active{transform:scale(.93)}
+.tabbar a,.rail a{transition:color .2s ease,background-color .2s ease,transform .16s var(--ease)}
+.tabbar a:active,.rail a:active{transform:scale(.94)}
+.prow{transition:background-color .22s ease,transform .16s var(--ease)}
+.prow:active{transform:scale(.99)}
+.parch{transition:color .15s ease,transform .16s var(--ease)}
+.parch:active{transform:scale(.995)}
+.tbl summary{transition:color .15s ease}
+
 /* ============ responsive ============ */
 @media(max-width:980px){
   .hero{grid-template-columns:1fr;gap:30px}
@@ -446,6 +462,7 @@ svg text{user-select:none}
 }
 @media(prefers-reduced-motion:reduce){
   .rv{opacity:1;transform:none;transition:none}
+  .tc-head .rule{transform:none;transition:none}
   .focuscard.run .tcode,.playhead.blink{animation:none}
   html{scroll-behavior:auto}
   .draw{animation:none !important;stroke-dashoffset:0 !important}
@@ -1107,10 +1124,21 @@ const S=(t,a,p)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setA
 const barPath=(x,y0,y,w,rMax=4)=>{const r=Math.min(rMax,(y0-y)/2,w/2);
   return `M${x} ${y0} L${x} ${y+r} Q${x} ${y} ${x+r} ${y} L${x+w-r} ${y} Q${x+w} ${y} ${x+w} ${y+r} L${x+w} ${y0} Z`;};
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const EASE_FX='cubic-bezier(.22,.9,.3,1)';
+// entrada escalonada (clics: elegir boda, abrir tabla o archivo). WAAPI = transform/opacity,
+// interrumpible y sin pisar las transiciones CSS de hover
+function cascade(nodes,o={}){ if(reduced)return; const {dx=0,dy=6,step=28,max=14,dur=380,delay=0}=o;
+  [...nodes].forEach((n,i)=>n.animate([{opacity:0,transform:`translate(${dx}px,${dy}px)`},{opacity:1,transform:'none'}],
+    {duration:dur,delay:delay+Math.min(i,max)*step,easing:EASE_FX,fill:'backwards'})); }
+// ¿la pieza que contiene a el está a la vista (ya entró)? Si no, su entrada por scroll se encarga
+const inView = el => !!(el && el.closest('.rv.in'));
 const MQM=matchMedia('(max-width: 640px)');
 document.addEventListener('touchstart',function(){},{passive:true});
 
 let M=null, firstRender=true, raceDrawn=false;
+// la Carrera se rearma al salir de pantalla para volver a dibujarse al regresar
+window.__resetRace=()=>{ raceDrawn=false; document.querySelectorAll('#race path.draw').forEach(p=>{
+  p.getAnimations().forEach(a=>a.cancel()); p.style.strokeDasharray='1'; p.style.strokeDashoffset='1'; }); };
 const rebuilds=[]; let lastMob=MQM.matches;
 function regRebuild(fn){ if(!rebuilds.includes(fn))rebuilds.push(fn); }
 const flipAll=()=>{ if(MQM.matches!==lastMob){ lastMob=MQM.matches; rebuilds.forEach(f=>f(lastMob)); } };
@@ -1453,10 +1481,18 @@ function renderMesa(M){
     S('circle',{cx:C,cy:C,r:R,fill:'none',stroke:'var(--panel2)','stroke-width':18},donut);
     const totalGaps=gap*p.etapas.length; let off=circ*0.25;
     p.etapas.forEach(([nm,h,ses,fase],i)=>{ const len=Math.max(h/p.total*(circ-totalGaps),2);
-      const seg=S('circle',{cx:C,cy:C,r:R,class:'seg dseg',stroke:cols[fase],'stroke-dasharray':`${len} ${circ-len}`,'stroke-dashoffset':off},donut); seg.style.setProperty('--i',i); off-=len+gap;
+      const seg=S('circle',{cx:C,cy:C,r:R,class:'seg dseg',stroke:cols[fase],'stroke-dasharray':`${len} ${circ-len}`,'stroke-dashoffset':off},donut); seg.style.setProperty('--i',i); seg.dataset.len=len; seg.dataset.off=off; off-=len+gap;
       seg.addEventListener('pointerenter',()=>{donut.classList.add('dfx');seg.classList.add('hot');setC(fmtHM(h),nm,`${fmtMXN(p.price*h/p.total)} · ${fmt(h/p.total*100)} %`,colsTx[fase]);});
       seg.addEventListener('pointerleave',()=>{donut.classList.remove('dfx');seg.classList.remove('hot');reset();}); });
     reset();
+    // entrada del donut: cada segmento crece y gira hasta su sitio, en cascada; el centro sube
+    window.__swirlDonut=()=>{ if(reduced)return;
+      donut.querySelectorAll('.seg').forEach((s,i)=>{ const len=+s.dataset.len, o=+s.dataset.off;
+        s.animate([{strokeDasharray:`0 ${circ}`,strokeDashoffset:o+circ*.18,opacity:0},
+                   {strokeDasharray:`${len} ${circ-len}`,strokeDashoffset:o,opacity:1}],
+          {duration:820,delay:60+i*55,easing:EASE_FX,fill:'backwards'}); });
+      [cx,cs,cs2].forEach((t,i)=>t.animate([{opacity:0,transform:'translateY(6px)'},{opacity:1,transform:'none'}],
+        {duration:420,delay:180+i*50,easing:EASE_FX,fill:'backwards'})); };
     const sorted=[...p.etapas].sort((a,b)=>b[1]-a[1]);
     dlg.innerHTML=sorted.map(([nm,h,ses,fase])=>`<div class="dlr" data-tip="<b>${nm}</b><br>${fmtMXN(p.price*h/p.total)} · ${fmt(h)} h · ${fmt(h/p.total*100)} %"><span class="dot" style="background:${cols[fase]}"></span><span class="n">${nm}</span><b>${fmtMXN(p.price*h/p.total)}</b><span class="hh">${fmt(h)}h</span><span class="pp">${Math.round(h/p.total*100)}%</span></div>`).join(''); }
 
@@ -1477,9 +1513,18 @@ function renderMesa(M){
   function fitLabels(){ tapeBox.querySelectorAll('.clip .cn').forEach(n=>{n.style.display='';if(n.scrollWidth+12>n.parentElement.clientWidth)n.style.display='none';}); }
   if(!renderMesa._fit){ renderMesa._fit=true; addEventListener('resize',()=>{ const s=document.querySelector('#tape'); if(s)s.querySelectorAll('.clip .cn').forEach(n=>{n.style.display='';if(n.scrollWidth+12>n.parentElement.clientWidth)n.style.display='none';}); }); }
 
-  function select(key){ const p=M.projects[key]; if(!p)return;
+  function select(key,anim){ const p=M.projects[key]; if(!p)return;
+    if(anim && key===renderMesa._cur) return;            // tocar la misma boda no re-anima
+    renderMesa._cur=key;
     projBox.querySelectorAll('.prow').forEach(r=>{r.classList.toggle('sel',r.dataset.key===key);r.setAttribute('aria-pressed',r.dataset.key===key);});
-    renderEtapas(p); renderDonut(p); renderTape(p); }
+    renderEtapas(p); renderDonut(p); renderTape(p);
+    if(anim && !reduced){                                // solo lo que está a la vista; lo demás entra al scrollear
+      if(inView(donut)) window.__swirlDonut();
+      if(inView(dlg)) cascade(dlg.children,{delay:140,step:30});
+      if(inView(etBox)) cascade(etBox.children,{step:20,max:20});
+      if(inView(tapeBox)) cascade(tapeBox.querySelectorAll('.clip'),{dx:-12,dy:0,step:45,dur:460});
+      if(inView(fasetot)) cascade(fasetot.children,{delay:200,step:50});
+    } }
   renderMesa._select=select;
 
   let html='';
@@ -1496,9 +1541,9 @@ function renderMesa(M){
   if(!renderMesa._bound){ renderMesa._bound=true;
     projBox.addEventListener('click',e=>{
       const t=e.target.closest('.parch');
-      if(t){ const l=document.getElementById('projArch'), open=l.hidden; l.hidden=!open; t.setAttribute('aria-expanded',open); renderMesa._archOpen=open; return; }
-      const r=e.target.closest('.prow');if(r)renderMesa._select(r.dataset.key);});
-    projBox.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const r=e.target.closest('.prow');if(r){e.preventDefault();renderMesa._select(r.dataset.key);}}}); }
+      if(t){ const l=document.getElementById('projArch'), open=l.hidden; l.hidden=!open; t.setAttribute('aria-expanded',open); renderMesa._archOpen=open; if(open) cascade(l.children,{step:40,dy:8}); return; }
+      const r=e.target.closest('.prow');if(r)renderMesa._select(r.dataset.key,true);});
+    projBox.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){const r=e.target.closest('.prow');if(r){e.preventDefault();renderMesa._select(r.dataset.key,true);}}}); }
   const openKey = M.projOrder.includes(M.currentKey)?M.currentKey:M.projOrder[0];
   if(openKey) select(openKey);
 }
@@ -1554,12 +1599,44 @@ let SPRINT_SECS=26*60;
   document.querySelectorAll('.hero,.sec').forEach(s=>spy.observe(s)); })();
 document.getElementById('thmBtn').addEventListener('click',()=>{ const r=document.documentElement; const next=r.dataset.theme==='light'?'':'light'; if(next)r.dataset.theme=next;else delete r.dataset.theme; try{localStorage.setItem('scTheme',next)}catch(e){} if(M)renderAll(M); });
 
-/* ================= reveal ================= */
-(function(){ const enter=el=>{ el.classList.add('in'); if(el.id==='carrera'&&window.__playRace)window.__playRace(); setTimeout(()=>el.classList.add('settled'),reduced?0:1600); };
-  if(reduced){ document.querySelectorAll('.sec,.hero').forEach(s=>{s.classList.add('rv','in','settled');}); if(window.__playRace)window.__playRace(); return; }
-  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){enter(e.target);io.unobserve(e.target)}}),{threshold:.14});
-  document.querySelectorAll('.sec,.hero').forEach(s=>{s.classList.add('rv');io.observe(s)});
-  requestAnimationFrame(()=>enter(document.querySelector('.hero'))); })();
+/* ================= reveal: entra al aparecer, se rearma al salir ================= */
+(function(){
+  // unidades: cada pieza que se lee sola (titular, subtítulo, tarjeta, tile)
+  const GRIDS='.hoy,.ritmo,.adn,.mesa2,.dinero,.tiles';
+  const units=[];
+  document.querySelectorAll('.hero,.sec').forEach(s=>{ for(const c of s.children){ if(c.matches(GRIDS)) units.push(...c.children); else units.push(c); } });
+  units.forEach(u=>u.classList.add('rv'));
+  if(reduced){ units.forEach(u=>u.classList.add('in','settled')); if(window.__playRace)window.__playRace(); return; }
+  const timers=new Map();
+  const clear=u=>{ (timers.get(u)||[]).forEach(clearTimeout); timers.delete(u); };
+  // gráficas con entrada propia (dibujo de la Carrera, giro del donut)
+  const hooks=(u,on)=>{ if(u.querySelector('#race')) (on?window.__playRace:window.__resetRace)?.();
+                        if(on && u.querySelector('#donut')) window.__swirlDonut?.(); };
+  function enter(u,delay){ if(u.classList.contains('in')||timers.has(u))return;
+    timers.set(u,[setTimeout(()=>{
+      const dy=u.classList.contains('up')?-16:16;          // regresas scrolleando hacia arriba → baja desde arriba
+      u.classList.add('in');
+      u.animate([{opacity:0,transform:`translateY(${dy}px)`},{opacity:1,transform:'none'}],{duration:700,easing:EASE_FX});
+      hooks(u,true);
+      timers.set(u,[setTimeout(()=>{u.classList.add('settled');timers.delete(u);},1600)]);
+    },delay)]); }
+  function reset(u,above){ const was=u.classList.contains('in')||timers.has(u);
+    clear(u); u.getAnimations().forEach(a=>a.cancel());
+    u.classList.remove('in','settled'); u.classList.toggle('up',above);
+    if(was) hooks(u,false); }
+  // entra cuando asoma por encima del 8 % inferior; las que entran juntas, en cascada (arriba→abajo, izq→der)
+  const ioIn=new IntersectionObserver(es=>{
+    es.filter(e=>e.isIntersecting)
+      .sort((a,b)=>(a.boundingClientRect.top-b.boundingClientRect.top)||(a.boundingClientRect.left-b.boundingClientRect.left))
+      .forEach((e,i)=>enter(e.target,Math.min(i,6)*70)); },{rootMargin:'0px 0px -8% 0px'});
+  // se rearma solo cuando sale DEL TODO de la pantalla (nunca se apaga a la vista)
+  const ioOut=new IntersectionObserver(es=>es.forEach(e=>{ if(!e.isIntersecting) reset(e.target,e.boundingClientRect.bottom<=0); }));
+  units.forEach(u=>{ ioIn.observe(u); ioOut.observe(u); });
+})();
+
+// tablas "Ver los datos": las filas entran en cascada al abrir
+document.addEventListener('toggle',e=>{ const d=e.target;
+  if(d instanceof HTMLDetailsElement && d.open && d.classList.contains('tbl')) cascade(d.querySelectorAll('tr'),{dy:5,step:24,max:12,dur:340}); },true);
 
 /* ================= boot: snapshot → fetch vivo ================= */
 function bootRender(payload,isLive){ try{ const model=deriveModel(payload); model.live=isLive; renderAll(model); }catch(e){ console.error('derive',e); } }
