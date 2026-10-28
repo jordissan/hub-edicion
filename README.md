@@ -43,7 +43,11 @@ con su `server.py` + launchd en el puerto 4599 — es **backup/dev** para probar
   **`NOTION_TOKEN`** en Pages (Settings → Variables and Secrets) escribe directo (`createSession`, mismo criterio
   que `server.create_session`); sin ella o si Notion falla, deja `edicion:pending:<id>` en KV y `publish.py`
   (`drain_pending`) la crea antes de extraer. Dedup por id del sprint (`edicion:done:<id>`, 24 h).
-  `server.py` expone `stages[].sessionDb`, `scenes[].id` y `sessionLog[].escena` para el selector del sprint.
+  `server.py` expone `stages[].id`, `stages[].sessionDb`, `scenes[].id` y `sessionLog[].escena` para el selector del sprint.
+  Lista blanca: `db` debe ser una `sessionDb`, `stageId` su etapa y `escena` una de sus escenas (`server.target_error`).
+  Tras crear la sesión, `set_in_progress` (JS: `setInProgress`) pasa etapa/escena ⚪️→🔵 y llena su fecha de inicio
+  vacía; nunca retrocede. El estado de escena es la fórmula `Estado` = `prop("Estado (Select)")`: `p_select` ahora
+  lee fórmulas de texto (antes todas las escenas salían ⚪️, también en el avance de los widgets).
 - `.github/workflows/publish.yml` — cron + `workflow_dispatch`. Secretos: `NOTION_TOKEN`, `CF_API_TOKEN`,
   `CF_ACCOUNT_ID`, `CF_KV_NAMESPACE_ID`. Lleva `env: TZ: America/Mexico_City` (el runner es UTC).
 - `index.html`, `manifest.json`, `icon-*.png` — el sitio estático.

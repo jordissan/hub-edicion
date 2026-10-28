@@ -217,6 +217,8 @@ def p_select(props, name):
         return v["select"]["name"] if v.get("select") else None
     if v.get("type") == "status":
         return v["status"]["name"] if v.get("status") else None
+    if v.get("type") == "formula" and (v.get("formula") or {}).get("type") == "string":
+        return v["formula"].get("string") or None
     return None
 
 def p_number(props, name):
@@ -377,6 +379,7 @@ def build_wedding(page):
         s_start, s_end = first_date(sp)
         s_etapa = p_title(sp, "Etapa") or title_any(sp)
         stage = {
+            "id": st["id"],      # página de la etapa (el sprint la pasa a 🔵 si estaba ⚪️)
             "etapa": s_etapa,
             "fase": p_select(sp, "Fase"),
             "estado": norm_estado(p_select(sp, "Estado")),
@@ -489,12 +492,76 @@ def create_session(item):
                         props[name] = {"relation": [{"id": r["id"]}]}
                         break
     page = notion("POST", "/pages", {"parent": {"database_id": db}, "properties": props})
-    return {"id": page.get("id"), "url": page.get("url")}
+    out = {"id": page.get("id"), "url": page.get("url"), "moved": []}
+    # la sesión ya existe: si el estado no se puede actualizar, se avisa pero no se pierde
+    for kind, pid in (("etapa", item.get("stageId")), ("escena", item.get("escena"))):
+        if not pid:
+            continue
+        try:
+            if set_in_progress(pid, item["inicio"], kind):
+                out["moved"].append(kind)
+        except Exception as e:
+            out.setdefault("warn", []).append("%s: %s" % (kind, str(e)[:120]))
+    return out
 
 
-def known_session_dbs(data):
-    return {s.get("sessionDb") for w in (data or {}).get("weddings", [])
-            for s in w.get("stages", []) if s.get("sessionDb")}
+def set_in_progress(page_id, start_iso, kind):
+    """Lo que harías a mano al empezar a trabajar algo: Estado ⚪️/vacío → 🔵 (nunca
+    retrocede un 🔵/🟢) y, si su fecha de inicio está vacía, la llena con la de la sesión.
+    kind="etapa": fecha "Del → Al" (solo día) · kind="escena": fecha "Inicio" (con hora).
+    Devuelve True si cambió el estado."""
+    page = notion("GET", "/pages/%s" % page_id)
+    props = page.get("properties", {})
+    upd, moved = {}, False
+    est = next((n for n in ("Estado (Select)", "Estado")
+                if (props.get(n) or {}).get("type") in ("select", "status")), None)
+    if est:
+        t = props[est]["type"]
+        cur = (props[est].get(t) or {}).get("name")
+        if norm_estado(cur) == "wait":
+            dbid = (page.get("parent") or {}).get("database_id")
+            opts = []
+            if dbid:
+                opts = notion("GET", "/databases/%s" % dbid).get("properties", {}).get(est, {}).get(t, {}).get("options", [])
+            blue = next((o["name"] for o in opts if norm_estado(o["name"]) == "live"), None)
+            if blue:
+                upd[est] = {t: {"name": blue}}
+                moved = True
+    for name, v in props.items():
+        if v.get("type") != "date" or v.get("date"):
+            continue
+        if kind == "etapa":          # la etapa tiene una sola fecha (rango "Del → Al")
+            upd[name] = {"date": {"start": start_iso[:10]}}
+            break
+        if _sinacento(name) == "inicio":
+            upd[name] = {"date": {"start": start_iso}}
+            break
+    if upd:
+        notion("PATCH", "/pages/%s" % page_id, {"properties": upd})
+    return moved
+
+
+def session_targets(data):
+    """DB de Sesiones → {etapa: id de su página, escenas: ids}. Es la lista blanca del
+    registro: solo se escribe en etapas/escenas que existen en el tablero."""
+    out = {}
+    for w in (data or {}).get("weddings", []):
+        for s in w.get("stages", []):
+            if s.get("sessionDb"):
+                out[s["sessionDb"]] = {"stage": s.get("id"),
+                                       "scenes": {sc.get("id") for sc in s.get("scenes") or [] if sc.get("id")}}
+    return out
+
+
+def target_error(item, targets):
+    t = targets.get(item.get("db"))
+    if not t:
+        return "Etapa desconocida"
+    if item.get("stageId") and t["stage"] and item["stageId"] != t["stage"]:
+        return "La etapa no corresponde a esa DB de Sesiones"
+    if item.get("escena") and item["escena"] not in t["scenes"]:
+        return "La escena no es de esa etapa"
+    return None
 
 
 RECENT_DONE_DAYS = 45  # bodas finalizadas editadas en los últimos N días siguen en el tablero
@@ -943,19 +1010,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if item["id"] in _session_done:
             self._send(200, json.dumps(_session_done[item["id"]]))
             return
-        # solo DBs de Sesiones de etapas del tablero (no escribe en cualquier DB que le pidan)
-        if item["db"] not in known_session_dbs(_cache.get("data")):
-            if not known_session_dbs(_cache.get("data")):
-                _do_build()      # caché de antes del sprint (sin sessionDb) → reconstruir una vez
-            if item["db"] not in known_session_dbs(_cache.get("data")):
-                self._send(400, json.dumps({"ok": False, "error": "Etapa desconocida"}, ensure_ascii=False))
-                return
+        # solo DBs de Sesiones / etapas / escenas del tablero (no escribe donde le pidan)
+        targets = session_targets(_cache.get("data"))
+        if not any(t["stage"] for t in targets.values()):
+            _do_build()          # caché de antes del sprint (sin ids de etapa) → reconstruir una vez
+            targets = session_targets(_cache.get("data"))
+        terr = target_error(item, targets)
+        if terr:
+            self._send(400, json.dumps({"ok": False, "error": terr}, ensure_ascii=False))
+            return
         try:
             res = create_session(item)
         except Exception as e:
             self._send(502, json.dumps({"ok": False, "error": str(e)[:300]}, ensure_ascii=False))
             return
-        out = {"ok": True, "url": res.get("url")}
+        out = {"ok": True, "url": res.get("url"), "moved": res.get("moved", [])}
+        if res.get("warn"):
+            out["warn"] = res["warn"]
         _session_done[item["id"]] = out
         if not _refreshing:      # que el tablero la muestre en cuanto termine de reconstruirse
             _refreshing = True
