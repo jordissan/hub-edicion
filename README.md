@@ -106,6 +106,9 @@ barra de navegación flotante inferior).
 - **Selector de proyecto = la lista de "En la mesa"** (sección Proyectos). **Tocar una boda** re-renderiza su
   donut/etapas/cinta con datos reales (nada de dropdown global). **Solo lista bodas que "miden"** (horas de
   edición efectivas > 0): las de solo correcciones o sin sesiones no aparecen. **Racha siempre global.**
+  **Archivo:** debajo, fila plegable (`.parch`, estado en `renderMesa._archOpen`) con las bodas del archivo
+  histórico que ya no están en el tablero (`M.archOrder`, por `lastEnd` desc), reconstruidas desde su `ghost`
+  con el mismo `projModel` → donut/etapas/cinta funcionan igual. Nunca son la boda abierta por defecto.
 - **Widgets** (`HubEdicion/widgets/`): iPhone (Scriptable) y Mac (SwiftBar) leen `/api/summary` con el Service Token.
 - **Nav = rail lateral (desktop, plegable) + tabbar inferior (móvil)**; 6 secciones ancla: Carrera · Hoy ·
   Ritmo · ADN · Proyectos · Tarifa. **Tema claro/oscuro** en `localStorage` (`scTheme`). Todo lo derivan del
@@ -122,8 +125,9 @@ barra de navegación flotante inferior).
   **Historia a largo plazo:** el archivo histórico (`archive` en el payload, `.archive.json` local /
   KV `edicion:archive`) viaja siempre; `deriveModel` lo usa para que la comparación (Carrera / $/h) no
   pierda bodas cuando salen del tablero a los 45 días: cada entrada lleva un `ghost` (`server.wedding_ghost`:
-  por etapa horas, `nScenes` y minutos por día) y el front la reconstruye como boda terminada para
-  `refCur`/`refGhost` (nunca para Proyectos). Entradas viejas sin `ghost` → `server.backfill_ghosts` las
+  por etapa estado, horas, sesiones, `nScenes` y minutos por día) y el front la reconstruye como boda terminada para
+  `refCur`/`refGhost` y el Archivo de Proyectos (nunca la lista principal). `ghost.v`=2 añade `estado` y
+  `sessions` por etapa. Entradas sin `ghost` o con versión vieja → `server.backfill_ghosts` las
   rehace desde Notion con las páginas que el descubrimiento dejó fuera (`DROPPED_DONE_PAGES`, máx.
   `BACKFILL_MAX`=2 por extracción: cada una ~1 min y el job tiene 10 min de límite). Con los años, el fantasma pasará de "la anterior"
   a la **mediana del historial** (pendiente); el heatmap ya crece solo.

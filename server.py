@@ -477,10 +477,14 @@ def discover_wedding_pages():
 ARCHIVE_FILE = os.path.join(HERE, ".archive.json")
 
 
+GHOST_VERSION = 2  # v2: + estado y nº de sesiones por etapa (para el Archivo de Proyectos)
+
+
 def wedding_ghost(w):
     """Esqueleto compacto de una boda para que la Carrera ("Contra tu fantasma"), el
-    ADN y Dinero puedan seguir usándola cuando sale del tablero: por etapa, sus horas,
-    nº de escenas y los minutos trabajados por día (no cada sesión)."""
+    ADN, Dinero y el Archivo de Proyectos puedan seguir usándola cuando sale del
+    tablero: por etapa, su estado, horas, nº de sesiones y escenas, y los minutos
+    trabajados por día (no cada sesión)."""
     stages = []
     for s in w.get("stages") or []:
         days = {}
@@ -491,11 +495,12 @@ def wedding_ghost(w):
         stages.append({
             "etapa": s.get("etapa"), "fase": s.get("fase"),
             "isCorrections": bool(s.get("isCorrections")),
+            "estado": s.get("estado"), "sessions": s.get("sessions") or 0,
             "hours": s.get("hours"), "nScenes": len(s.get("scenes") or []),
             "days": days,
         })
-    return {"projectStart": w.get("projectStart"), "projectEnd": w.get("projectEnd"),
-            "stages": stages}
+    return {"v": GHOST_VERSION, "projectStart": w.get("projectStart"),
+            "projectEnd": w.get("projectEnd"), "stages": stages}
 
 
 def wedding_archive_stats(w):
@@ -570,11 +575,11 @@ BACKFILL_MAX = 2  # bodas viejas a reconstruir por extracción (~1 min c/u: cabe
 
 
 def backfill_ghosts(archive):
-    """Entradas archivadas ANTES de existir "ghost" (bodas ya fuera del tablero): se
-    reconstruyen desde Notion una sola vez. Después viajan en el archivo y no se vuelven
-    a consultar."""
+    """Entradas archivadas sin "ghost" o con uno de versión vieja (bodas ya fuera del
+    tablero): se reconstruyen desde Notion una sola vez. Después viajan en el archivo y
+    no se vuelven a consultar."""
     missing = {e["name"].strip().lower(): e for e in archive
-               if e.get("name") and not e.get("ghost")}
+               if e.get("name") and (e.get("ghost") or {}).get("v", 1) < GHOST_VERSION}
     done = 0
     for p in DROPPED_DONE_PAGES:
         if not missing or done >= BACKFILL_MAX:
