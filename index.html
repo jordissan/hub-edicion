@@ -196,11 +196,36 @@ svg text{user-select:none}
 .focuscard .tcode{font-family:var(--f-m);font-weight:700;font-size:52px;letter-spacing:-.01em;line-height:1;
   font-variant-numeric:tabular-nums;color:var(--ink)}
 .focuscard .why{font-size:12.5px;color:rgba(21,22,10,.62);line-height:1.45}
-.focuscard button{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:var(--ink);color:var(--sun-block);
+.focuscard .fgo{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:var(--ink);color:var(--sun-block);
   border:none;border-radius:12px;padding:13px 0;font-family:var(--f-d);font-weight:800;font-size:14px;letter-spacing:.06em;
-  cursor:pointer;transition:transform .15s var(--ease)}
-.focuscard button:hover{transform:translateY(-1px)}
-.focuscard button:active{transform:scale(.985)}
+  cursor:pointer;transition:transform .15s var(--ease),opacity .15s ease}
+.focuscard .fgo:hover{transform:translateY(-1px)}
+.focuscard .fgo:active{transform:scale(.985)}
+.focuscard .fgo:disabled{opacity:.6;cursor:progress;transform:none}
+.focuscard .cl .u{color:rgba(21,22,10,.55)}
+/* destino del registro: etapa · escena · tipo */
+.fpick{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.frow{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+.frow .fsel{flex:1 1 150px}          /* si no cabe junto a Edición/Gestión, baja a su propia línea */
+.fsel{appearance:none;-webkit-appearance:none;flex:1;min-width:0;width:100%;font-family:var(--f-b);font-size:13px;font-weight:600;
+  color:var(--ink);border:1px solid rgba(21,22,10,.2);border-radius:10px;padding:9px 30px 9px 11px;cursor:pointer;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:border-color .15s ease,background-color .15s ease;
+  background:rgba(21,22,10,.06) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2315160a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 11px center/10px}
+.fsel:hover{border-color:rgba(21,22,10,.4)}
+.fsel:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+.fseg{display:flex;flex:1 0 auto;background:rgba(21,22,10,.06);border:1px solid rgba(21,22,10,.2);border-radius:10px;padding:2px}
+.fseg button{border:0;background:none;color:rgba(21,22,10,.6);font-family:var(--f-m);font-weight:700;font-size:10.5px;letter-spacing:.08em;
+  text-transform:uppercase;flex:1;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background-color .18s ease,color .18s ease,transform .16s var(--ease)}
+.fseg button:active{transform:scale(.95)}
+.fseg button[aria-pressed="true"]{background:var(--ink);color:var(--sun-block)}
+.flbl{margin-top:12px;font-weight:600;font-size:14px;line-height:1.35}
+.flbl small{display:block;font-family:var(--f-m);font-size:10.5px;font-weight:700;letter-spacing:.1em;color:rgba(21,22,10,.55);margin-top:3px}
+.fact{display:flex;flex-direction:column;gap:6px}
+.fdrop{align-self:center;background:none;border:0;color:rgba(21,22,10,.6);font-family:var(--f-b);font-size:12px;font-weight:600;
+  text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:4px 8px}
+.fdrop:hover{color:var(--ink)}
+.focuscard .why a{color:var(--ink);font-weight:600}
+[hidden]{display:none !important}
 .focuscard.run .tcode{animation:pulse 1s steps(2,jump-none) infinite}
 @keyframes pulse{50%{opacity:.55}}
 .plan .row{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--hair);align-items:baseline}
@@ -440,6 +465,7 @@ svg text{user-select:none}
   .wrap{padding:0 16px}
   .hero{margin-top:36px;gap:26px}
   .hero .herotbl{margin-top:-12px}
+  .fsel{font-size:16px}   /* iOS hace zoom al enfocar campos de menos de 16 px */
   .hero .eyebrow{margin-bottom:12px}
   .hero h1{font-size:clamp(54px,19.5vw,78px);line-height:.9;letter-spacing:-.035em}
   .hero .lede{max-width:none;margin-top:14px;font-size:14.5px}
@@ -573,11 +599,24 @@ svg text{user-select:none}
   <div class="hoy">
     <div class="card focuscard" id="focus">
       <div>
-        <div class="cl"><h3>Sprint de enfoque</h3></div>
-        <div class="why" id="focusWhy">—</div>
+        <div class="cl"><h3>Sprint de enfoque</h3><span class="u" id="fState"></span></div>
+        <div class="fpick" id="fPick" hidden>
+          <select class="fsel" id="fTarget" aria-label="Etapa donde se registra la sesión"></select>
+          <div class="frow">
+            <select class="fsel" id="fScene" aria-label="Escena"></select>
+            <div class="fseg" id="fTipo" role="group" aria-label="Tipo de sesión">
+              <button type="button" data-t="Edición" aria-pressed="true">Edición</button><button type="button" data-t="Gestión" aria-pressed="false">Gestión</button>
+            </div>
+          </div>
+        </div>
+        <div class="flbl" id="fLbl" hidden></div>
+        <div class="why" id="focusWhy" style="margin-top:10px">—</div>
       </div>
       <div class="tcode" id="tcode">26:00</div>
-      <button id="focusBtn" type="button">▶&nbsp; INICIAR SPRINT</button>
+      <div class="fact">
+        <button id="focusBtn" class="fgo" type="button">▶&nbsp; INICIAR SPRINT</button>
+        <button id="fDrop" class="fdrop" type="button" hidden>Descartar sin registrar</button>
+      </div>
     </div>
     <div class="card plan">
       <div class="cl"><h3>Plan de hoy</h3><span class="u">GENERADO DE TU PATRÓN</span></div>
@@ -1086,8 +1125,21 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
       }
     }
 
+    // ---- SPRINT: etapas en curso con DB de Sesiones (la última trabajada primero) ----
+    const sprintTargets=[];
+    for (const w of weddings) for (const s of (w.stages||[])){
+      if (s.estado!=='live' || !s.sessionDb) continue;
+      const log=(s.sessionLog||[]).slice().sort((a,b)=>(a.inicio||'').localeCompare(b.inicio||''));
+      const last=log[log.length-1]||null, rondas=log.map(x=>x.ronda).filter(r=>r!=null);
+      sprintTargets.push({ db:s.sessionDb, wed:(w.name||'').trim(), etapa:shortName(s.etapa), corr:isCorr(s),
+        ronda: rondas.length?Math.max(...rondas):null,
+        scenes:(s.scenes||[]).filter(sc=>sc.id).map(sc=>({id:sc.id, nm:(sc.escena||'').trim()})),
+        lastScene:(last&&last.escena)||null, lastAt:(last&&last.inicio)||'' });
+    }
+    sprintTargets.sort((a,b)=>b.lastAt.localeCompare(a.lastAt));
+
     return {
-      today, generatedAt:P.generatedAt, live:!!P.live,
+      today, generatedAt:P.generatedAt, live:!!P.live, sprintTargets,
       NSES, HODTOT, WEEKTOT,
       hod, goldStart:gStart, goldPct, week, bestDowIdx,
       heat, bestDay, bestH:round1(bestH), firstDay, spanDays, activeDays, streak,
@@ -1280,9 +1332,7 @@ function niceTicks(max,n){ const step=Math.ceil(max/n/10)*10||10; const out=[]; 
 /* ================= HOY ================= */
 function renderHoy(M){
   // sprint
-  const med=M.medMin||26;
-  document.getElementById('focusWhy').innerHTML=`Tu sesión mediana: <b>${med} min</b>. Un sprint = una sesión, registrada en Notion al terminar.`;
-  if(firstRender){ SPRINT_SECS=med*60; const c=document.getElementById('tcode'); c.textContent=String(Math.floor(SPRINT_SECS/60)).padStart(2,'0')+':'+String(SPRINT_SECS%60).padStart(2,'0'); }
+  Sprint.update(M);
   // plan de hoy
   const plan=document.getElementById('planRows');
   const dLbl=fmtFechaFull(M.today).split(' · ')[0]+' '+String(ymd(M.today).getDate()).padStart(2,'0');
@@ -1586,13 +1636,121 @@ function renderAll(model){
   firstRender=false;
 }
 
-/* ================= sprint timer ================= */
+/* ================= sprint de enfoque: cronómetro real + registro en Notion =================
+   Guarda la hora real de inicio (localStorage), así que sobrevive a bloquear el iPhone o
+   cerrar la PWA. Al terminar crea la sesión en la DB "Sesiones" de la etapa elegida
+   (POST /api/session: server.py en local, Pages Function en la nube). Si falla la red,
+   el registro queda pendiente en el dispositivo con botón de reintento. */
 let SPRINT_SECS=26*60;
-(function(){ const card=document.getElementById('focus'),btn=document.getElementById('focusBtn'),code=document.getElementById('tcode');
-  let t=null,left=SPRINT_SECS; const paint=()=>{code.textContent=String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0')};
-  btn.addEventListener('click',()=>{ if(t){clearInterval(t);t=null;left=SPRINT_SECS;paint();card.classList.remove('run');btn.innerHTML='▶&nbsp; INICIAR SPRINT';return}
-    left=SPRINT_SECS;card.classList.add('run');btn.innerHTML='■&nbsp; TERMINAR Y REGISTRAR';
-    t=setInterval(()=>{left--;if(left<=0){left=0;clearInterval(t);t=null;card.classList.remove('run');btn.innerHTML='▶&nbsp; INICIAR SPRINT'}paint()},1000); }); })();
+const Sprint=(function(){
+  const $=id=>document.getElementById(id);
+  const card=$('focus'), btn=$('focusBtn'), drop=$('fDrop'), code=$('tcode'), why=$('focusWhy'),
+        pick=$('fPick'), selT=$('fTarget'), selE=$('fScene'), seg=$('fTipo'), lbl=$('fLbl'), state=$('fState');
+  const LS='scSprint', LSP='scSprintPend', LSD='scSprintDest';
+  const load=k=>{ try{ return JSON.parse(localStorage.getItem(k)||'null'); }catch(e){ return null; } };
+  const save=(k,v)=>{ try{ v==null?localStorage.removeItem(k):localStorage.setItem(k,JSON.stringify(v)); }catch(e){} };
+  let targets=[], med=26, tipo='Edición', run=load(LS), tick=null, busy=false, note='';
+  const mmss=x=>{ x=Math.abs(Math.round(x)); return String(Math.floor(x/60)).padStart(2,'0')+':'+String(x%60).padStart(2,'0'); };
+  // fecha local con zona horaria, redondeada al minuto (como el registro manual)
+  const isoLocal=ms=>{ const d=new Date(Math.round(ms/60000)*60000), p=n=>String(n).padStart(2,'0'), off=-d.getTimezoneOffset(), a=Math.abs(off);
+    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:00${off>=0?'+':'-'}${p(Math.floor(a/60))}:${p(a%60)}`; };
+  const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+  const cur=()=>targets.find(t=>t.db===selT.value)||null;
+  const destLabel=d=>[d.etapa, d.escenaNm].filter(Boolean).join(' · ');
+
+  function fillScenes(){
+    const t=cur(); if(!t){ selE.hidden=true; return; }
+    const remembered=(load(LSD)||{}).escena;
+    selE.innerHTML=`<option value="">Sin escena</option>`+t.scenes.map(sc=>`<option value="${sc.id}">${esc(sc.nm)}</option>`).join('');
+    const want=[remembered,t.lastScene].find(id=>id&&t.scenes.some(sc=>sc.id===id));
+    selE.value=want||''; selE.hidden=!t.scenes.length;
+  }
+  function fillTargets(){
+    const multiWed=new Set(targets.map(t=>t.wed)).size>1, prev=selT.value||(load(LSD)||{}).db;
+    selT.innerHTML=targets.map(t=>`<option value="${t.db}">${esc(t.etapa)}${multiWed?' · '+esc(t.wed):''}${t.corr&&t.ronda?' · ronda '+t.ronda:''}</option>`).join('');
+    selT.value=targets.some(t=>t.db===prev)?prev:(targets[0]?targets[0].db:'');
+    fillScenes();
+  }
+  function remember(){ save(LSD,{db:selT.value, escena:selE.value||null, tipo}); }
+  function setTipo(t){ tipo=t; seg.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t)); }
+
+  function paint(){
+    const pend=load(LSP);
+    card.classList.toggle('run',!!run);
+    if(run){
+      const left=run.target-(Date.now()-run.start)/1000;
+      code.textContent=(left<0?'+':'')+mmss(left);
+      state.textContent=left<0?'· TIEMPO EXTRA':'· EN CURSO';
+      pick.hidden=true; lbl.hidden=false;
+      lbl.innerHTML=run.db?`${esc(destLabel(run))}<small>${esc(run.tipo.toUpperCase())}${run.wed?' · '+esc(run.wed.toUpperCase()):''}</small>`:'Sin etapa en curso<small>NO SE REGISTRARÁ</small>';
+      why.innerHTML=`Empezaste a las <b>${new Date(run.start).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',hour12:false})}</b>. Se registra con la hora real al terminar, aunque te pases.`;
+      btn.innerHTML='■&nbsp; TERMINAR Y REGISTRAR'; drop.hidden=false;
+    } else {
+      code.textContent=mmss(SPRINT_SECS); state.textContent='';
+      lbl.hidden=true; pick.hidden=!targets.length; drop.hidden=true;
+      if(note) why.innerHTML=note;
+      else if(!targets.length) why.innerHTML=`Tu sesión mediana: <b>${med} min</b>. No hay etapas en curso en Notion: el sprint corre, pero no se registra.`;
+      else why.innerHTML=`Tu sesión mediana: <b>${med} min</b>. Al terminar se registra en Notion con la hora real.`;
+      btn.innerHTML=pend?'↻&nbsp; REINTENTAR REGISTRO':'▶&nbsp; INICIAR SPRINT';
+    }
+    btn.disabled=busy;
+  }
+  function startTick(){ clearInterval(tick); tick=run?setInterval(paint,1000):null; }
+
+  async function send(item,label){
+    busy=true; btn.innerHTML='REGISTRANDO…'; btn.disabled=true;
+    try{
+      const r=await fetch('/api/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(item)});
+      const j=await r.json().catch(()=>({}));
+      if(!r.ok||!j.ok){
+        if(r.status>=400&&r.status<500){ save(LSP,null); note=`No se registró: ${esc(j.error||'datos inválidos')}.`; }
+        else throw new Error(j.error||('HTTP '+r.status));
+      } else {
+        save(LSP,null);
+        const mins=Math.round((Date.parse(item.fin)-Date.parse(item.inicio))/60000);
+        note=j.queued?`✓ Guardada: <b>${mins} min</b> en ${esc(label)}. Se registra en Notion en la próxima actualización (≤30 min).`
+                     :`✓ Registrada en Notion: <b>${mins} min</b> en ${esc(label)}.${j.url?` <a href="${j.url}" target="_blank" rel="noopener">Ver</a>`:''}`;
+        setTimeout(()=>{ if(typeof loadLive==='function') loadLive(false); },90000);   // el tablero la muestra al reconstruirse
+      }
+    }catch(e){
+      save(LSP,{item,label});
+      note=`No se pudo registrar (${esc(e.message||'sin conexión')}). Queda guardada en este dispositivo.`;
+    }
+    busy=false; paint();
+  }
+
+  function finish(){
+    const r=run; run=null; save(LS,null); startTick();
+    const end=Date.now(), mins=(end-r.start)/60000;
+    if(mins<1){ note='Menos de 1 minuto: no se registró.'; paint(); return; }
+    if(!r.db){ note=`Sprint de <b>${Math.round(mins)} min</b>. Sin etapa en curso en Notion: no se registró.`; paint(); return; }
+    const item={ id:r.id, db:r.db, inicio:isoLocal(r.start), fin:isoLocal(end), tipo:r.tipo, escena:r.escena||null, ronda:r.ronda??null };
+    send(item, destLabel(r));
+  }
+
+  btn.addEventListener('click',()=>{
+    if(busy) return;
+    if(run) return finish();
+    const pend=load(LSP); if(pend) return send(pend.item,pend.label);
+    const t=cur();
+    run={ id:(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2)), start:Date.now(), target:SPRINT_SECS,
+          db:t?t.db:null, wed:t?t.wed:'', etapa:t?t.etapa:'', escena:t?(selE.value||null):null,
+          escenaNm:t&&selE.value?selE.options[selE.selectedIndex].text:'', tipo, ronda:t?t.ronda:null };
+    note=''; save(LS,run); remember(); paint(); startTick();
+  });
+  drop.addEventListener('click',()=>{ run=null; save(LS,null); startTick(); note='Sprint descartado: no se registró.'; paint(); });
+  selT.addEventListener('change',()=>{ fillScenes(); remember(); });
+  selE.addEventListener('change',remember);
+  seg.addEventListener('click',e=>{ const b=e.target.closest('button'); if(b){ setTipo(b.dataset.t); remember(); } });
+  document.addEventListener('visibilitychange',()=>{ if(!document.hidden) paint(); });   // al volver a la app
+
+  const saved=load(LSD); if(saved&&saved.tipo) setTipo(saved.tipo);
+  startTick();
+  return { update(M){
+    med=M.medMin||26; SPRINT_SECS=med*60;   // el sprint en curso guarda su propia meta (run.target)
+    targets=M.sprintTargets||[]; fillTargets(); paint();
+  } };
+})();
 
 /* ================= navegación + tema ================= */
 (function(){ const rail=document.getElementById('rail');

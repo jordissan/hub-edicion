@@ -19,6 +19,9 @@ Cloudflare Pages  (siempre encendido, gratis)
   index.html              → el dashboard
   functions/api/edicion   → lee data.json de KV     (lo usa el dashboard)
   functions/api/summary   → lee summary.json de KV   (lo usan los widgets)
+  functions/api/session   → POST: registra un sprint como sesión en Notion
+                            (directo con el secreto NOTION_TOKEN; si no, cola KV edicion:pending:<id>
+                             que publish.py vacía al inicio de cada corrida)
   Cloudflare Access (PIN) → protege TODO; los widgets entran con un Service Token
         │
 iPhone / navegador → https://hub-edicion.pages.dev
@@ -35,6 +38,12 @@ con su `server.py` + launchd en el puerto 4599 — es **backup/dev** para probar
   `build_data(prev_archive=...)` + `build_summary` → escribe `edicion:data`, `edicion:summary`
   y `edicion:archive` a KV vía API REST.
 - `functions/api/edicion.js`, `functions/api/summary.js` — leen de KV (binding `HUB_KV`).
+- `functions/api/session.js` — `POST /api/session` del **sprint de enfoque**. Valida (inicio/fin con zona, 1 min–8 h,
+  tipo) y que la DB sea una `stages[].sessionDb` del `edicion:data` publicado. Con la variable secreta
+  **`NOTION_TOKEN`** en Pages (Settings → Variables and Secrets) escribe directo (`createSession`, mismo criterio
+  que `server.create_session`); sin ella o si Notion falla, deja `edicion:pending:<id>` en KV y `publish.py`
+  (`drain_pending`) la crea antes de extraer. Dedup por id del sprint (`edicion:done:<id>`, 24 h).
+  `server.py` expone `stages[].sessionDb`, `scenes[].id` y `sessionLog[].escena` para el selector del sprint.
 - `.github/workflows/publish.yml` — cron + `workflow_dispatch`. Secretos: `NOTION_TOKEN`, `CF_API_TOKEN`,
   `CF_ACCOUNT_ID`, `CF_KV_NAMESPACE_ID`. Lleva `env: TZ: America/Mexico_City` (el runner es UTC).
 - `index.html`, `manifest.json`, `icon-*.png` — el sitio estático.

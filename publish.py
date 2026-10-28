@@ -70,7 +70,47 @@ def prev_archive():
     return []
 
 
+def kv_delete(key):
+    url = f"{BASE}/accounts/{ACCOUNT}/storage/kv/namespaces/{NS}/values/{key}"
+    req = urllib.request.Request(url, method="DELETE", headers={"Authorization": f"Bearer {CF_TOKEN}"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return r.status
+
+
+def kv_keys(prefix):
+    url = f"{BASE}/accounts/{ACCOUNT}/storage/kv/namespaces/{NS}/keys?prefix={prefix}&limit=1000"
+    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {CF_TOKEN}"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return [k["name"] for k in json.loads(r.read().decode("utf-8")).get("result", [])]
+
+
+def drain_pending():
+    """Sesiones de sprint que la nube dejó en cola (KV edicion:pending:<id>) porque la
+    Pages Function no tiene NOTION_TOKEN: se crean en Notion ANTES de extraer, así
+    salen en este mismo publish. Si una falla, se queda en la cola para el siguiente."""
+    try:
+        keys = kv_keys("edicion:pending:")
+    except Exception as e:
+        sys.stderr.write(f"[cola] no se pudo listar: {e}\n")
+        return
+    for key in keys:
+        try:
+            item = json.loads(kv_get(key) or "null")
+            if item is None:
+                continue
+            err = server.validate_session(item)
+            if err:
+                sys.stderr.write(f"[cola] {key} descartada: {err}\n")
+            else:
+                server.create_session(item)
+                print("Sesión registrada desde la cola:", item.get("inicio"), "→", item.get("fin"))
+            kv_delete(key)
+        except Exception as e:
+            sys.stderr.write(f"[cola] {key} falló (se reintenta luego): {e}\n")
+
+
 def main():
+    drain_pending()
     data = server.build_data(prev_archive=prev_archive())
     # Si la consulta a Notion falló, build_data devuelve solo las 2 bodas de respaldo
     # con pinta de payload sano. Publicarlo borraría el tablero bueno de KV en silencio
