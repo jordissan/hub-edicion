@@ -118,7 +118,14 @@ Un solo archivo: CSS (tokens Pantone, tema claro/oscuro) + HTML + un `<script>` 
 3. **Capa de render** — `fmt/fmtHM/fmtMXN`, `S()` (SVG), `barPath`, tooltip, `liveBar`;
    `render{Chrome,Hero,Race,Hoy,Dia7,Ritmo,Adn,Mesa,Tarifa}`. `renderAll` aísla cada sección
    (si una falla, las demás se pintan). `regRebuild(nombre, fn)` registra las gráficas que cambian
-   de geometría al cruzar 640 px (una por nombre: Carrera y Horas por día).
+   de geometría al cruzar 640 px (hoy: Horas por día). La **Carrera** (`renderRace`) se dibuja al
+   tamaño real del contenedor (viewBox = px) y un `ResizeObserver` la redibuja al cambiar el ancho;
+   < 560 px usa la versión compacta (nombres como pastillas `#raceChips`). La curva es una guía
+   visual: escalones suavizados (25/50/25 con los vecinos) y trazo cúbico monótono
+   (Fritsch–Carlson, nunca baja ni se pasa); tooltip, tabla y cifras usan los valores reales. Tramos tras "edición
+   lista" = Cambios (punteados, `.fadein`); las curvas de edición son `path.draw` (las anima
+   `__playRace`). Las propuestas de diseño que llevaron a este hero están en
+   `docs/propuestas/carrera.html`.
 4. **`Sprint`** — tarjeta de enfoque (§5).
 5. **Navegación + tema** — rail (≥1200 px) / tabbar (móvil), scroll-spy, tema en `scTheme`.
 6. **Reveal** — cada pieza (hijos de `.hero`/`.sec` y de las rejillas) es una unidad `.rv`.
@@ -176,8 +183,28 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   `canJoinAllSpaces` + `fullScreenAuxiliary`) con un `WKWebView` que carga
   **`http://localhost:4599/?mini=1`**: el MISMO `index.html`, nada reimplementado. Sin Dock
   (`LSUIElement`), esquema de URL **`hubsprint://`** (el botón ⤢ navega a `hubsprint://open`).
-  Arrastre: franja superior de 34 px (menos los 84 px de botones a la derecha) → `performDrag`.
-  Puente JS → nativo: `webkit.messageHandlers.hub.postMessage('dashboard'|'close')`.
+  Arrastre: franja superior de 34 px (menos los 84 px de botones a la derecha) y cualquier zona
+  sin controles → `performDrag`. Para saber qué hay bajo el ratón, la vista nativa tiene su
+  propio `NSTrackingArea` (`.activeAlways`: el panel casi nunca es key y WebKit no reporta el
+  hover ahí) y en cada `mouseMoved` pregunta `window.__hubDragAt(x,y)` (nada de
+  `button,a,input,select,…,.fcut,.fmode,.fpick,.fedit`, ni el reloj en reposo, que abre Ajustar).
+  Nivel: `.floating` o, en *Opciones → En el escritorio*, `desktopIconWindow + 1` (`.stationary`).
+  Puente JS → nativo: `webkit.messageHandlers.hub.postMessage('dashboard'|'close'|{k:'state',…})`
+  — `close` y ⌘W **ocultan** (`orderOut`); la app sigue viva en la barra de menús.
+- **Barra de menús** (`NSStatusItem`): cada 1 s lee `GET /api/sprint-state` (sin `?from=mini`:
+  no es latido) y pinta el reloj con los mismos datos que la tarjeta (`scSprint.start/target`,
+  `scSprintBrk.start/secs`, `scSprintPend`, `scSprintClose`). El menú se arma al abrirse
+  (`menuNeedsUpdate`; la línea "Llevas…" se actualiza en vivo, timer en `.common`). Las
+  acciones **no se reimplementan**: `callAsyncJavaScript` → `window.SprintCmd(c)` en la página
+  mini aunque esté oculta, que primero hace `pull()` y luego ejecuta (`finish` /
+  `finish-escena` / `finish-etapa` / `discard` / `endcycle` / `start` / `undo`; devuelve
+  `'ok'` o por qué no). La página manda `{k:'state', dest, note}` (destino propuesto y último
+  aviso) para el menú en reposo. Oculta, la página recibe `window.__hubShown=false` (también
+  como `WKUserScript` para recargas): no hace latido ni suena, y el aviso lo da `NSSound`
+  ("Glass") si la meta/descanso se cumplió hace < 15 s. Login item con `SMAppService.mainApp`
+  (se registra en el primer arranque). Preferencias en `UserDefaults` (`panelVisible`,
+  `onDesktop`, `showRemaining`). `HUB_BASE=http://localhost:4611` apunta la app a otro server
+  (pruebas sin tocar el sprint real).
   Frame recordado (`setFrameAutosaveName`). `./build.sh` compila con `swiftc` (sin Xcode), firma
   ad-hoc, instala en `~/Applications` y registra el esquema. `HUB_SNAPSHOT=/ruta.png` (vía
   `open --env`) guarda una captura del contenido al cargar (para pruebas).
