@@ -165,6 +165,14 @@ Un solo archivo: CSS (tokens Pantone, tema claro/oscuro) + HTML + un `<script>` 
        - El grano son puntos claros y oscuros con alfa, sin `mix-blend-mode`.
        - Los halos se encienden al terminar la entrada (`.settled`), así no se recalculan
          cuadro a cuadro.
+       - Donut: el halo va en un solo grupo (`#donut .dsegs`), no en cada segmento, y se apaga
+         mientras gira (`#donut.swirl`, se quita al acabar las animaciones). Así, al cambiar de
+         boda ya entrada no se recalculan 12 desenfoques por cuadro: el ráster del cambio bajó
+         de ~1,9 s a ~0,2 s (Chromium por CPU; en WebKit los filtros SVG van por CPU).
+       - Lo que late en bucle (etapa en curso del sidebar, `.wsegs i.l::after`) funde opacidad;
+         animar `background` repintaba el sidebar en cada cuadro.
+       - `fitLabels` (nombres de la cinta) escribe, lee y escribe en pasadas separadas: un solo
+         layout, no uno por clip.
        - Al plegar el sidebar (`html.side-anim`), la Carrera y el salto se redibujan una sola
          vez al final.
      - Duraciones de entrada: piezas 520 ms, cascada 32 ms, curva 950 ms, donut 600 ms.
