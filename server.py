@@ -1248,6 +1248,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         statics = {
             "/manifest.json": "application/manifest+json",
             "/icon-180.png": "image/png",
+            "/icon-192.png": "image/png",
             "/icon-512.png": "image/png",
         }
         if path in statics:
