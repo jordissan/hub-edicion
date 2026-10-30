@@ -5,16 +5,18 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Hub de Edición</title>
 <link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#08080a">
+<meta name="theme-color" content="#050506">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Hub de Edición">
 <link rel="apple-touch-icon" href="/icon-180.png">
 <script>try{const t=localStorage.getItem('scTheme');if(t)document.documentElement.dataset.theme=t}catch(e){}
+// sidebar: el estado guardado manda; si no hay, desplegado solo en pantallas anchas (sin parpadeo al cargar)
+try{const s=localStorage.getItem('scSide');if(s==='0'||(s===null&&innerWidth<1280))document.documentElement.classList.add('side-closed')}catch(e){}
 if(/[?&]mini\b/.test(location.search))document.documentElement.classList.add('mini');</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,100..900&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 /* ============ tokens · paleta Pantone (tema oscuro base) ============ */
 :root{
@@ -61,10 +63,15 @@ button{font-family:inherit;color:inherit}
 svg text{user-select:none}
 .ic{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
 
-.wrap{max-width:1180px;margin:0 auto;padding:0 26px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 26px;container:wrap/inline-size}
 
 /* ============ header ============ */
-.top{display:flex;align-items:center;gap:14px;row-gap:10px;padding:26px 0 22px;border-bottom:1px solid var(--hair);flex-wrap:wrap}
+.top{border-bottom:1px solid var(--hair)}
+.top-in{max-width:1180px;margin:0 auto;padding:calc(22px + env(safe-area-inset-top)) 26px 20px;display:flex;align-items:center;gap:14px;row-gap:10px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:11px}
+.crumb{display:none;align-items:center;gap:10px;font-size:14px;font-weight:500;white-space:nowrap}
+.crumb .ic{width:18px;height:18px;color:var(--acc-cur,var(--sun-tx));transition:color .4s ease}
+.crumb .pre{color:var(--dim)}
 .logo .nm{font-family:var(--f-d);font-weight:800;font-size:17px;letter-spacing:.02em;font-variation-settings:'wdth' 118;white-space:nowrap}
 .logo .nm span{color:var(--dim);font-weight:600}
 .top .sp{flex:1}
@@ -86,39 +93,23 @@ svg text{user-select:none}
 :root[data-theme="light"] .thm .i-luna-u{display:none}
 :root:not([data-theme="light"]) .thm .i-sol-u{display:none}
 
-/* ============ sidebar (desktop) ============ */
-.rail{position:fixed;left:18px;top:50%;transform:translateY(-50%);z-index:40;display:none;flex-direction:column;gap:2px;
-  background:color-mix(in srgb,var(--panel) 94%,transparent);border:1px solid var(--hair2);border-radius:18px;padding:10px 8px;width:56px;
-  transition:width .3s var(--ease),box-shadow .3s ease;overflow:hidden}
-.rail.open{width:178px;box-shadow:0 24px 60px -24px rgba(0,0,0,.45)}
-.rail .rt{display:flex;align-items:center;justify-content:center;width:40px;height:34px;border:none;background:none;
-  color:var(--dim);cursor:pointer;border-radius:10px;margin-bottom:6px}
-.rail .rt:hover{color:var(--txt);background:var(--panel2)}
-.rail .rt .ic{transition:transform .3s var(--ease)}
-.rail.open .rt .ic{transform:rotate(180deg)}
-.rail a{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:11px;text-decoration:none;
-  color:var(--dim);transition:color .15s ease,background-color .15s ease}
-.rail a:hover{color:var(--txt);background:var(--panel2)}
-.rail a .ic{color:inherit}
-.rail a span{font-family:var(--f-m);font-size:10.5px;font-weight:700;letter-spacing:.12em;white-space:nowrap;
-  opacity:0;transition:opacity .2s ease}
-.rail.open a span{opacity:1;transition-delay:.12s}
-.rail a.on{color:var(--acc,var(--sun));background:color-mix(in srgb,var(--acc,var(--sun)) 10%,transparent)}
-@media(min-width:1200px){.rail{display:flex}}
-@media(min-width:1200px) and (max-width:1379px){.wrap{padding-left:100px}}
-
-/* ============ tabbar (móvil / tablet) ============ */
-.tabbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(12px + env(safe-area-inset-bottom));z-index:40;
-  display:flex;gap:2px;background:color-mix(in srgb,var(--panel) 90%,transparent);backdrop-filter:blur(14px);
-  -webkit-backdrop-filter:blur(14px);border:1px solid var(--hair2);border-radius:22px;padding:8px 10px;
-  box-shadow:0 18px 44px -18px rgba(0,0,0,.5)}
-.tabbar a{display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 11px;border-radius:14px;
+/* ============ dock móvil / tablet (<1024 px): barra de secciones + botón del sprint ============ */
+.dock{position:fixed;z-index:40;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));
+  display:flex;align-items:center;gap:10px;width:min(560px,calc(100vw - 24px))}
+.tabbar{flex:1;min-width:0;display:flex;justify-content:space-between;height:62px;padding:0 6px;border-radius:31px;
+  background:color-mix(in srgb,var(--bg) 52%,transparent);-webkit-backdrop-filter:blur(22px) saturate(1.5);backdrop-filter:blur(22px) saturate(1.5);
+  box-shadow:inset 0 0 0 1px var(--edge),inset 0 1px 0 var(--hl),0 20px 40px -18px rgba(0,0,0,.6)}
+.tabbar a{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:16px;
   text-decoration:none;color:var(--dim)}
 .tabbar a .ic{width:19px;height:19px}
-.tabbar a span{font-family:var(--f-m);font-size:8px;font-weight:700;letter-spacing:.1em}
-.tabbar a.on{color:var(--acc,var(--sun));background:color-mix(in srgb,var(--acc,var(--sun)) 12%,transparent)}
-@media(min-width:1200px){.tabbar{display:none}}
-@media(max-width:1199px){body{padding-bottom:120px}}
+.tabbar a span{font-family:var(--f-m);font-size:7.5px;font-weight:700;letter-spacing:.08em;white-space:nowrap}
+.tabbar a.on{color:var(--acc,var(--sun))}
+.fab{position:relative;flex:none;width:62px;height:62px;border:0;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--txt);
+  background:color-mix(in srgb,var(--bg) 52%,transparent);-webkit-backdrop-filter:blur(22px) saturate(1.5);backdrop-filter:blur(22px) saturate(1.5);
+  box-shadow:inset 0 0 0 1px var(--edge),inset 0 1px 0 var(--hl),0 20px 40px -18px rgba(0,0,0,.6)}
+.fab svg{position:absolute;inset:7px;width:48px;height:48px}
+@media(min-width:1024px){.dock{display:none}}
+@media(max-width:1023px){body{padding-bottom:120px}}
 
 /* ============ secciones ============ */
 .sec{margin-top:64px}
@@ -133,14 +124,14 @@ svg text{user-select:none}
    la entrada la anima JS con WAAPI (transform/opacity) para no pisar los transform de hover
    de las tarjetas. Al salir de pantalla se rearman y vuelven a entrar al regresar. */
 .rv:not(.in){opacity:0}
-.tc-head .rule{transform-origin:left center;transform:scaleX(0);transition:transform .9s var(--ease) .12s}
+.tc-head .rule{transform-origin:left center;transform:scaleX(0);transition:transform .6s var(--ease) .06s}
 .tc-head.in .rule{transform:none}
 .gbar{transform:scaleY(0);transform-origin:bottom;transform-box:fill-box;
-  transition:transform .7s var(--ease);transition-delay:calc(var(--i,0)*60ms)}
+  transition:transform .48s var(--ease);transition-delay:calc(var(--i,0)*38ms)}
 .in .gbar{transform:none}
-.fadein{opacity:0;transition:opacity .5s ease .55s}
+.fadein{opacity:0;transition:opacity .35s ease .32s}
 .in .fadein{opacity:1}
-.dseg{opacity:0;transition:opacity .5s ease;transition-delay:calc(var(--i,0)*50ms)}
+.dseg{opacity:0;transition:opacity .35s ease;transition-delay:calc(var(--i,0)*30ms)}
 .in .dseg{opacity:1}
 
 /* ============ cards ============ */
@@ -168,7 +159,7 @@ svg text{user-select:none}
 .hero .htiles .m .v{white-space:nowrap}
 .hero .htiles .m .l{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hero .htiles .m .v small.vs{color:var(--dim)}
-@media(max-width:1100px){.hero .htop{grid-template-columns:1fr;gap:20px}}   /* tiles bajo el titular, a todo lo ancho */
+@container wrap (max-width:1000px){.hero .htop{grid-template-columns:1fr;gap:20px}}   /* tiles bajo el titular, a todo lo ancho */
 .racecard{margin-top:18px}
 .rchips{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 10px}
 .rchips .c{display:flex;align-items:center;gap:8px;border:1px solid var(--hair2);border-radius:999px;padding:5px 10px;font-size:12px}
@@ -416,7 +407,7 @@ html.mini #focus .fdrop{padding:2px 8px}
 .heat{display:grid;grid-auto-flow:column;gap:4px;width:max-content}
 .heat .col{display:grid;grid-template-rows:repeat(7,18px);gap:4px}
 .heat .cell{width:18px;height:18px;border-radius:5px;background:var(--panel2);border:1px solid var(--hair);
-  opacity:0;transform:scale(.5);transition:opacity .45s ease,transform .45s var(--ease);transition-delay:calc(var(--c,0)*16ms)}
+  opacity:0;transform:scale(.5);transition:opacity .32s ease,transform .32s var(--ease);transition-delay:calc(var(--c,0)*10ms)}
 .in .heat .cell{opacity:1;transform:none}
 .heat .cell.s1{background:var(--h1);border-color:transparent}
 .heat .cell.s2{background:var(--h2);border-color:transparent}
@@ -438,7 +429,7 @@ html.mini #focus .fdrop{padding:2px 8px}
 .anat .track{position:relative;height:22px}
 .anat .track .mid{position:absolute;left:38%;top:-4px;bottom:-4px;width:1px;background:var(--hair2)}
 .anat .bar{position:absolute;top:2px;height:18px;border-radius:0 4px 4px 0;width:0;
-  transition:width .8s var(--ease);transition-delay:calc(var(--i,0)*90ms)}
+  transition:width .55s var(--ease);transition-delay:calc(var(--i,0)*55ms)}
 .in .anat .bar,.anat.in .bar{width:var(--w)}
 .anat .bar.save{background:var(--sun);left:38%}
 .anat .bar.more{background:var(--violeta);border-radius:4px 0 0 4px;right:62%}
@@ -464,7 +455,7 @@ html.mini #focus .fdrop{padding:2px 8px}
 .ptrack{position:relative;height:10px;border-radius:6px;overflow:hidden;
   background:repeating-linear-gradient(45deg,transparent 0 5px,var(--hair2) 5px 7px)}
 .ptrack i{position:absolute;inset:0 auto 0 0;width:0;background:var(--sun-block);border-radius:6px;
-  transition:width .9s var(--ease);transition-delay:calc(var(--i,0)*120ms)}
+  transition:width .6s var(--ease);transition-delay:calc(var(--i,0)*70ms)}
 .in .ptrack i{width:var(--w)}
 .pmeta{display:flex;align-items:center;gap:10px;justify-content:flex-end;font-family:var(--f-m);font-size:10.5px;
   letter-spacing:.06em;color:var(--dim);white-space:nowrap}
@@ -516,7 +507,7 @@ html.mini #focus .fdrop{padding:2px 8px}
 .tape{position:relative;display:flex;gap:2px;height:74px;border-radius:10px}
 .clip{position:relative;border-radius:7px;min-width:5px;display:flex;align-items:flex-end;overflow:hidden;cursor:default;
   opacity:0;transform:translateX(-10px);
-  transition:filter .15s ease,opacity .5s ease,transform .5s var(--ease);transition-delay:0s,calc(var(--i,0)*70ms),calc(var(--i,0)*70ms)}
+  transition:filter .15s ease,opacity .36s ease,transform .36s var(--ease);transition-delay:0s,calc(var(--i,0)*40ms),calc(var(--i,0)*40ms)}
 .in .clip{opacity:1;transform:none}
 .clip:hover{filter:brightness(1.12)}
 .clip.prep{background:var(--f-prep)}
@@ -596,8 +587,9 @@ html.mini #focus .fdrop{padding:2px 8px}
    Fuera del gate de hover a propósito: así el :active táctil también anima en el iPhone. */
 .refreshbtn,.thm{transition:color .15s ease,border-color .15s ease,transform .16s var(--ease)}
 .refreshbtn:active,.thm:active{transform:scale(.93)}
-.tabbar a,.rail a{transition:color .2s ease,background-color .2s ease,transform .16s var(--ease)}
-.tabbar a:active,.rail a:active{transform:scale(.94)}
+.tabbar a,.snav .it{transition:color .2s ease,background-color .2s ease,transform .16s var(--ease)}
+.tabbar a:active,.snav .it:active,.fab:active,.spr-mini:active{transform:scale(.94)}
+.fab,.spr-mini{transition:transform .16s var(--ease)}
 .prow{transition:background-color .22s ease,transform .16s var(--ease)}
 .prow:active{transform:scale(.99)}
 .parch{transition:color .15s ease,transform .16s var(--ease)}
@@ -605,7 +597,7 @@ html.mini #focus .fdrop{padding:2px 8px}
 .tbl summary{transition:color .15s ease}
 
 /* ============ responsive ============ */
-@media(max-width:980px){
+@container wrap (max-width:930px){
   .hoy{grid-template-columns:1fr 1fr}
   .hoy .mini{grid-column:1/-1;flex-direction:row}
   .tiles{grid-template-columns:1fr 1fr}
@@ -618,10 +610,15 @@ html.mini #focus .fdrop{padding:2px 8px}
 }
 @media(max-width:640px){
   .wrap{padding:0 16px}
+  .top-in{padding:calc(14px + env(safe-area-inset-top)) 16px 12px;gap:10px;flex-wrap:nowrap}
+  .logo{gap:9px;min-width:0}
+  .logo .nm{font-size:15px}
+  .mark.sm{width:28px;height:28px}
+  .top .rec .rl{display:none}
   .hero{margin-top:36px}
   .fsel,.fedit input{font-size:16px}   /* iOS hace zoom al enfocar campos de menos de 16 px */
   .hero .eyebrow{margin-bottom:12px}
-  .hero h1{font-size:clamp(32px,9.6vw,44px);letter-spacing:-.035em}
+  .hero h1{font-size:clamp(36px,10.6vw,48px)}
   #raceU{display:none}
   .hero .lede{max-width:none;font-size:14.5px}
   .hero .htiles{grid-template-columns:1fr 1fr}
@@ -651,37 +648,299 @@ html.mini #focus .fdrop{padding:2px 8px}
   .fadein{opacity:1;transition:none}
   .anat .bar{width:var(--w);transition:none}
   .ptrack i{width:var(--w);transition:none}
-  .rail,.rail .rt .ic,.rail a span{transition:none}
+  .side,.side-tg .ic,.side .fade,.greet,.ind,.spr,body,html{transition:none}
+  .amb i,.wsegs i.l{animation:none}
+}
+
+/* =====================================================================
+   IDENTIDAD A · "Difusión" (oct-2026)
+   El lima deja de ser pintura y se vuelve luz: vidrio ahumado, grano de película solo en los
+   materiales (nunca encima de los datos), halo en lo importante y una luz ambiente que toma el
+   color de la sección. Capa encima del sistema base: tokens, sidebar, materiales y gráficas.
+   ===================================================================== */
+:root{
+  --bg:#050506;
+  --g1:rgba(255,255,255,.05); --g2:rgba(255,255,255,.014); --edge:rgba(255,255,255,.075); --hl:rgba(255,255,255,.1);
+  --side-bg:linear-gradient(170deg,rgba(255,255,255,.07),rgba(255,255,255,.018) 34%,rgba(255,255,255,.01));
+  --tg-bg:#0c0c0e; --shadow:0 40px 80px -50px rgba(0,0,0,.95);
+  --glow:.72;   /* intensidad de TODOS los halos (−28 % vs la maqueta, pedido de Jordi); applyGlow() la lleva a los SVG */
+  --grain-o:.55; --grain-c:.42; --amb-a:17%; --amb-b:5%;
+}
+:root[data-theme="light"]{
+  --g1:rgba(255,255,255,.86); --g2:rgba(255,255,255,.62); --edge:rgba(26,27,21,.08); --hl:rgba(255,255,255,.95);
+  --side-bg:linear-gradient(170deg,rgba(255,255,255,.8),rgba(255,255,255,.55));
+  --tg-bg:#ffffff; --shadow:0 30px 60px -44px rgba(60,50,20,.35);
+  --glow:.3; --grain-o:.45; --grain-c:.32; --amb-a:26%; --amb-b:8%;
+}
+
+/* ---- luz ambiente + grano (capa fija detrás de todo) ---- */
+.amb{position:fixed;inset:0;z-index:-1;pointer-events:none;overflow:hidden;background:var(--bg)}
+.amb i{position:absolute;border-radius:50%}
+/* la luz de la sección: dos capas que se funden (solo opacidad → la GPU lo hace sin repintar) */
+.amb .o1{width:110vw;aspect-ratio:1;left:-40vw;top:-66vw;opacity:0;will-change:opacity;transition:opacity 1s ease;
+  background:radial-gradient(closest-side,color-mix(in srgb,var(--c,#d9ed2f) var(--amb-a),transparent),color-mix(in srgb,var(--c,#d9ed2f) var(--amb-b),transparent) 55%,transparent)}
+.amb .o1.on{opacity:1}
+.amb .o2{width:72vw;aspect-ratio:1;right:-34vw;top:22%;background:radial-gradient(closest-side,rgba(104,91,199,.2),transparent)}
+.amb .o3{width:60vw;aspect-ratio:1;left:16vw;bottom:-48vw;background:radial-gradient(closest-side,rgba(222,107,69,.09),transparent)}
+:root[data-theme="light"] .amb .o2{background:radial-gradient(closest-side,rgba(104,91,199,.12),transparent)}
+.amb::after,.card::before,.m::before,.side-in::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background-image:var(--grain);background-size:160px 160px}
+.amb::after{opacity:var(--grain-o)}
+.card::before,.m::before,.side-in::before{z-index:-1;opacity:var(--grain-c)}
+
+/* ---- sidebar (≥1024 px): 268 px desplegado, riel de 76 px plegado ---- */
+.side{position:fixed;left:0;top:0;bottom:0;z-index:45;width:268px;display:none;transition:width .38s var(--ease)}
+html.side-closed .side{width:76px}
+@media(min-width:1024px){
+  .side{display:block}
+  body{padding-left:268px;transition:padding-left .38s var(--ease)}
+  html.side-closed body{padding-left:76px}
+  .top{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--bg) 62%,transparent);
+    -webkit-backdrop-filter:blur(18px) saturate(1.3);backdrop-filter:blur(18px) saturate(1.3)}
+  .top-in{padding-top:13px;padding-bottom:13px;min-height:62px}
+  .top .logo{display:none}
+  .crumb{display:flex}
+  .hero,.sec{scroll-margin-top:78px}
+}
+.side-in{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;isolation:isolate;background:var(--side-bg);
+  border-right:1px solid var(--edge);-webkit-backdrop-filter:blur(24px) saturate(1.3);backdrop-filter:blur(24px) saturate(1.3)}
+.side-tg{position:absolute;z-index:2;top:31px;right:-13px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;cursor:pointer;
+  background:var(--tg-bg);border:1px solid var(--edge);color:var(--mut);box-shadow:0 8px 20px -8px rgba(0,0,0,.6);transition:color .2s ease,border-color .2s ease}
+.side-tg:hover{color:var(--txt);border-color:color-mix(in srgb,var(--txt) 32%,transparent)}
+.side-tg .ic{width:13px;height:13px;stroke-width:2;transform:rotate(180deg);transition:transform .38s var(--ease)}
+html.side-closed .side-tg .ic{transform:none}
+.side .fade{transition:opacity .22s ease .16s}
+html.side-closed .side .fade{opacity:0;transition-delay:0s;pointer-events:none}
+.sbrand{display:flex;align-items:center;gap:12px;padding:22px 20px 18px;white-space:nowrap}
+.mark{position:relative;width:36px;height:36px;border-radius:11px;flex:none;display:grid;place-items:center;color:var(--txt);
+  background:linear-gradient(155deg,color-mix(in srgb,var(--txt) 14%,transparent),color-mix(in srgb,var(--txt) 3%,transparent));
+  box-shadow:inset 0 0 0 1px var(--edge),inset 0 1px 0 var(--hl)}
+.mark .ic{width:22px;height:22px}
+.mark.sm{width:30px;height:30px;border-radius:9px}
+.mark.sm .ic{width:18px;height:18px}
+.bnm{font-family:var(--f-d);font-weight:800;font-size:13px;line-height:1.1;letter-spacing:.04em;font-variation-settings:'wdth' 118}
+.sst{margin-top:6px;font-size:9px;gap:7px}
+.sst i{width:6px;height:6px}
+.greet{display:grid;grid-template-rows:1fr;transition:grid-template-rows .38s var(--ease)}
+.greet>div{min-height:0;overflow:hidden}
+.greet .gi{padding:0 20px 18px;white-space:nowrap}
+html.side-closed .greet{grid-template-rows:0fr}
+.g1{font-family:var(--f-d);font-weight:300;font-size:21px;line-height:1.15;letter-spacing:-.02em}
+.g2{margin-top:5px;font-size:12.5px;color:var(--mut)}
+.g2 b{color:var(--txt);font-weight:600}
+.sscroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;border-top:1px solid var(--hair)}
+.sscroll::-webkit-scrollbar{display:none}
+.grp{position:relative;padding:16px 16px 8px;font-family:var(--f-m);font-weight:700;font-size:9px;letter-spacing:.18em;color:var(--dim);white-space:nowrap;transition:color .2s ease}
+.grp::after{content:"";position:absolute;left:18px;right:18px;top:62%;height:1px;background:var(--hair);opacity:0;transition:opacity .2s ease}
+html.side-closed .grp{color:transparent}
+html.side-closed .grp::after{opacity:1}
+.snav{position:relative;padding:0 12px}
+.snav .it{position:relative;z-index:1;display:flex;align-items:center;gap:12px;height:40px;padding:0 14px 0 16px;border-radius:12px;
+  color:var(--mut);text-decoration:none;white-space:nowrap}
+.snav .it:hover,.snav .it.on{color:var(--txt)}
+.snav .it .ic{transition:color .35s ease}
+.snav .it.on .ic{color:var(--acc)}
+.snav .it .lab{flex:1;font-size:14px;font-weight:500;letter-spacing:-.005em}
+.snav .it .val{font-family:var(--f-m);font-size:10.5px;font-weight:500;color:var(--dim);font-variant-numeric:tabular-nums}
+.ind{position:absolute;z-index:0;left:12px;right:12px;top:0;height:40px;border-radius:12px;pointer-events:none;opacity:0;
+  background:linear-gradient(100deg,color-mix(in srgb,var(--txt) 10%,transparent),color-mix(in srgb,var(--txt) 3%,transparent));
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--txt) 8%,transparent),inset 0 1px 0 var(--hl);transition:transform .38s var(--ease),opacity .25s ease}
+.ind::after{content:"";position:absolute;right:9px;top:13px;bottom:13px;width:2px;border-radius:2px;background:var(--acc,var(--sun));
+  box-shadow:0 0 10px color-mix(in srgb,var(--acc,var(--sun)) calc(72% * var(--glow) / .72),transparent),0 0 2px var(--acc,var(--sun));transition:opacity .2s ease}
+html.side-closed .ind::after{opacity:0}
+.smesa{padding:0 12px 12px}
+.wd{display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;column-gap:12px;row-gap:8px;width:100%;border:0;background:none;
+  padding:9px 14px 9px 16px;border-radius:12px;color:var(--mut);text-align:left;font:inherit;cursor:pointer;transition:background-color .2s ease,color .2s ease}
+.wd:hover{color:var(--txt);background:color-mix(in srgb,var(--txt) 4%,transparent)}
+.wd.on{color:var(--txt);background:color-mix(in srgb,var(--txt) 6%,transparent)}
+.wic{width:20px;height:20px;display:grid;place-items:center}
+.wic svg{display:block}
+.wic .ic{width:18px;height:18px}
+.wtr{fill:none;stroke:color-mix(in srgb,var(--txt) 12%,transparent);stroke-width:2.2}
+.wpg{fill:none;stroke:var(--sun);stroke-width:2.2;stroke-linecap:round;filter:drop-shadow(0 0 3px rgba(217,237,47,calc(.6*var(--glow))))}
+.wnm{font-size:13.5px;font-weight:500;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wpc{font-family:var(--f-m);font-size:10.5px;font-weight:500;color:var(--dim)}
+.wsegs{grid-column:2/4;display:flex;gap:2px;height:4px}
+.wsegs i{flex:1;border-radius:2px;background:color-mix(in srgb,var(--txt) 9%,transparent)}
+.wsegs i.d{background:var(--c)}
+.wsegs i.l{background:color-mix(in srgb,var(--c) 40%,transparent);animation:wpulse 2.6s ease-in-out infinite}
+@keyframes wpulse{50%{background:var(--c)}}
+.sfoot{display:grid;padding:12px;border-top:1px solid var(--hair)}
+.sfoot>*{grid-area:1/1}
+.spr{position:relative;overflow:hidden;width:244px;border-radius:18px;padding:14px;transition:opacity .25s ease .14s,transform .45s var(--ease);
+  background:radial-gradient(130% 90% at 0% 100%,rgba(217,237,47,calc(.2*var(--glow))),transparent 62%),linear-gradient(180deg,var(--g1),var(--g2));
+  box-shadow:inset 0 0 0 1px var(--edge),inset 0 1px 0 var(--hl)}
+html.side-closed .spr{position:absolute;left:12px;bottom:12px;opacity:0;transform:translateX(-14px);pointer-events:none;transition-delay:0s}
+.spr-h{display:flex;align-items:center;justify-content:space-between;gap:8px;font-family:var(--f-m);font-weight:700;font-size:9px;letter-spacing:.16em;color:var(--mut)}
+.spr .chip{padding:5px 8px;border-radius:999px;background:color-mix(in srgb,var(--txt) 6%,transparent);letter-spacing:.1em;white-space:nowrap;
+  max-width:150px;overflow:hidden;text-overflow:ellipsis}
+.spr-t{margin:12px 0 4px;font-family:var(--f-d);font-weight:300;font-size:42px;line-height:1;letter-spacing:-.035em;font-variant-numeric:tabular-nums;
+  color:var(--sun-tx);text-shadow:0 0 26px rgba(217,237,47,calc(.42*var(--glow)))}
+.spr.run .spr-t{animation:pulse 1s steps(2,jump-none) infinite}
+.spr.brk .spr-t{opacity:.6}
+.spr-w{font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spr-go{margin-top:12px;width:100%;height:40px;border:0;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;
+  background:var(--sun-block);color:var(--ink);font-family:var(--f-d);font-weight:800;font-size:11.5px;letter-spacing:.08em;font-variation-settings:'wdth' 112;
+  transition:transform .15s ease}
+.spr-go:active{transform:scale(.97)}
+.spr-mini{position:relative;align-self:end;justify-self:center;width:48px;height:48px;border:0;border-radius:50%;background:none;display:grid;place-items:center;
+  color:var(--txt);cursor:pointer;opacity:0;pointer-events:none;transition:opacity .2s ease}
+html.side-closed .spr-mini{opacity:1;pointer-events:auto;transition-delay:.2s}
+.spr-mini svg{position:absolute;inset:0;width:48px;height:48px}
+.rtr{fill:none;stroke:color-mix(in srgb,var(--txt) 10%,transparent);stroke-width:2.5}
+.rpg{fill:none;stroke:var(--sun);stroke-width:2.5;stroke-linecap:round;stroke-dasharray:131.95;stroke-dashoffset:0;
+  filter:drop-shadow(0 0 4px rgba(217,237,47,calc(.55*var(--glow))));transition:stroke-dashoffset .8s linear}
+.mnum{position:relative;font-family:var(--f-m);font-weight:700;font-size:13px;font-variant-numeric:tabular-nums}
+
+/* ---- materiales: vidrio ahumado con grano (la tarjeta del sprint sigue siendo el bloque lima) ---- */
+.card,.m{position:relative;isolation:isolate}
+.card:not(.focuscard),.m{background:linear-gradient(180deg,var(--g1),var(--g2));border:1px solid var(--edge);box-shadow:inset 0 1px 0 var(--hl),var(--shadow);border-radius:20px}
+.focuscard{box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 24px 50px -26px rgba(217,237,47,calc(.45*var(--glow)))}
+.focuscard::before{opacity:.5}
+
+/* ---- tipografía: cifras y titulares en Archivo Light; la luz lima solo en lo importante ---- */
+.hero h1{font-weight:300;font-variation-settings:normal;font-size:clamp(40px,4.9vw,68px);line-height:.98;letter-spacing:-.045em;
+  background:linear-gradient(180deg,var(--txt) 28%,color-mix(in srgb,var(--txt) 52%,transparent));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero h1 em{color:var(--sun-tx);-webkit-text-fill-color:var(--sun-tx);text-shadow:0 0 30px rgba(217,237,47,calc(.5*var(--glow)))}
+.m .v{font-weight:300;font-size:31px;letter-spacing:-.035em}
+.hero .htiles .m:first-child .v,.dinero .kpi:first-child .v{color:var(--sun-tx);text-shadow:0 0 24px rgba(217,237,47,calc(.42*var(--glow)))}
+.kpi .v{font-weight:300;letter-spacing:-.04em}
+.kpi .v small{font-weight:400}
+.dbig{font-weight:300;font-size:44px;letter-spacing:-.035em}
+.fasetot .f .v{font-weight:300;font-size:22px;letter-spacing:-.03em}
+.tc-head{gap:14px;margin-bottom:10px}
+.tc-head h2{font-family:var(--f-d);font-weight:300;font-size:30px;line-height:1.1;letter-spacing:-.03em;color:var(--txt);white-space:nowrap}
+.tc-head .ic{width:16px;height:16px;padding:7px;box-sizing:content-box;border-radius:50%;
+  background:radial-gradient(circle at 50% 30%,color-mix(in srgb,var(--acc,var(--sun)) 22%,transparent),transparent 72%);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--acc,var(--sun)) 30%,transparent)}
+.tc-head .rule{background:linear-gradient(90deg,var(--hair),transparent)}
+.hero .eyebrow .ic{width:18px;height:18px}
+
+/* ---- gráficas: halos con la perilla --glow ---- */
+.settled .gbar.glw{filter:url(#fxGlow)}
+.settled #donut .seg{filter:url(#fxGlowD)}
+.settled #race .rline{filter:url(#fxGlowL)}
+:root:not([data-theme="light"]) .heat .cell.s5{box-shadow:0 0 12px rgba(217,237,47,calc(.55*var(--glow)))}
+.heat .cell.s5.today,.heat .cell.today{box-shadow:0 0 0 1.5px var(--sun)}
+/* la cinta: clips iluminados, como en la línea de tiempo de un editor */
+.clip.prep{--c:var(--f-prep)} .clip.teas{--c:var(--f-teas)} .clip.doc{--c:var(--sun-block)} .clip.hl{--c:var(--violeta)} .clip.cam{--c:var(--naranja)}
+.clip:not(.pend){background:linear-gradient(180deg,color-mix(in srgb,var(--c) 90%,#fff),var(--c) 42%,color-mix(in srgb,var(--c) 84%,#000));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.42),inset 0 0 0 1px rgba(0,0,0,.08)}
+.playhead{box-shadow:0 0 10px rgba(222,107,69,calc(.6*var(--glow)))}
+
+/* ---- sprint: tiempos a la vista y el ciclo dibujado ---- */
+.fmode button i{font-style:normal;font-weight:600;opacity:.62;margin-left:2px}
+.fplan{display:flex;gap:3px;height:16px;margin-top:12px}
+.fplan i{display:flex;align-items:center;justify-content:center;min-width:3px;border-radius:4px;font-style:normal;font-family:var(--f-m);
+  font-size:8.5px;font-weight:700;letter-spacing:.04em;color:var(--sun-block);background:var(--ink);opacity:.82;overflow:hidden;white-space:nowrap}
+.fplan i.b{background:transparent;box-shadow:inset 0 0 0 1px rgba(21,22,10,.35)}
+.fplan i.cur{opacity:1;box-shadow:0 0 0 2px rgba(21,22,10,.28)}
+.fplan i.open{flex:1;opacity:.45;background:repeating-linear-gradient(90deg,var(--ink) 0 6px,transparent 6px 11px)}
+html.mini #focus .fplan,html.mini #focus .fmode button i{display:none}
+.spr{cursor:pointer}
+
+/* ---- Tarifa: tres cifras + el salto en una fila (la cifra de cambio en color, el contexto en gris) ---- */
+.dinero{grid-template-columns:repeat(3,minmax(0,1fr)) minmax(0,1.25fr)}
+.kpi .v{display:flex;align-items:baseline;margin-top:12px;font-size:36px;line-height:1;white-space:nowrap}
+.kpi .v small{margin-left:4px;font-family:var(--f-m);font-size:13px;font-weight:600;letter-spacing:.04em;color:var(--mut)}
+.kpi .dlt{margin-top:14px;font-family:var(--f-m);font-weight:600;font-size:10.5px;line-height:1.4;letter-spacing:.03em;color:var(--sun-tx)}
+.kpi .dlt.bad{color:var(--naranja-tx)}
+.kpi .dlt em{font-style:normal;font-weight:500;color:var(--dim)}
+.salto{grid-column:auto;display:block}
+.salto .cl{flex-direction:column;align-items:flex-start;gap:4px}
+.salto .sbig{display:flex;align-items:baseline;margin:8px 0 4px;font-family:var(--f-d);font-weight:300;font-size:42px;line-height:1;letter-spacing:-.04em;
+  color:var(--sun-tx);text-shadow:0 0 26px rgba(217,237,47,calc(.42*var(--glow)))}
+.salto .sbig small{margin-left:4px;font-family:var(--f-m);font-size:14px;font-weight:600;letter-spacing:0;color:var(--mut);text-shadow:none}
+#jump{display:block;width:100%;max-width:none;overflow:visible}
+@container wrap (max-width:930px){ .dinero{grid-template-columns:repeat(3,minmax(0,1fr))} .salto{grid-column:1/-1} }
+@container wrap (max-width:560px){ .dinero{grid-template-columns:1fr 1fr} .dinero .kpi:nth-child(3){grid-column:1/-1} .kpi .v{font-size:30px} }
+
+/* ---- tema claro: la luz se vuelve papel; sin halos sobre tinta clara ---- */
+:root[data-theme="light"] .hero h1 em{text-shadow:none}
+:root[data-theme="light"] .side-tg{box-shadow:0 6px 16px -8px rgba(60,50,20,.35)}
+
+@media(prefers-reduced-motion:reduce){
+  .side,.side-tg .ic,.side .fade,.greet,.ind,.spr,.spr-mini,.rpg,body,html{transition:none}
+  .wsegs i.l,.spr.run .spr-t{animation:none}
+  .amb .o1{transition:none}
 }
 </style>
 </head>
 <body>
 
-<!-- ============ iconografía propia · mínima ============ -->
+<!-- ============ iconografía: un objeto real por sección, mismo trazo (oct-2026) ============ -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
+    <!-- marca: tres pistas de la línea de tiempo (video / video / audio) y el playhead que las cruza -->
+    <symbol id="i-mark" viewBox="0 0 24 24">
+      <rect x="3.5" y="6.1" width="10.2" height="3.1" rx="1.55" fill="currentColor" stroke="none"/>
+      <rect x="7" y="10.5" width="13.5" height="3.1" rx="1.55" fill="currentColor" stroke="none" opacity=".72"/>
+      <rect x="3.5" y="14.9" width="12.4" height="3.1" rx="1.55" fill="currentColor" stroke="none" opacity=".46"/>
+      <path d="M12 6.4v14.4" stroke="var(--sun)" stroke-width="1.6"/>
+      <path d="M10.4 2.9h3.2a.6.6 0 0 1 .6.6v1.5L12 6.9 9.8 5V3.5a.6.6 0 0 1 .6-.6Z" fill="var(--sun)" stroke="none"/>
+    </symbol>
+    <!-- carrera = bandera a cuadros (la meta contra tu fantasma) -->
     <symbol id="i-carrera" viewBox="0 0 24 24">
-      <path d="M4 19C10 17 14 10.5 17 5"/>
-      <circle cx="17" cy="5" r="1.6" fill="currentColor" stroke="none"/>
+      <path d="M5.5 21V3.6"/>
+      <path d="M5.5 4.2c2.5-1.2 4.9-1.2 6.8 0s4.3 1.2 6.7 0v8.5c-2.4 1.2-4.8 1.2-6.7 0s-4.3-1.2-6.8 0"/>
+      <path d="M5.5 4.2c2.5-1.2 4.9-1.2 6.8 0v4.25c-1.9-1.2-4.3-1.2-6.8 0zM12.3 8.45c1.9 1.2 4.3 1.2 6.7 0v4.25c-2.4 1.2-4.8 1.2-6.7 0z" fill="currentColor" stroke="none"/>
     </symbol>
+    <!-- hoy = el día marcado en el calendario -->
     <symbol id="i-hoy" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="8"/>
-      <path d="M12 12 8.9 10.2"/>
+      <rect x="4" y="5.5" width="16" height="15" rx="2.8"/>
+      <path d="M4 10.2h16M8.6 3.4v3.9M15.4 3.4v3.9"/>
+      <circle cx="12" cy="15.3" r="1.75" fill="currentColor" stroke="none"/>
     </symbol>
+    <!-- ritmo = metrónomo -->
     <symbol id="i-ritmo" viewBox="0 0 24 24">
-      <path d="M6 9.5v5M12 5v14M18 8.5v7"/>
+      <path d="M10 4.2h4l3.4 15.2a1 1 0 0 1-1 1.2H7.6a1 1 0 0 1-1-1.2Z"/>
+      <path d="M8.3 16.6h7.4M12 16.6l5.4-10.4"/>
+      <circle cx="15.7" cy="9.5" r="1.3" fill="currentColor" stroke="none"/>
     </symbol>
-    <symbol id="i-adn" viewBox="0 0 24 24">
-      <path d="M5.5 15a6.5 6.5 0 0 1 13 0"/>
-      <circle cx="12" cy="15" r="1" fill="currentColor" stroke="none"/>
+    <!-- sesiones = reloj de arena (la duración de cada sesión) -->
+    <symbol id="i-sesiones" viewBox="0 0 24 24">
+      <path d="M6.5 3.5h11M6.5 20.5h11"/>
+      <path d="M7.8 3.5v1.4c0 3.3 4.2 4.6 4.2 7.1s-4.2 3.8-4.2 7.1v1.4M16.2 3.5v1.4c0 3.3-4.2 4.6-4.2 7.1s4.2 3.8 4.2 7.1v1.4"/>
+      <path d="M9.4 19.6c.5-1.7 1.5-2.6 2.6-2.6s2.1.9 2.6 2.6Z" fill="currentColor" stroke="none"/>
     </symbol>
-    <symbol id="i-cinta" viewBox="0 0 24 24">
-      <rect x="3.5" y="6.5" width="17" height="11" rx="2.6"/>
-      <path d="M12 6.5v11"/>
+    <!-- proyectos = claqueta (cada boda es una producción) -->
+    <symbol id="i-proyectos" viewBox="0 0 24 24">
+      <path d="M4 10.6h16v7.6a2.3 2.3 0 0 1-2.3 2.3H6.3A2.3 2.3 0 0 1 4 18.2Z"/>
+      <path d="M4.4 10.5l-.6-2.3a1.4 1.4 0 0 1 1-1.7l12.5-3.2a1.4 1.4 0 0 1 1.7 1l.6 2.3Z"/>
+      <path d="M8.5 5.6l2.3 3.5M13.4 4.3l2.3 3.4"/>
     </symbol>
-    <symbol id="i-dinero" viewBox="0 0 24 24">
-      <path d="M12 4l7.5 8L12 20 4.5 12Z"/>
+    <!-- tarifa = etiqueta de precio -->
+    <symbol id="i-tarifa" viewBox="0 0 24 24">
+      <path d="M3.9 13.1a1.6 1.6 0 0 1 0-2.2l4.5-4.9a1.6 1.6 0 0 1 1.2-.5h9.3a1.6 1.6 0 0 1 1.6 1.6v9.8a1.6 1.6 0 0 1-1.6 1.6H9.6a1.6 1.6 0 0 1-1.2-.5Z"/>
+      <circle cx="8.4" cy="12" r="1.1"/>
+      <path d="M16.3 9.7c-.4-.6-1-.9-1.8-.9-1 0-1.7.6-1.7 1.3 0 1.8 3.8 1 3.8 2.9 0 .8-.8 1.4-1.9 1.4-.9 0-1.6-.4-2-1M14.6 7.8v1M14.6 15.2v1"/>
     </symbol>
+    <!-- insight = destello -->
+    <symbol id="i-insight" viewBox="0 0 24 24">
+      <path d="M12 4.5c.6 3.9 2.6 5.9 6.5 6.5-3.9.6-5.9 2.6-6.5 6.5-.6-3.9-2.6-5.9-6.5-6.5 3.9-.6 5.9-2.6 6.5-6.5Z"/>
+    </symbol>
+    <symbol id="i-arch" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="4" rx="1.2"/><path d="M5.5 9v8.5A1.5 1.5 0 0 0 7 19h10a1.5 1.5 0 0 0 1.5-1.5V9M10 12.5h4"/></symbol>
+    <!-- barras: degradado vertical (luz arriba, se apaga hacia la base) -->
+    <linearGradient id="gSun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--sun)"/><stop offset="1" style="stop-color:var(--sun);stop-opacity:.42"/></linearGradient>
+    <linearGradient id="gVio" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--violeta)"/><stop offset="1" style="stop-color:var(--violeta);stop-opacity:.42"/></linearGradient>
+    <linearGradient id="gNar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--naranja)"/><stop offset="1" style="stop-color:var(--naranja);stop-opacity:.42"/></linearGradient>
+    <!-- halos (la intensidad la escala applyGlow() con --glow: data-g = intensidad base) -->
+    <filter id="fxGlow" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="b"/>
+      <feComponentTransfer in="b" result="h"><feFuncA type="linear" slope=".32" data-g=".45"/></feComponentTransfer>
+      <feMerge><feMergeNode in="h"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="fxGlowL" x="-4%" y="-30%" width="108%" height="160%" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceGraphic" operator="dilate" radius="2.6" result="d"/>
+      <feGaussianBlur in="d" stdDeviation="6.5" result="b"/>
+      <feComponentTransfer in="b" result="h"><feFuncA type="linear" slope=".26" data-g=".36"/></feComponentTransfer>
+      <feMerge><feMergeNode in="h"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="fxGlowD" x="-40%" y="-40%" width="180%" height="180%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="b"/>
+      <feComponentTransfer in="b" result="h"><feFuncA type="linear" slope=".36" data-g=".5"/></feComponentTransfer>
+      <feMerge><feMergeNode in="h"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
     <symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
     <symbol id="i-sol" viewBox="0 0 24 24">
       <circle cx="12" cy="12" r="4"/>
@@ -693,31 +952,59 @@ html.mini #focus .fdrop{padding:2px 8px}
   </defs>
 </svg>
 
-<!-- ============ sidebar (desktop) ============ -->
-<nav class="rail" id="rail" aria-label="Secciones">
-  <button class="rt" id="railT" type="button" aria-label="Expandir o plegar navegación"><svg class="ic"><use href="#i-chev"/></svg></button>
-  <a href="#carrera" style="--acc:var(--sun-tx)"><svg class="ic"><use href="#i-carrera"/></svg><span>CARRERA</span></a>
-  <a href="#hoy" style="--acc:var(--naranja-tx)"><svg class="ic"><use href="#i-hoy"/></svg><span>HOY</span></a>
-  <a href="#ritmo" style="--acc:var(--violeta-tx)"><svg class="ic"><use href="#i-ritmo"/></svg><span>RITMO</span></a>
-  <a href="#adn" style="--acc:var(--crema)"><svg class="ic"><use href="#i-adn"/></svg><span>ADN</span></a>
-  <a href="#mesa" style="--acc:var(--violeta-tx)"><svg class="ic"><use href="#i-cinta"/></svg><span>PROYECTOS</span></a>
-  <a href="#dinero" style="--acc:var(--sun-tx)"><svg class="ic"><use href="#i-dinero"/></svg><span>TARIFA</span></a>
-</nav>
+<!-- ============ luz ambiente: toma el color de la sección en la que estás (+ grano) ============ -->
+<div class="amb" aria-hidden="true"><i class="o1 on"></i><i class="o1"></i><i class="o2"></i><i class="o3"></i></div>
 
-<!-- ============ tabbar (móvil) ============ -->
-<nav class="tabbar" aria-label="Secciones">
-  <a href="#carrera" style="--acc:var(--sun-tx)"><svg class="ic"><use href="#i-carrera"/></svg><span>CARRERA</span></a>
-  <a href="#hoy" style="--acc:var(--naranja-tx)"><svg class="ic"><use href="#i-hoy"/></svg><span>HOY</span></a>
-  <a href="#ritmo" style="--acc:var(--violeta-tx)"><svg class="ic"><use href="#i-ritmo"/></svg><span>RITMO</span></a>
-  <a href="#adn" style="--acc:var(--crema)"><svg class="ic"><use href="#i-adn"/></svg><span>ADN</span></a>
-  <a href="#mesa" style="--acc:var(--violeta-tx)"><svg class="ic"><use href="#i-cinta"/></svg><span>MESA</span></a>
-  <a href="#dinero" style="--acc:var(--sun-tx)"><svg class="ic"><use href="#i-dinero"/></svg><span>TARIFA</span></a>
-</nav>
+<!-- ============ sidebar (escritorio ≥1024 px): se pliega a un riel de iconos ============ -->
+<aside class="side" id="side" aria-label="Navegación">
+  <div class="side-in">
+    <div class="sbrand"><span class="mark"><svg class="ic"><use href="#i-mark"/></svg></span>
+      <div class="fade"><div class="bnm">HUB&nbsp;DE&nbsp;EDICIÓN</div><div class="rec sst" id="sStamp"><i></i>—</div></div></div>
+    <div class="greet"><div><div class="gi"><div class="g1" id="sHola">Hola, Jordi</div><div class="g2" id="sHoy">—</div></div></div></div>
+    <div class="sscroll">
+      <nav class="snav" aria-label="Secciones"><span class="ind" id="sInd" aria-hidden="true"></span>
+        <div class="grp">TÚ</div>
+        <a class="it" href="#carrera" style="--acc:var(--sun-tx)"><svg class="ic"><use href="#i-carrera"/></svg><span class="lab fade">Carrera</span><span class="val fade" data-v="carrera"></span></a>
+        <a class="it" href="#hoy" style="--acc:var(--naranja-tx)"><svg class="ic"><use href="#i-hoy"/></svg><span class="lab fade">Hoy</span><span class="val fade" data-v="hoy"></span></a>
+        <a class="it" href="#ritmo" style="--acc:var(--violeta-tx)"><svg class="ic"><use href="#i-ritmo"/></svg><span class="lab fade">Ritmo</span><span class="val fade" data-v="ritmo"></span></a>
+        <a class="it" href="#adn" style="--acc:var(--crema)"><svg class="ic"><use href="#i-sesiones"/></svg><span class="lab fade">Sesiones</span><span class="val fade" data-v="adn"></span></a>
+        <div class="grp">BODAS</div>
+        <a class="it" href="#mesa" style="--acc:var(--violeta-tx)"><svg class="ic"><use href="#i-proyectos"/></svg><span class="lab fade">Proyectos</span><span class="val fade" data-v="mesa"></span></a>
+        <a class="it" href="#dinero" style="--acc:var(--sun-tx)"><svg class="ic"><use href="#i-tarifa"/></svg><span class="lab fade">Tarifa</span><span class="val fade" data-v="dinero"></span></a>
+      </nav>
+      <div class="smesa"><div class="grp">EN LA MESA</div><div id="sMesa"></div></div>
+    </div>
+    <!-- el sprint siempre a mano: espejo de la tarjeta de Hoy (su botón hace clic en el real) -->
+    <div class="sfoot">
+      <div class="spr" id="sSpr" title="Esquema y tiempos: en la tarjeta de Hoy">
+        <div class="spr-h"><span>SPRINT</span><span class="chip" id="sSprChip">—</span></div>
+        <div class="spr-t" id="sSprT">—</div>
+        <div class="spr-w" id="sSprW">—</div>
+        <button class="spr-go" id="sSprGo" type="button">▶&nbsp; INICIAR SPRINT</button>
+      </div>
+      <button class="spr-mini" id="sMini" type="button" aria-label="Ir al sprint de enfoque"><svg viewBox="0 0 48 48" aria-hidden="true"><circle class="rtr" cx="24" cy="24" r="21"/><circle class="rpg" cx="24" cy="24" r="21" transform="rotate(-90 24 24)"/></svg><span class="mnum" id="sMiniN">—</span></button>
+    </div>
+  </div>
+  <button class="side-tg" id="sideTg" type="button" aria-label="Plegar o desplegar la barra lateral"><svg class="ic"><use href="#i-chev"/></svg></button>
+</aside>
 
-<div class="wrap">
+<!-- ============ móvil / tablet: barra flotante + botón del sprint ============ -->
+<div class="dock">
+  <nav class="tabbar" aria-label="Secciones">
+    <a href="#carrera" style="--acc:var(--sun-tx)"><svg class="ic"><use href="#i-carrera"/></svg><span>CARRERA</span></a>
+    <a href="#hoy" style="--acc:var(--naranja-tx)"><svg class="ic"><use href="#i-hoy"/></svg><span>HOY</span></a>
+    <a href="#ritmo" style="--acc:var(--violeta-tx)"><svg class="ic"><use href="#i-ritmo"/></svg><span>RITMO</span></a>
+    <a href="#adn" style="--acc:var(--crema)"><svg class="ic"><use href="#i-sesiones"/></svg><span>SESIONES</span></a>
+    <a href="#mesa" style="--acc:var(--violeta-tx)"><svg class="ic"><use href="#i-proyectos"/></svg><span>MESA</span></a>
+    <a href="#dinero" style="--acc:var(--sun-tx)"><svg class="ic"><use href="#i-tarifa"/></svg><span>TARIFA</span></a>
+  </nav>
+  <button class="fab" id="fab" type="button" aria-label="Ir al sprint de enfoque"><svg viewBox="0 0 48 48" aria-hidden="true"><circle class="rtr" cx="24" cy="24" r="21"/><circle class="rpg" cx="24" cy="24" r="21" transform="rotate(-90 24 24)"/></svg><span class="mnum" id="fabN">—</span></button>
+</div>
 
-<header class="top">
-  <div class="logo"><div class="nm">HUB&nbsp;DE&nbsp;EDICIÓN</div></div>
+<!-- barra superior: en escritorio queda fija y dice en qué sección estás; en móvil lleva la marca -->
+<header class="top"><div class="top-in">
+  <div class="logo"><span class="mark sm"><svg class="ic"><use href="#i-mark"/></svg></span><div class="nm">HUB&nbsp;DE&nbsp;EDICIÓN</div></div>
+  <div class="crumb" aria-hidden="true"><svg class="ic"><use id="crumbI" href="#i-carrera"/></svg><span class="pre" id="crumbG">Tú</span><span class="pre">/</span><span id="crumbT">Carrera</span></div>
   <div class="sp"></div>
   <div class="date" id="hdrDate">—</div>
   <button class="refreshbtn" id="refreshBtn" type="button" aria-label="Actualizar datos desde Notion"><svg class="rfi" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.2 8a5.2 5.2 0 1 1-1.6-3.75" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12.3 1.6v3.2H9.1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
@@ -726,7 +1013,9 @@ html.mini #focus .fdrop{padding:2px 8px}
     <svg class="ic i-sol-u"><use href="#i-sol"/></svg>
     <svg class="ic i-luna-u"><use href="#i-luna"/></svg>
   </button>
-</header>
+</div></header>
+
+<div class="wrap">
 
 <!-- ============ HERO · LA CARRERA ============ -->
 <section class="hero" id="carrera">
@@ -750,8 +1039,7 @@ html.mini #focus .fdrop{padding:2px 8px}
 
 <!-- ============ HOY ============ -->
 <section class="sec" id="hoy" style="--acc:var(--naranja-tx)">
-  <div class="tc-head"><svg class="ic"><use href="#i-hoy"/></svg><span class="rule"></span></div>
-  <h2>Hoy</h2>
+  <div class="tc-head"><svg class="ic"><use href="#i-hoy"/></svg><h2>Hoy</h2><span class="rule"></span></div>
   <p class="sub">Lee tu patrón real y te propone el día: cuándo, cuánto y un botón para entrar en foco.</p>
   <div class="hoy">
     <div class="card focuscard" id="focus">
@@ -776,13 +1064,14 @@ html.mini #focus .fdrop{padding:2px 8px}
         </div>
         <div class="flbl" id="fLbl" hidden></div>
         <div class="fmode" id="fMode" role="group" aria-label="Esquema de trabajo"></div>
+        <div class="fplan" id="fPlan" aria-hidden="true"></div>
         <div class="why" id="focusWhy" style="margin-top:10px">—</div>
         <div class="fpend" id="fPend" hidden></div>
       </div>
       <div>
         <div class="ftime">
           <button class="tcode" id="tcode" type="button" aria-label="Ajustar la duración">26:00</button>
-          <button class="fadj" id="fAdj" type="button">Ajustar</button>
+          <button class="fadj" id="fAdj" type="button">Editar tiempos</button>
         </div>
         <div class="fedit" id="fEdit" hidden>
           <label>Foco <input id="fFoc" type="number" inputmode="numeric" min="1" max="240" aria-label="Minutos de foco"> min</label>
@@ -816,7 +1105,7 @@ html.mini #focus .fdrop{padding:2px 8px}
   </div>
   <div class="tiles" id="tilesRow"></div>
   <div class="aip" id="aipBox" hidden>
-    <svg class="ic"><use href="#i-adn"/></svg>
+    <svg class="ic"><use href="#i-insight"/></svg>
     <div class="tx"><b id="aipTitle"></b><small id="aipSub"></small></div>
     <span class="tag2">INSIGHT</span>
   </div>
@@ -824,8 +1113,7 @@ html.mini #focus .fdrop{padding:2px 8px}
 
 <!-- ============ RITMO ============ -->
 <section class="sec" id="ritmo" style="--acc:var(--violeta-tx)">
-  <div class="tc-head"><svg class="ic"><use href="#i-ritmo"/></svg><span class="rule"></span></div>
-  <h2>Tu ritmo</h2>
+  <div class="tc-head"><svg class="ic"><use href="#i-ritmo"/></svg><h2>Tu ritmo</h2><span class="rule"></span></div>
   <p class="sub" id="ritmoSub">—</p>
   <div class="ritmo">
     <div class="card">
@@ -854,8 +1142,7 @@ html.mini #focus .fdrop{padding:2px 8px}
 
 <!-- ============ ADN ============ -->
 <section class="sec" id="adn" style="--acc:var(--crema)">
-  <div class="tc-head"><svg class="ic"><use href="#i-adn"/></svg><span class="rule"></span></div>
-  <h2>Tus sesiones</h2>
+  <div class="tc-head"><svg class="ic"><use href="#i-sesiones"/></svg><h2>Tus sesiones</h2><span class="rule"></span></div>
   <p class="sub">La forma de tus sesiones, y en qué etapas le ganaste tiempo a tu boda anterior.</p>
   <div class="adn">
     <div class="card">
@@ -878,9 +1165,8 @@ html.mini #focus .fdrop{padding:2px 8px}
 
 <!-- ============ EN LA MESA · AVANCE POR PROYECTO ============ -->
 <section class="sec" id="mesa" style="--acc:var(--violeta-tx)">
-  <div class="tc-head"><svg class="ic"><use href="#i-cinta"/></svg><span class="rule"></span></div>
-  <h2>Proyectos</h2>
-  <p class="sub">La lista <b>es</b> el selector: toca una boda y todo lo de abajo se vuelve ese proyecto. En la versión final, esta es su propia pestaña.</p>
+  <div class="tc-head"><svg class="ic"><use href="#i-proyectos"/></svg><h2>Proyectos</h2><span class="rule"></span></div>
+  <p class="sub">La lista <b>es</b> el selector: toca una boda (aquí o en el sidebar) y todo lo de abajo se vuelve ese proyecto.</p>
   <div class="card">
     <div id="proj"></div>
     <p class="note">Lo hecho es sólido; lo pendiente, <b>rayado</b>. Solo aparecen bodas con sesiones medidas; las entregadas que llevan 45 días sin cambios pasan al <b>Archivo</b>.</p>
@@ -907,8 +1193,7 @@ html.mini #focus .fdrop{padding:2px 8px}
 
 <!-- ============ DINERO ============ -->
 <section class="sec" id="dinero" style="--acc:var(--sun-tx)">
-  <div class="tc-head"><svg class="ic"><use href="#i-dinero"/></svg><span class="rule"></span></div>
-  <h2>Tarifa</h2>
+  <div class="tc-head"><svg class="ic"><use href="#i-tarifa"/></svg><h2>Tarifa</h2><span class="rule"></span></div>
   <p class="sub">Editar más rápido <b>sube tu tarifa real</b> sin tocar el precio.</p>
   <div class="dinero" id="dineroRow"></div>
 </section>
@@ -1363,7 +1648,7 @@ const EASE_FX='cubic-bezier(.22,.9,.3,1)';      // gráficas (donut, curvas)
 const EASE_SOFT='cubic-bezier(.33,1,.68,1)';     // piezas y filas: desacelera sin "golpe"
 // entrada escalonada de filas: de izquierda a derecha con desvanecido (WAAPI = transform/opacity,
 // interrumpible y sin pisar las transiciones CSS de hover)
-function cascade(nodes,o={}){ if(reduced)return; const {dx=-12,dy=0,step=45,max=12,dur=560,delay=0}=o;
+function cascade(nodes,o={}){ if(reduced)return; const {dx=-12,dy=0,step=32,max=12,dur=420,delay=0}=o;
   [...nodes].forEach((n,i)=>n.animate([{opacity:0,transform:`translate(${dx}px,${dy}px)`},{opacity:1,transform:'none'}],
     {duration:dur,delay:delay+Math.min(i,max)*step,easing:EASE_SOFT,fill:'backwards'})); }
 // paneles tipo lista: sus filas entran en cascada (al aparecer por scroll y al cambiar de boda)
@@ -1371,6 +1656,39 @@ const LIST_ROWS='#etapas > *, #dlg > .dlr, #proj > .prow, #proj > .parch, .plan 
 // ¿la pieza que contiene a el está a la vista (ya entró)? Si no, su entrada por scroll se encarga
 const inView = el => !!(el && el.closest('.rv.in'));
 const MQM=matchMedia('(max-width: 640px)');
+// grano de película: ruido gris generado una vez; vive en los materiales (fondo, vidrio, sidebar)
+(function(){ try{ const c=document.createElement('canvas'); c.width=c.height=160; const x=c.getContext('2d'), im=x.createImageData(160,160);
+  for(let i=0;i<im.data.length;i+=4){ const r=Math.random(), w=r>=.5; im.data[i]=im.data[i+1]=im.data[i+2]=w?255:0; im.data[i+3]=Math.abs(r-.5)*2*44|0; }
+  x.putImageData(im,0,0); document.documentElement.style.setProperty('--grain',`url(${c.toDataURL('image/png')})`); }catch(e){} })();
+// halos de los SVG (barras, curva, donut): su intensidad sigue a --glow (0,72 oscuro · 0,3 claro)
+function applyGlow(){ const k=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--glow'))||.72;
+  document.querySelectorAll('feFuncA[data-g]').forEach(f=>f.setAttribute('slope',(+f.dataset.g*k).toFixed(3))); }
+applyGlow();
+// barras con degradado vertical (luz arriba): gradientes compartidos del sprite
+const GFILL={'var(--sun)':'url(#gSun)','var(--violeta)':'url(#gVio)','var(--naranja)':'url(#gNar)'};
+const gfill=c=>GFILL[c]||c;
+/* curva de la Carrera: guía visual. Gauss con reflejo impar en los bordes (conserva el primer y el
+   último valor reales y, como la serie es acumulada, nunca baja) + cúbica monótona (Fritsch–Carlson)
+   sobre nudos cada 3 días, "edición lista" y el último día → curvas amplias, sin tirones. */
+function gaussSmooth(a,sig){ const n=a.length,R=Math.ceil(sig*3),w=[]; for(let k=-R;k<=R;k++) w.push(Math.exp(-k*k/(2*sig*sig)));
+  const ext=i=>i<0?2*a[0]-a[Math.min(-i,n-1)]:i>=n?2*a[n-1]-a[Math.max(2*(n-1)-i,0)]:a[i];
+  return a.map((_,i)=>{ let t=0,ws=0; for(let k=-R;k<=R;k++){ t+=w[k+R]*ext(i+k); ws+=w[k+R]; } return t/ws; }); }
+function monoTangents(P){ const n=P.length, d=[], m=new Array(n).fill(0);
+  for(let k=0;k<n-1;k++) d.push((P[k+1][1]-P[k][1])/(P[k+1][0]-P[k][0]));
+  if(n<2) return m; m[0]=d[0]; m[n-1]=d[n-2];
+  for(let k=1;k<n-1;k++) m[k]= d[k-1]*d[k]<=0 ? 0 : (d[k-1]+d[k])/2;
+  for(let k=0;k<n-1;k++){ if(d[k]===0){ m[k]=0; m[k+1]=0; continue; }
+    const a=m[k]/d[k], b=m[k+1]/d[k], h=a*a+b*b; if(h>9){ const t=3/Math.sqrt(h); m[k]=t*a*d[k]; m[k+1]=t*b*d[k]; } }
+  return m; }
+function raceCurve(a,edit,X,Y,sig=3.4,step=3){ const n=a.length; if(!n) return {s:[],C:{P:[],m:[]},k:()=>0};
+  const s=gaussSmooth(a,sig), e=Math.max(0,Math.min(edit,n-1)), fixed=[0,e,n-1], keep=new Set(fixed);
+  for(let i=step;i<n-1;i+=step) if(fixed.every(f=>Math.abs(f-i)>=Math.ceil(step/2))) keep.add(i);
+  const knots=[...keep].sort((x,y)=>x-y), P=knots.map(i=>[X(i),Y(s[i])]);
+  return {s, C:{P,m:monoTangents(P)}, k:i=>Math.max(0,knots.indexOf(i))}; }
+function pathOf(C,from,to){ const {P,m}=C; if(!P.length) return ''; let d=`M${P[from][0].toFixed(1)} ${P[from][1].toFixed(1)}`;
+  for(let k=from;k<to;k++){ const t=(P[k+1][0]-P[k][0])/3;
+    d+=` C${(P[k][0]+t).toFixed(1)} ${(P[k][1]+m[k]*t).toFixed(1)} ${(P[k+1][0]-t).toFixed(1)} ${(P[k+1][1]-m[k+1]*t).toFixed(1)} ${P[k+1][0].toFixed(1)} ${P[k+1][1].toFixed(1)}`; }
+  return d; }
 document.addEventListener('touchstart',function(){},{passive:true});
 
 let M=null, raceDrawn=false;
@@ -1410,8 +1728,9 @@ function renderChrome(M){
   const st=document.getElementById('stamp'), col=document.getElementById('colofonState');
   st.className='rec'+(M.live?'':' snap');
   const hora=(M.generatedAt||'').slice(11,16);
-  if(M.live){ st.innerHTML='<i></i>EN VIVO'+(hora?' · '+hora:''); col.textContent='En vivo desde Notion'+(hora?' · última lectura '+hora:''); }
+  if(M.live){ st.innerHTML='<i></i><span class="rl">EN VIVO'+(hora?' · </span>'+hora:'</span>'); col.textContent='En vivo desde Notion'+(hora?' · última lectura '+hora:''); }
   else { st.innerHTML='<i></i>SNAPSHOT'; col.textContent='Snapshot local — arranca el servidor para datos frescos'; }
+  const ss=document.getElementById('sStamp'); if(ss){ ss.className='rec sst'+(M.live?'':' snap'); ss.innerHTML=st.innerHTML; }
 }
 
 /* ================= HERO ================= */
@@ -1476,27 +1795,14 @@ function renderRace(M){
     // la curva es una guía visual, no un registro exacto: escalones suavizados un poco
     // (25/50/25 con los vecinos) y trazo monótono (Fritsch–Carlson): curvas sin ángulos que
     // nunca bajan ni se pasan de largo. Tooltip, tabla y cifras siguen con los valores reales.
-    const soft=a=>a.map((v,i)=> i===0||i===a.length-1 ? v : (a[i-1]+2*v+a[i+1])/4);
-    const sCur=soft(cur), sGh=soft(gh);
-    const pts=a=>a.map((v,i)=>[X(i),Y(v)]);
-    function tangents(P){ const n=P.length, d=[], m=new Array(n).fill(0);
-      for(let k=0;k<n-1;k++) d.push((P[k+1][1]-P[k][1])/(P[k+1][0]-P[k][0]));
-      if(n<2) return m;
-      m[0]=d[0]; m[n-1]=d[n-2];
-      for(let k=1;k<n-1;k++) m[k]= d[k-1]*d[k]<=0 ? 0 : (d[k-1]+d[k])/2;
-      for(let k=0;k<n-1;k++){ if(d[k]===0){ m[k]=0; m[k+1]=0; continue; }
-        const a=m[k]/d[k], b=m[k+1]/d[k], h=a*a+b*b;
-        if(h>9){ const t=3/Math.sqrt(h); m[k]=t*a*d[k]; m[k+1]=t*b*d[k]; } }
-      return m; }
-    const smooth=P=>({P, m:tangents(P)});
-    const path=(C,from,to)=>{ const {P,m}=C; let d=`M${P[from][0].toFixed(1)} ${P[from][1].toFixed(1)}`;
-      for(let k=from;k<to;k++){ const t=(P[k+1][0]-P[k][0])/3;
-        d+=` C${(P[k][0]+t).toFixed(1)} ${(P[k][1]+m[k]*t).toFixed(1)} ${(P[k+1][0]-t).toFixed(1)} ${(P[k+1][1]-m[k+1]*t).toFixed(1)} ${P[k+1][0].toFixed(1)} ${P[k+1][1].toFixed(1)}`; }
-      return d; };
-    const cC=smooth(pts(sCur)), cG=smooth(pts(sGh));
+    // gauss + cúbica monótona sobre nudos espaciados (raceCurve): sin tirones; los días clave
+    // ("edición lista" y el último) son nudos, así que los puntos caen sobre la curva
+    const RC=raceCurve(cur,curEnd,X,Y), RG=raceCurve(gh,ghEnd,X,Y);
+    const sCur=RC.s, sGh=RG.s, cC=RC.C, cG=RG.C;
+    const path=(C,from,to)=>{ const r=C===cC?RC:RG; return pathOf(C,r.k(from),r.k(to)); };
     // área bajo la edición
     const grad=S('linearGradient',{id:'raceArea',x1:0,y1:0,x2:0,y2:1},S('defs',{},svg));
-    S('stop',{offset:'0%'},grad).style.cssText='stop-color:var(--sun);stop-opacity:.22';
+    S('stop',{offset:'0%'},grad).style.cssText='stop-color:var(--sun);stop-opacity:.15';
     S('stop',{offset:'100%'},grad).style.cssText='stop-color:var(--sun);stop-opacity:0';
     // rejilla y ejes
     for(let v=0; v<=top; v+=gs){ S('line',{x1:pl,x2:W-pr,y1:Y(v),y2:Y(v),class:'gl'},svg);
@@ -1514,7 +1820,7 @@ function renderRace(M){
       if(ghEnd<gh.length-1) S('path',{d:path(cG,ghEnd,gh.length-1),fill:'none',stroke:'var(--ghost)','stroke-width':2,'stroke-dasharray':'3 5','stroke-linecap':'round',class:'fadein'},svg); }
     // la boda: área + sólida hasta "edición lista", punteada después
     S('path',{d:path(cC,0,curEnd)+` L${X(curEnd)} ${Y(0)} L${X(0)} ${Y(0)} Z`,fill:'url(#raceArea)',class:'fadein'},svg);
-    const pMain=S('path',{d:path(cC,0,curEnd),fill:'none',stroke:'var(--sun)','stroke-width':3.5,'stroke-linejoin':'round','stroke-linecap':'round',class:'draw',pathLength:1},svg);
+    const pMain=S('path',{d:path(cC,0,curEnd),fill:'none',stroke:'var(--sun)','stroke-width':3.5,'stroke-linejoin':'round','stroke-linecap':'round',class:'draw rline',pathLength:1},svg);
     if(curEnd<cur.length-1) S('path',{d:path(cC,curEnd,cur.length-1),fill:'none',stroke:'var(--sun)','stroke-width':2.5,'stroke-dasharray':'3 5','stroke-linecap':'round','stroke-opacity':.7,class:'fadein'},svg);
     // "edición lista": punto + línea al eje + pastilla (si no caben juntas, se separan lo justo)
     const pw=40, P=[];
@@ -1554,11 +1860,12 @@ function renderRace(M){
     hot.addEventListener('pointerleave',()=>{cross.setAttribute('opacity',0);hideTip()});
     window.__playRace=()=>{ if(raceDrawn||reduced)return; raceDrawn=true;
       [pGhost,pMain].forEach((p,i)=>{ if(!p)return; p.style.strokeDasharray='1';p.style.strokeDashoffset='1';
-        p.animate([{strokeDashoffset:1},{strokeDashoffset:0}],{duration:1400,delay:150+i*250,easing:'cubic-bezier(.3,.6,.2,1)',fill:'forwards'}); }); };
+        p.animate([{strokeDashoffset:1},{strokeDashoffset:0}],{duration:950,delay:80+i*140,easing:'cubic-bezier(.3,.6,.2,1)',fill:'forwards'}); }); };
   }
   renderRace._build=build; build();
   // el ancho manda: redibujar solo si cambió (la altura la pone build y no debe disparar otro)
   if(!renderRace._ro && window.ResizeObserver){ renderRace._ro=new ResizeObserver(()=>{
+      if(document.documentElement.classList.contains('side-anim')) return;
       const w=Math.round(svg.getBoundingClientRect().width); if(w && w!==renderRace._w && renderRace._build) renderRace._build(); });
     renderRace._ro.observe(svg); }
   chips.innerHTML=`<span class="c"><i style="background:var(--sun)"></i>${R.curName}<b>${fmt(R.curEff)} h${R.curEditDay!=null?' · D'+R.curEditDay:''}</b></span>`+
@@ -1631,7 +1938,7 @@ function renderDia7(M){
     dia7.forEach(([lab,v,goal,corrH],i)=>{
       const x=pl+i*bw+bw*0.22,w=bw*0.56,y0=H-pb,y=Y(v);
       const isRec=v>0&&v===rec,isHoy=i===6,fill=isRec?'var(--naranja)':isHoy?'var(--sun)':'var(--violeta)';
-      const bar=S('path',{class:'gbar',fill},svg); bar.style.setProperty('--i',i);
+      const bar=S('path',{class:'gbar'+(isRec||isHoy?' glw':''),fill:gfill(fill)},svg); bar.style.setProperty('--i',i);
       bar.setAttribute('d',v>0?barPath(x,y0,y,w,6):`M${x} ${y0-2.5} L${x} ${y0} L${x+w} ${y0} L${x+w} ${y0-2.5} Z`);
       if(v>0){const c=S('text',{x:x+w/2,y:y-10,class:'lbl hi fadein','text-anchor':'middle'},svg);c.textContent=fmtHM(v);}
       const t=S('text',{x:x+w/2,y:H-pb+18,class:'ax','text-anchor':'middle'},svg);t.textContent=mob?lab.slice(-2):lab;
@@ -1665,7 +1972,7 @@ function renderHod(M){
   hours.forEach((h,i)=>{ const v=M.hod[h],x=pl+i*bw+bw*0.18,w=bw*0.64,inWin=h>=M.goldStart&&h<M.goldStart+6,y=Y(v),y0=H-pb;
     const bar=S('path',{class:'gbar'},svg); bar.style.setProperty('--i',i);
     bar.setAttribute('d',v>0?barPath(x,y0,y,w):`M${x} ${y0} L${x+w} ${y0}`);
-    bar.setAttribute('fill',inWin?'var(--violeta)':'var(--debar)'); if(v===0)bar.setAttribute('stroke','var(--hair2)');
+    bar.setAttribute('fill',inWin?gfill('var(--violeta)'):'var(--debar)'); if(v===0)bar.setAttribute('stroke','var(--hair2)');
     const hs=S('rect',{x:pl+i*bw,y:pt,width:bw,height:H-pt-pb,fill:'transparent','data-tip':`<b>${h}:00–${h+1}:00</b><br>${fmt(v)} h · ${M.HODTOT?fmt(v/M.HODTOT*100):0} % de tu total`},svg);
     hs.style.pointerEvents='all'; liveBar(svg,hs,bar);
     if(h%2===0){const t=S('text',{x:x+w/2,y:H-pb+16,class:'ax','text-anchor':'middle'},svg);t.textContent=h;} });
@@ -1677,7 +1984,7 @@ function renderWeek(M){
   for(const g of niceTicks(maxV,3)){ S('line',{x1:pl,x2:W-pr,y1:Y(g),y2:Y(g),class:'gl'},svg); const t=S('text',{x:pl-7,y:Y(g)+3,class:'ax','text-anchor':'end'},svg);t.textContent=g+'h'; }
   const names=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
   M.week.forEach(([d,v],i)=>{ const x=pl+i*bw+bw*0.2,w=bw*0.6,y=Y(v),y0=H-pb,hi=i===M.bestDowIdx;
-    const bar=S('path',{d:v>0.5?barPath(x,y0,y,w):`M${x} ${y0-2} L${x} ${y0} L${x+w} ${y0} L${x+w} ${y0-2} Z`,fill:hi?'var(--violeta)':'var(--debar)',class:'gbar'},svg); bar.style.setProperty('--i',i);
+    const bar=S('path',{d:v>0.5?barPath(x,y0,y,w):`M${x} ${y0-2} L${x} ${y0} L${x+w} ${y0} L${x+w} ${y0-2} Z`,fill:hi?gfill('var(--violeta)'):'var(--debar)',class:'gbar'+(hi?' glw':'')},svg); bar.style.setProperty('--i',i);
     const hs=S('rect',{x:pl+i*bw,y:pt,width:bw,height:H-pt-pb,fill:'transparent','data-tip':`<b>${names[i]}</b><br>${fmt(v)} h · ${M.WEEKTOT?fmt(v/M.WEEKTOT*100):0} % de tu semana`},svg); hs.style.pointerEvents='all'; liveBar(svg,hs,bar);
     const t=S('text',{x:x+w/2,y:H-pb+16,class:'ax','text-anchor':'middle'},svg);t.textContent=d;
     if(hi){const l=S('text',{x:x+w/2,y:y-11,class:'lbl hi fadein','text-anchor':'middle'},svg);l.textContent=fmt(v)+' h';} });
@@ -1728,7 +2035,7 @@ function renderSprints(M){
   const W=430,H=240,pl=14,pr=14,pt=30,pb=30,maxV=Math.max(10,...M.sprints.map(s=>s[1]))*1.1,bw=(W-pl-pr)/M.sprints.length;
   const Y=v=>H-pb-v/maxV*(H-pt-pb);
   M.sprints.forEach(([lab,v],i)=>{ const x=pl+i*bw+bw*0.16,w=bw*0.68,y=Y(v),y0=H-pb;
-    const bar=S('path',{d:barPath(x,y0,y,w),fill:'var(--sun)',class:'gbar'},svg); bar.style.setProperty('--i',i);
+    const bar=S('path',{d:barPath(x,y0,y,w),fill:gfill('var(--sun)'),class:'gbar'},svg); bar.style.setProperty('--i',i);
     const c=S('text',{x:x+w/2,y:y-11,class:'lbl fadein','text-anchor':'middle'},svg);c.textContent=v;
     const t=S('text',{x:x+w/2,y:H-pb+18,class:'ax','text-anchor':'middle'},svg);t.textContent=lab;
     const hs=S('rect',{x:pl+i*bw,y:pt,width:bw,height:H-pt-pb,fill:'transparent','data-tip':`<b>${v} sesiones</b><br>duración ${lab} · ${M.NSES?fmt(v/M.NSES*100):0} % del total`},svg); hs.style.pointerEvents='all'; liveBar(svg,hs,bar); });
@@ -1789,9 +2096,9 @@ function renderMesa(M){
       donut.querySelectorAll('.seg').forEach((s,i)=>{ const len=+s.dataset.len, o=+s.dataset.off;
         s.animate([{strokeDasharray:`0 ${circ}`,strokeDashoffset:o+circ*.18,opacity:0},
                    {strokeDasharray:`${len} ${circ-len}`,strokeDashoffset:o,opacity:1}],
-          {duration:820,delay:60+i*55,easing:EASE_FX,fill:'backwards'}); });
+          {duration:600,delay:30+i*32,easing:EASE_FX,fill:'backwards'}); });
       [cx,cs,cs2].forEach((t,i)=>t.animate([{opacity:0,transform:'translateY(6px)'},{opacity:1,transform:'none'}],
-        {duration:420,delay:180+i*50,easing:EASE_FX,fill:'backwards'})); };
+        {duration:320,delay:120+i*40,easing:EASE_FX,fill:'backwards'})); };
     const sorted=[...p.etapas].sort((a,b)=>b[1]-a[1]);
     dlg.innerHTML=sorted.map(([nm,h,ses,fase])=>`<div class="dlr" data-tip="<b>${nm}</b><br>${fmtMXN(p.price*h/p.total)} · ${fmt(h)} h · ${fmt(h/p.total*100)} %"><span class="dot" style="background:${cols[fase]}"></span><span class="n">${nm}</span><b>${fmtMXN(p.price*h/p.total)}</b><span class="hh">${fmt(h)}h</span><span class="pp">${Math.round(h/p.total*100)}%</span></div>`).join(''); }
 
@@ -1817,6 +2124,7 @@ function renderMesa(M){
     if(anim && key===renderMesa._cur) return;            // tocar la misma boda no re-anima
     renderMesa._cur=key;
     projBox.querySelectorAll('.prow').forEach(r=>{r.classList.toggle('sel',r.dataset.key===key);r.setAttribute('aria-pressed',r.dataset.key===key);});
+    document.querySelectorAll('#sMesa .wd[data-key]').forEach(b=>b.classList.toggle('on',b.dataset.key===key));
     renderEtapas(p); renderDonut(p); renderTape(p);
     if(anim && !reduced){                                // solo lo que está a la vista; lo demás entra al scrollear
       if(inView(donut)) window.__swirlDonut();
@@ -1851,36 +2159,71 @@ function renderMesa(M){
 /* ================= TARIFA ================= */
 function renderTarifa(M){
   const row=document.getElementById('dineroRow'); const $=M.money;
-  if(!$){ row.innerHTML='<p class="note">Aún no hay una boda entregada con horas para calcular tarifa.</p>'; return; }
-  const jump = $.jumpPct!=null ? `<span class="delta">${$.jumpPct>=0?'▲ +':'▼ '}${$.jumpPct} % VS ANTERIOR</span>` : `<span class="ksub">PRIMERA BODA MEDIDA</span>`;
-  const dsc = $.dScenePct!=null ? `<span class="delta">${$.dScenePct>=0?'▲ +':'▼ '}${$.dScenePct} %</span>` : '';
-  const dhp = $.dHpe!=null ? `<span class="delta">${$.dHpe<=0?'▼ ':'▲ +'}${Math.abs($.dHpe)} % · ${$.dHpe<=0?'MÁS EFICIENTE':'MENOS'}</span>` : '';
+  if(!$){ row.innerHTML='<p class="note">Aún no hay una boda entregada con horas para calcular tarifa.</p>'; renderTarifa._d=null; return; }
+  const prev=$.prevName?short($.prevName):'la anterior', ghHpe=M.hero&&M.hero.ghHpe;
+  // línea de cambio: la cifra en color (lima si mejora, naranja si empeora) y el contexto en gris
+  const dl=(pct,ctx,good)=>pct==null?'':`<div class="dlt${good?'':' bad'}">${signed(pct,' %')} <em>${ctx}</em></div>`;
+  const hps=$.hPerScene.toFixed(2).replace('.',',');
   row.innerHTML=
-    `<div class="card kpi" data-tip="<b>$/hora efectiva</b><br>${fmtMXN($.price)} / ${fmt($.eff)} h"><div class="cl"><h3>$ / hora</h3></div><div class="v">${fmtMXN($.perH)}</div>${jump}</div>`+
-    `<div class="card kpi" data-tip="<b>$/escena</b><br>${fmtMXN($.price)} / ${$.scenes} escenas"><div class="cl"><h3>$ / escena</h3></div><div class="v">${fmtMXN($.perScene)}</div>${dsc}</div>`+
-    `<div class="card kpi" data-tip="<b>$/etapa</b><br>${fmtMXN($.price)} / ${$.stages} etapas"><div class="cl"><h3>$ / etapa</h3></div><div class="v">${fmtMXN($.perStage)}</div><span class="ksub">PROMEDIO · ${$.stages} ETAPAS</span></div>`+
-    `<div class="card kpi" data-tip="<b>Eficiencia</b><br>${fmt($.eff)} h / ${$.scenes} escenas"><div class="cl"><h3>h / escena</h3></div><div class="v">${fmt($.hPerScene)}<small> h</small></div>${dhp}</div>`+
-    `<div class="card salto"><div><div class="cl"><h3>$ / hora por boda</h3></div><svg id="jump" viewBox="0 0 430 150" role="img"></svg></div>`+
-    `<p class="note">Sobre <b>${fmtMXN($.price)} cobrados</b> (Total en Notion) · ${fmt($.eff)} h · ${$.scenes} escenas. Cada boda entregada añade un peldaño.</p></div>`;
-  // salto chart
+    `<div class="card kpi" data-tip="<b>$/hora efectiva</b><br>${fmtMXN($.price)} / ${fmt($.eff)} h"><div class="cl"><h3>$ / hora</h3></div><div class="v">${fmtMXN($.perH)}<small>/h</small></div>`+
+      ($.jumpPct!=null?dl($.jumpPct,`vs ${prev} · ${fmtMXN($.prevH)}`,$.jumpPct>=0):`<div class="dlt"><em>primera boda medida</em></div>`)+`</div>`+
+    `<div class="card kpi" data-tip="<b>$/escena</b><br>${fmtMXN($.price)} / ${$.scenes} escenas"><div class="cl"><h3>$ / escena</h3></div><div class="v">${fmtMXN($.perScene)}</div>${dl($.dScenePct,'vs la anterior',$.dScenePct>=0)}</div>`+
+    `<div class="card kpi" data-tip="<b>Eficiencia</b><br>${fmt($.eff)} h / ${$.scenes} escenas"><div class="cl"><h3>h / escena</h3></div><div class="v">${hps}<small>h</small></div>`+
+      `${dl($.dHpe,ghHpe?`vs ${ghHpe.toFixed(2).replace('.',',')} h`:'vs la anterior',$.dHpe<=0)}</div>`+
+    `<div class="card salto" data-tip="<b>$/hora por boda</b><br>sobre ${fmtMXN($.price)} cobrados (Total en Notion) · ${fmt($.eff)} h"><div class="cl"><h3>$ / hora por boda</h3><span class="u">SALTO VS LA ANTERIOR</span></div>`+
+      `<div class="sbig">${$.jumpPct!=null?`${signed($.jumpPct)}<small>%</small>`:fmtMXN($.perH)+'<small>/h</small>'}</div><svg id="jump" role="img" aria-label="$ por hora: boda anterior contra la actual"></svg></div>`;
+  // el salto: la anterior (anillo) → la actual (punto lima) sobre una regla de $/h; tamaño real, se redibuja con el ancho
   const svg=document.getElementById('jump');
-  if($.prevH){ const W=430,H=150,pl=30,pr=30,y=88,x1=pl+60,x2=W-pr-60;
-    S('line',{x1:pl,x2:W-pr,y1:y+34,y2:y+34,class:'gl'},svg);
-    S('line',{x1:x1,x2:x2,y1:y,y2:$.perH>=$.prevH?y-26:y+8,stroke:'var(--sun)','stroke-width':2,'stroke-linecap':'round'},svg);
-    S('circle',{cx:x1,cy:y,r:6,fill:'var(--ghost)',stroke:'var(--panel)','stroke-width':2},svg);
-    S('circle',{cx:x2,cy:$.perH>=$.prevH?y-26:y+8,r:7,fill:'var(--sun)',stroke:'var(--panel)','stroke-width':2},svg);
-    const a=S('text',{x:x1,y:y+24,class:'lbl','text-anchor':'middle'},svg);a.textContent=`${short($.prevName)} · ${fmtMXN($.prevH)}/h`;
-    const b=S('text',{x:x2,y:($.perH>=$.prevH?y-26:y+8)-18,class:'lbl hi','text-anchor':'middle'},svg);b.textContent=`${short($.name)} · ${fmtMXN($.perH)}/h`;
-    const c=S('text',{x:(x1+x2)/2,y:y-30,class:'anno','text-anchor':'middle',fill:'var(--sun-tx)'},svg);c.textContent=signed($.jumpPct,' %'); }
+  function build(){ const W=Math.round(svg.getBoundingClientRect().width); if(!W) return; renderTarifa._w=W;
+    const H=92, pl=10, pr=10, y=42; svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.setAttribute('height',H); svg.innerHTML='';
+    const vals=[$.perH].concat($.prevH?[$.prevH]:[]), lo=Math.floor((Math.min(...vals)-30)/10)*10, hi=Math.ceil((Math.max(...vals)+20)/10)*10;
+    const X=v=>pl+(v-lo)/(hi-lo)*(W-pl-pr), cl=(x,half)=>Math.max(pl+half,Math.min(W-pr-half,x));
+    S('line',{x1:pl,x2:W-pr,y1:y,y2:y,stroke:'var(--hair2)','stroke-width':2,'stroke-linecap':'round'},svg);
+    const x1=X($.perH);
+    if($.prevH){ const x0=X($.prevH), up=$.perH>=$.prevH, gid='jg'+Date.now().toString(36);
+      const g=S('linearGradient',{id:gid,x1:up?0:1,y1:0,x2:up?1:0,y2:0},S('defs',{},svg));
+      S('stop',{offset:'0%'},g).style.cssText='stop-color:var(--sun);stop-opacity:.12'; S('stop',{offset:'100%'},g).style.cssText='stop-color:var(--sun);stop-opacity:1';
+      S('line',{x1:x0,x2:x1,y1:y,y2:y,stroke:`url(#${gid})`,'stroke-width':3,'stroke-linecap':'round',class:'jglow'},svg);
+      S('circle',{cx:x0,cy:y,r:6,fill:'var(--bg)',stroke:'var(--ghost)','stroke-width':2},svg);
+      const t=S('text',{x:cl(x0,46),y:y-15,class:'ax','text-anchor':'middle'},svg); t.textContent=`${prev} · ${fmtMXN($.prevH)}/h`; }
+    S('circle',{cx:x1,cy:y,r:7,fill:'var(--sun)',stroke:'var(--bg)','stroke-width':3},svg);
+    const t2=S('text',{x:cl(x1,56),y:y+28,class:'lbl hi','text-anchor':'middle'},svg); t2.textContent=`${short($.name)} · ${fmtMXN($.perH)}/h`; }
+  renderTarifa._build=build; build();
+  if(!renderTarifa._ro && window.ResizeObserver){ renderTarifa._ro=new ResizeObserver(()=>{ if(document.documentElement.classList.contains('side-anim')) return; const s2=document.getElementById('jump');
+      const w=s2&&Math.round(s2.getBoundingClientRect().width); if(w && w!==renderTarifa._w && renderTarifa._build) renderTarifa._build(); });
+    renderTarifa._ro.observe(row); }
 }
 
 /* ================= renderAll ================= */
 function renderAll(model){
   M=model;
   // cada sección aislada: si una falla (dato raro en Notion), las demás se pintan igual
-  for(const f of [renderChrome,renderHero,renderRace,renderHoy,renderDia7,renderRitmo,renderAdn,renderMesa,renderTarifa]){
+  for(const f of [renderChrome,renderHero,renderRace,renderHoy,renderDia7,renderRitmo,renderAdn,renderMesa,renderTarifa,renderSide]){
     try{ f(M); }catch(e){ console.error('render · '+f.name, e); }
   }
+}
+
+/* ================= SIDEBAR: saludo, valor vivo por sección y "En la mesa" ================= */
+const escH=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+function renderSide(M){
+  const box=document.getElementById('sMesa'); if(!box) return;
+  const h=new Date().getHours(), hoyH=(M.todayMin||0)/60;
+  document.getElementById('sHola').textContent=(h>=6&&h<12?'Buenos días':h>=12&&h<20?'Buenas tardes':'Buenas noches')+', Jordi';
+  document.getElementById('sHoy').innerHTML=M.metaTodayH?`Llevas <b>${fmtHM(hoyH)}</b> de ${M.metaTodayH} h hoy`
+    :hoyH?`Llevas <b>${fmtHM(hoyH)}</b> · hoy toca descanso`:'Hoy toca descanso';
+  const H=M.hero, mo=M.money||{};
+  const V={carrera:H&&H.hasGhost&&H.dH!=null?signed(H.dH,' h'):'', hoy:fmtHM(hoyH), ritmo:fmt(M.thisWeekH||0)+' h/sem',
+    adn:M.medMin?M.medMin+'′ med.':'', mesa:M.projOrder.length?String(M.projOrder.length):'', dinero:mo.perH?'$'+mo.perH+'/h':''};
+  document.querySelectorAll('.snav [data-v]').forEach(e=>e.textContent=V[e.dataset.v]||'');
+  // en la mesa: anillo = avance de la boda; segmentos = sus etapas (hecha · en curso · pendiente)
+  const col=Object.fromEntries(M.PHASE_ORDER.map(k=>[k,M.PHASES[k].col])), C=2*Math.PI*8, sel=renderMesa._cur;
+  let html=M.projOrder.map(key=>{ const p=M.projects[key]; if(!p) return '';
+    const segs=(p.checklist||[]).filter(e=>e.fase!=='cam');
+    return `<button class="wd${key===sel?' on':''}" type="button" data-key="${key}" title="${escH(p.nm)} · ${p.prog}"><span class="wic"><svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><circle class="wtr" cx="10" cy="10" r="8"/><circle class="wpg" cx="10" cy="10" r="8" stroke-dasharray="${(p.w/100*C).toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 10 10)"/></svg></span>`
+      +`<span class="wnm fade">${escH(p.nm)}</span><span class="wpc fade">${p.w} %</span>`
+      +`<span class="wsegs fade">${segs.map(e=>`<i class="${e.estado==='done'?'d':e.estado==='live'?'l':''}" style="--c:${col[e.fase]}"></i>`).join('')}</span></button>`; }).join('');
+  if(M.archOrder.length) html+=`<button class="wd" type="button" data-arch="1" title="Archivo · ${M.archOrder.length} bodas entregadas"><span class="wic"><svg class="ic"><use href="#i-arch"/></svg></span><span class="wnm fade">Archivo</span><span class="wpc fade">${M.archOrder.length}</span></button>`;
+  box.innerHTML=html;
 }
 
 /* ================= sprint de enfoque: esquemas, ciclos y registro en Notion =================
@@ -1952,7 +2295,7 @@ const Sprint=(function(){
     med:   {nm:'Mediana',  f:()=>med, b:0},
     pomo:  {nm:'Pomodoro', f:()=>25,  b:5,  long:15, every:4},
     s5217: {nm:'52/17',    f:()=>52,  b:17},
-    deep:  {nm:'90',       f:()=>90,  b:20},
+    deep:  {nm:'Profundo', f:()=>90,  b:20},
     libre: {nm:'Libre',    f:()=>0,   b:0},
     custom:{nm:'Propio',   f:()=>mode.custom.focus, b:null},
   };
@@ -1963,9 +2306,20 @@ const Sprint=(function(){
     if(!x.brk) return foc+', sin descanso fijo.';
     return `${foc} y <b>${x.brk}</b> de descanso`+(x.every?`; cada ${x.every} bloques, uno de <b>${x.long}</b>.`:'.');
   }
+  // cada esquema lleva sus tiempos en el propio botón (foco/descanso); Propio, los tuyos
+  const TAG={med:()=>med+'′', pomo:()=>'25/5', s5217:()=>'', deep:()=>'90/20', libre:()=>'', custom:()=>`${mode.custom.focus}/${mode.custom.brk}`};
   function paintModes(){
-    modeBox.innerHTML=Object.entries(SCHEMES).map(([k,v])=>`<button type="button" data-k="${k}" aria-pressed="${mode.k===k}">${v.nm}</button>`).join('');
+    modeBox.innerHTML=Object.entries(SCHEMES).map(([k,v])=>{ const t=TAG[k]();
+      return `<button type="button" data-k="${k}" aria-pressed="${mode.k===k}">${v.nm}${t?` <i>${t}</i>`:''}</button>`; }).join('');
   }
+  // el ciclo del esquema, dibujado: foco = bloque sólido (con sus minutos), descanso = hueco; el bloque en curso, marcado
+  function paintPlan(x){ const box=$('fPlan'); if(!box) return;
+    if(x.k==='libre'){ box.innerHTML='<i class="open"></i>'; return; }
+    const f=Math.max(1,x.focus||0), b=x.brk||0, n=x.every||(b?2:1), cur=((cyc.n-1)%n)+1, segs=[];
+    for(let i=1;i<=n;i++){
+      segs.push(`<i class="f${i===cur&&(cyc.n>1||run)?' cur':''}" style="flex:${f}">${f>=10?f+'′':''}</i>`);
+      if(b) segs.push(`<i class="b" style="flex:${x.every&&i===n?x.long:b}"></i>`); }
+    box.innerHTML=segs.join(''); }
   function setMode(k){ mode.k=k; save(LSM,mode); note=''; if(!run&&!load(LSB)){ cyc={n:1, at:0}; save(LSC,cyc); } paintModes(); paint(); }
 
   // ---- destino: etapa · escena · tipo (estados como palabras, agrupados) ----
@@ -2010,6 +2364,7 @@ const Sprint=(function(){
   function paint(){
     const pend=load(LSP), brk=load(LSB), x=sch();
     card.classList.toggle('run',!!run); card.classList.toggle('brk',!run&&!!brk);
+    paintPlan(x);
     modeBox.hidden=!!(run||brk); adj.hidden=!!(run||brk||editing); edit.hidden=!editing||!!run||!!brk;
     const blockTag=x.every?` · BLOQUE ${((cyc.n-1)%x.every)+1} DE ${x.every}`:(cyc.n>1?` · BLOQUE ${cyc.n}`:'');
     if(pend){ const m=Math.round((Date.parse(pend.item.fin)-Date.parse(pend.item.inicio))/60000);
@@ -2048,7 +2403,8 @@ const Sprint=(function(){
       const f=editing?Math.max(0,+inF.value||0):x.focus;
       code.textContent=mmss(f*60); state.textContent=cyc.n>1?blockTag:'';
       lbl.hidden=true; pick.hidden=!targets.length; drop.hidden=true; cutBox.hidden=true;
-      why.innerHTML=note||(describe(x)+(targets.length?'':' No hay etapas abiertas en Notion: corre, pero no se registra.'));
+      why.innerHTML=note||(editing?(mode.k==='custom'?'Cambia los minutos y toca <b>Listo</b>.':`Se guarda como <b>Propio</b>; ${SCHEMES[mode.k].nm} no cambia.`)
+        :describe(x)+(targets.length?'':' No hay etapas abiertas en Notion: corre, pero no se registra.'));
       btn.innerHTML=cyc.n>1?`▶&nbsp; EMPEZAR BLOQUE ${x.every?((cyc.n-1)%x.every)+1:cyc.n}`:'▶&nbsp; INICIAR SPRINT';
       document.title=BASE_TITLE;
     }
@@ -2245,17 +2601,101 @@ const Sprint=(function(){
     window.addEventListener('focus',pull); }
   return { update(M){
     med=M.medMin||26;                 // el bloque en curso guarda su propia meta (run.target)
-    baseTargets=M.sprintTargets||[]; refreshTargets(); paint();
+    baseTargets=M.sprintTargets||[]; refreshTargets(); paintModes(); paint();
   } };
 })();
 
-/* ================= navegación + tema ================= */
-(function(){ const rail=document.getElementById('rail');
-  document.getElementById('railT').addEventListener('click',()=>rail.classList.toggle('open'));
-  const links=[...document.querySelectorAll('nav a')];
-  const spy=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)links.forEach(l=>l.classList.toggle('on',l.getAttribute('href')==='#'+e.target.id));}),{rootMargin:'-42% 0px -52% 0px'});
-  document.querySelectorAll('.hero,.sec').forEach(s=>spy.observe(s)); })();
-document.getElementById('thmBtn').addEventListener('click',()=>{ const r=document.documentElement; const next=r.dataset.theme==='light'?'':'light'; if(next)r.dataset.theme=next;else delete r.dataset.theme; try{localStorage.setItem('scTheme',next)}catch(e){} if(M)renderAll(M); });
+/* ================= sprint en el sidebar y en el botón móvil: espejo de la tarjeta de Hoy =================
+   No duplica lógica: lee lo que pinta la tarjeta (reloj, botón, etapa) y su botón principal hace clic en
+   el real (registro en Notion incluido). El anillo se calcula con el bloque guardado (scSprint). */
+(function(){ if(MINI) return;
+  const $=id=>document.getElementById(id);
+  const card=$('focus'), code=$('tcode'), btn=$('focusBtn'), selT=$('fTarget'), lbl=$('fLbl'), state=$('fState'), modeBox=$('fMode');
+  const spr=$('sSpr'), sT=$('sSprT'), sW=$('sSprW'), sGo=$('sSprGo'), chip=$('sSprChip');
+  if(!card||!spr) return;
+  const rings=[...document.querySelectorAll('.spr-mini .rpg,.fab .rpg')], nums=[$('sMiniN'),$('fabN')], CIRC=2*Math.PI*21;
+  const block=()=>{ try{ return JSON.parse(localStorage.getItem('scSprint')||'null'); }catch(e){ return null; } };
+  let pend=false;
+  function sync(){ pend=false;
+    const run=card.classList.contains('run'), brk=card.classList.contains('brk'), t=(code.textContent||'').trim();
+    spr.classList.toggle('run',run); spr.classList.toggle('brk',brk);
+    sT.textContent=t||'—';
+    sGo.innerHTML=btn.innerHTML.replace(/<i[^>]*class="fcutk"[^>]*>[\s\S]*?<\/i>/,'');
+    // qué se trabaja: en curso, la etiqueta de la tarjeta; si no, la etapa elegida en Hoy
+    let w='';
+    if(run&&lbl&&!lbl.hidden){ const sm=lbl.querySelector('small'); w=lbl.textContent.replace(sm?sm.textContent:'','').trim(); }
+    else if(selT&&selT.selectedIndex>=0&&selT.options[selT.selectedIndex]) w=selT.options[selT.selectedIndex].text;
+    sW.textContent=w||'Elige la etapa en Hoy';
+    const mode=modeBox&&modeBox.querySelector('[aria-pressed="true"]'), mm=/^\+?(\d+):\d\d$/.exec(t);
+    chip.textContent=run?((state&&state.textContent.replace(/^·\s*/,''))||'EN CURSO'):brk?'DESCANSO'
+      :(mode?mode.textContent.toUpperCase():'SPRINT');
+    // anillo = lo que queda del bloque (lleno en reposo)
+    let frac=1, left=null; const b=run?block():null;
+    if(b&&b.target){ left=b.target-(Date.now()-b.start)/1000; frac=Math.max(0,Math.min(1,left/b.target)); }
+    rings.forEach(r=>r.style.strokeDashoffset=(CIRC*(1-frac)).toFixed(2));
+    const n=left!=null?Math.max(0,Math.ceil(left/60)):(mm&&+mm[1]>0?+mm[1]:'▶');
+    nums.forEach(e=>{ if(e) e.textContent=n; });
+  }
+  // una sola pasada por ráfaga de cambios (microtarea: también corre con la pestaña en segundo plano)
+  const queue=()=>{ if(!pend){ pend=true; queueMicrotask(sync); } };
+  const mo=new MutationObserver(queue);
+  mo.observe(code,{childList:true,characterData:true,subtree:true});
+  mo.observe(card,{attributes:true,attributeFilter:['class']});
+  mo.observe(btn,{childList:true,subtree:true});
+  if(lbl) mo.observe(lbl,{childList:true,subtree:true,attributes:true,attributeFilter:['hidden']});
+  if(modeBox) mo.observe(modeBox,{childList:true,subtree:true,attributes:true,attributeFilter:['aria-pressed']});
+  if(selT){ mo.observe(selT,{childList:true,subtree:true}); selT.addEventListener('change',queue); }
+  sGo.addEventListener('click',()=>btn.click());
+  const toCard=()=>card.scrollIntoView({behavior:reduced?'auto':'smooth',block:'center'});
+  $('sMini').addEventListener('click',toCard); $('fab').addEventListener('click',toCard);
+  spr.addEventListener('click',e=>{ if(!e.target.closest('#sSprGo')) toCard(); });
+  sync();
+})();
+
+/* ================= navegación: sidebar plegable + barra móvil + scroll-spy; tema ================= */
+// por sección: grupo y nombre (barra superior), icono y color de la luz ambiente
+const SEC={carrera:['Tú','Carrera','i-carrera','#d9ed2f'],hoy:['Tú','Hoy','i-hoy','#de6b45'],ritmo:['Tú','Ritmo','i-ritmo','#685bc7'],
+  adn:['Tú','Sesiones','i-sesiones','#f0eee9'],mesa:['Bodas','Proyectos','i-proyectos','#685bc7'],dinero:['Bodas','Tarifa','i-tarifa','#d9ed2f']};
+// la pastilla del sidebar se desliza hasta la sección activa
+function placeInd(now){ const ind=document.getElementById('sInd'), on=document.querySelector('.snav .it.on'); if(!ind) return;
+  ind.style.opacity=on?1:0; if(!on) return;
+  if(now) ind.style.transition='none';
+  ind.style.transform=`translateY(${on.offsetTop}px)`; ind.style.setProperty('--acc',on.style.getPropertyValue('--acc'));
+  if(now){ void ind.offsetWidth; ind.style.transition=''; } }
+(function(){ if(MINI) return;
+  const html=document.documentElement, tg=document.getElementById('sideTg'), links=[...document.querySelectorAll('nav a')];
+  const crumb=document.querySelector('.crumb'), crI=document.getElementById('crumbI'), crG=document.getElementById('crumbG'), crT=document.getElementById('crumbT');
+  let cur=null;
+  const orbs=[...document.querySelectorAll('.amb .o1')]; let oi=0, ambC='#d9ed2f';
+  function setAmb(c){ if(c===ambC||orbs.length<2) return; ambC=c; const nx=orbs[1-oi]; nx.style.setProperty('--c',c);
+    nx.classList.add('on'); orbs[oi].classList.remove('on'); oi=1-oi; }
+  function setSec(id){ const s=SEC[id]; if(!s||id===cur) return; cur=id;
+    links.forEach(l=>l.classList.toggle('on',l.getAttribute('href')==='#'+id));
+    setAmb(s[3]);
+    const a=document.querySelector(`.snav a[href="#${id}"]`);
+    if(crumb){ crI.setAttribute('href','#'+s[2]); crG.textContent=s[0]; crT.textContent=s[1]; if(a) crumb.style.setProperty('--acc-cur',a.style.getPropertyValue('--acc')); }
+    placeInd(); }
+  const spy=new IntersectionObserver(es=>es.forEach(e=>{ if(e.isIntersecting) setSec(e.target.id); }),{rootMargin:'-42% 0px -52% 0px'});
+  document.querySelectorAll('.hero,.sec').forEach(s=>spy.observe(s));
+  setSec('carrera'); placeInd(true);
+  // plegar / desplegar (se recuerda); al terminar, las gráficas que miden su ancho se reacomodan
+  const sync=()=>tg.setAttribute('aria-expanded',String(!html.classList.contains('side-closed')));
+  tg.addEventListener('click',()=>{ const open=html.classList.contains('side-closed');
+    html.classList.add('side-anim'); html.classList.toggle('side-closed',!open); sync();
+    try{localStorage.setItem('scSide',open?'1':'0')}catch(e){}
+    clearTimeout(tg._t); tg._t=setTimeout(()=>{ html.classList.remove('side-anim');
+      if(renderRace._build) renderRace._build(); if(renderTarifa._build) renderTarifa._build();
+      dispatchEvent(new Event('resize')); },420); });
+  sync();
+  // "En la mesa": tocar una boda la abre en Proyectos; Archivo despliega las entregadas
+  document.getElementById('sMesa').addEventListener('click',e=>{ const b=e.target.closest('.wd'); if(!b) return;
+    const go=(el,block)=>el&&el.scrollIntoView({behavior:reduced?'auto':'smooth',block});
+    if(b.dataset.arch){ const t=document.querySelector('#proj .parch'); if(t&&t.getAttribute('aria-expanded')!=='true') t.click();
+      go(document.getElementById('projArch')||document.getElementById('mesa'),'center'); return; }
+    if(renderMesa._select) renderMesa._select(b.dataset.key,true);
+    go(document.getElementById('mesa'),'start'); });
+})();
+document.getElementById('thmBtn').addEventListener('click',()=>{ const r=document.documentElement; const next=r.dataset.theme==='light'?'':'light'; if(next)r.dataset.theme=next;else delete r.dataset.theme; try{localStorage.setItem('scTheme',next)}catch(e){} if(M)renderAll(M); applyGlow(); });
 
 /* ================= reveal: entra al aparecer, se rearma al salir ================= */
 (function(){
@@ -2276,11 +2716,11 @@ document.getElementById('thmBtn').addEventListener('click',()=>{ const r=documen
       const rows=u.querySelectorAll(LIST_ROWS);
       u.classList.add('in');
       if(rows.length){                                    // panel-lista: la tarjeta se desvanece, las filas entran de izq. a der.
-        u.animate([{opacity:0},{opacity:1}],{duration:500,easing:EASE_SOFT});
-        cascade(rows,{delay:90});
-      } else u.animate([{opacity:0,transform:`translateY(${dy}px)`},{opacity:1,transform:'none'}],{duration:760,easing:EASE_SOFT});
+        u.animate([{opacity:0},{opacity:1}],{duration:360,easing:EASE_SOFT});
+        cascade(rows,{delay:50});
+      } else u.animate([{opacity:0,transform:`translateY(${dy}px)`},{opacity:1,transform:'none'}],{duration:520,easing:EASE_SOFT});
       hooks(u,true);
-      timers.set(u,[setTimeout(()=>{u.classList.add('settled');timers.delete(u);},1600)]);
+      timers.set(u,[setTimeout(()=>{u.classList.add('settled');timers.delete(u);},1000)]);
     },delay)]); }
   function reset(u,above){ const was=u.classList.contains('in')||timers.has(u);
     clear(u); u.getAnimations().forEach(a=>a.cancel());
@@ -2290,7 +2730,7 @@ document.getElementById('thmBtn').addEventListener('click',()=>{ const r=documen
   const ioIn=new IntersectionObserver(es=>{
     es.filter(e=>e.isIntersecting)
       .sort((a,b)=>(a.boundingClientRect.top-b.boundingClientRect.top)||(a.boundingClientRect.left-b.boundingClientRect.left))
-      .forEach((e,i)=>enter(e.target,Math.min(i,6)*70)); },{rootMargin:'0px 0px -8% 0px'});
+      .forEach((e,i)=>enter(e.target,Math.min(i,6)*45)); },{rootMargin:'0px 0px -8% 0px'});
   // se rearma solo cuando sale DEL TODO de la pantalla (nunca se apaga a la vista)
   const ioOut=new IntersectionObserver(es=>es.forEach(e=>{ if(!e.isIntersecting) reset(e.target,e.boundingClientRect.bottom<=0); }));
   units.forEach(u=>{ ioIn.observe(u); ioOut.observe(u); });
