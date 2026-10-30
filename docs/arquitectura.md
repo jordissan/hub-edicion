@@ -152,6 +152,8 @@ Un solo archivo: CSS (tokens Pantone, tema claro/oscuro) + HTML + un `<script>` 
    - **Identidad A (capa CSS al final del `<style>`):**
      - El grano (`--grain`, ruido generado en un canvas) vive en `.amb::after` y en el `::before`
        de `.card`, `.m` y el sidebar; nunca encima de los datos.
+     - Intensidad del grano: una perilla, **`--grain-k`** (0,5 desde el 30-oct = mitad de lo original),
+       que multiplica la opacidad por tema (`--grain-o` fondo 0,55/0,45 · `--grain-c` materiales 0,42/0,32).
      - Los halos de los SVG son filtros del sprite (`fxGlow` barras señaladas `.glw`, `fxGlowL`
        la curva, `fxGlowD` el donut). Las barras usan degradados compartidos (`gfill()` →
        `#gSun/#gVio/#gNar`).
@@ -256,6 +258,48 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   Frame recordado (`setFrameAutosaveName`). `./build.sh` compila con `swiftc` (sin Xcode), firma
   ad-hoc, instala en `~/Applications` y registra el esquema. `HUB_SNAPSHOT=/ruta.png` (vía
   `open --env`) guarda una captura del contenido al cargar (para pruebas).
+- **Atajos globales** (`HotKey` + `registerHotKeys` en `main.swift`): Carbon
+  `RegisterEventHotKey` + `InstallEventHandler(kEventHotKeyPressed)` — global y **sin permiso de
+  Accesibilidad** (no es un `CGEventTap`). Dos registros con firma `'SPRT'`: id 1 = tecla
+  (por defecto **⌃⌥N**), id 2 = la misma con ⇧ (**⌃⌥⇧N**), id 3 = la misma con ⌘ (**⌃⌥⌘N**,
+  `togglePanel()`: `orderFrontRegardless`/`orderOut`, sin activar la app; no se registra si la
+  tecla base ya lleva ⌘, posible solo con atajos grabados antes). id 1 *alterna*: manda `finish` y,
+  si responde `'no-run'`, `start` (así decide con el estado recién sincronizado por `pull()`,
+  no con el último sondeo); id 2 manda `discard`. Mismo camino que el menú (`send(cmd)` →
+  `SprintCmd`). Feedback: `NSSound` (Pop / Hero / Funk) + el icono de la barra cambia 1,5 s a
+  `play`/`checkmark`/`xmark.circle` (`flash` en `render()`); si no aplica, `NSSound.beep()`.
+  Configurable en *Opciones → Atajo de teclado* (presets N/B/P/J/K con ⌃⌥, *Grabar otro…* con
+  un `NSAlert` + monitor local: exige ⌃ y/o ⌥, sin ⇧ ni ⌘, que se reservan; *Sin atajo*).
+  `UserDefaults`: `hkCode` (keyCode virtual), `hkMods` (`NSEvent.ModifierFlags`), `hkChar`,
+  `hkOff`. Los ítems Iniciar/Terminar/Descartar y Mostrar/Ocultar ventana muestran el atajo como
+  `keyEquivalent`. Conflictos revisados (oct-2026): Final Cut usa ⌃⌥ con 0–6, C D E F L M R S T
+  V y flechas, y ⌃⌥⌘ con dígitos, C, O, S, M, flechas (no N/B/P/J/K) (set JORDISSAN ≈ el de serie); Premiere (perfil de Jordi) y macOS no usan ⌃⌥;
+  ⌃⌥ es el prefijo de VoiceOver (solo si está activo). `HUB_LOG=1` (vía `open --env`) registra
+  cada atajo en stderr. **Probar:** bundle de prueba con otro bundle id **y otro
+  `CFBundleExecutable`** (System Events referencia el proceso por nombre y si no abre el menú
+  de la app real), `defaults write <id-prueba> loginSetup -bool true` antes del primer arranque
+  (si no se apunta como login item), y disparar con `osascript … key code 45 using {control
+  down, option down}` con Finder al frente.
+- **Siri / Atajos (URLs de orden):** `application(_:open:)` atiende `hubsprint://start`,
+  `hubsprint://finish` y `hubsprint://toggle` con `run(cmd, tries: 30)` — el mismo camino y
+  feedback que el atajo (`hotKey` también llama a `run`): `start` solo empieza (`'running'` →
+  pitido), `finish` solo termina, `toggle` = ⌃⌥N. Cualquier otro host (`open`) muestra la ventana.
+  No trae la ventana al frente. **En frío** macOS entrega la URL *antes* de
+  `applicationDidFinishLaunching` (sin `web` ni `panel`; antes eso tumbaba la app): se guarda en
+  `earlyURLs` y se atiende al final del arranque; mientras la página carga, `run` reintenta cada
+  0,5 s si `SprintCmd` responde `not-ready`/`error`/`busy` (~15 s). Siri = dos Atajos de la app
+  Atajos ("Iniciamos", "Terminamos" — "sprint" Siri lo entendía mal y "Nueva sesión" lo capturaba el intent nativo de calendario, que pregunta la fecha; el nombre debe no parecerse a órdenes de serie: acciones *URL* → *Abrir URL*), generados y
+  firmados (`shortcuts sign --mode anyone`) por `mac/Siri/make-shortcuts.py`; Jordi los importa
+  con doble clic. Se descartó App Intents (necesita el procesado de metadatos de Xcode; la app se
+  compila con `swiftc` a pelo) y un endpoint del server (el server no sabe arrancar el sprint:
+  la lógica vive en la página). **iPhone no:** en `*.pages.dev` `SYNC_ON` es falso (no hay
+  `/api/sprint-state` en la nube), el sprint vive en el `localStorage` de la PWA, e iOS no deja
+  que un Atajo abra la PWA (abriría Safari, con otro `localStorage`). **Probar las URLs:** el
+  bundle de prueba necesita también **otro esquema** (`hubsprinttest`) y vivir en
+  `~/Applications` (Launch Services ignora las apps en carpetas temporales); quitarlo después con
+  `lsregister -u` + borrar.
+- **`build.sh` fija `-target <arch>-apple-macos13.0`:** sin él `swiftc` apunta a la versión del
+  SDK (Command Line Tools de macOS 28 en un Mac con 27.2) y la app no abre (`-10825`).
 - **Modo mini (`?mini=1`)**: el `<head>` pone `html.mini` antes de pintar; la tarjeta `#focus`
   se mueve a `<body>` (antes del reveal) y el CSS oculta todo lo demás; `bootRender` solo hace
   `Sprint.update(M)` (sin gráficas). Cuadrícula de 3 zonas (A destino/esquema · B reloj ·

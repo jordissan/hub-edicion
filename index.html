@@ -666,6 +666,7 @@ html.mini #focus .fdrop{padding:2px 8px}
   --tg-bg:#0c0c0e; --shadow:0 40px 80px -50px rgba(0,0,0,.95);
   --glow:.72;   /* intensidad de TODOS los halos (−28 % vs la maqueta, pedido de Jordi); applyGlow() la lleva a los SVG */
   --grain-o:.55; --grain-c:.42; --amb-a:17%; --amb-b:5%;
+  --grain-k:.5;  /* intensidad global del grano (×, ambos temas): .5 = mitad, pedido de Jordi 30-oct */
 }
 :root[data-theme="light"]{
   --g1:rgba(255,255,255,.86); --g2:rgba(255,255,255,.62); --edge:rgba(26,27,21,.08); --hl:rgba(255,255,255,.95);
@@ -686,8 +687,8 @@ html.mini #focus .fdrop{padding:2px 8px}
 :root[data-theme="light"] .amb .o2{background:radial-gradient(closest-side,rgba(104,91,199,.12),transparent)}
 .amb::after,.card::before,.m::before,.side-in::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
   background-image:var(--grain);background-size:160px 160px}
-.amb::after{opacity:var(--grain-o)}
-.card::before,.m::before,.side-in::before{z-index:-1;opacity:var(--grain-c)}
+.amb::after{opacity:calc(var(--grain-o) * var(--grain-k))}
+.card::before,.m::before,.side-in::before{z-index:-1;opacity:calc(var(--grain-c) * var(--grain-k))}
 
 /* ---- sidebar (≥1024 px): 268 px desplegado, riel de 76 px plegado ---- */
 .side{position:fixed;left:0;top:0;bottom:0;z-index:45;width:268px;display:none;transition:width .38s var(--ease)}
