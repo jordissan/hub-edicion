@@ -74,6 +74,11 @@ GitHub: la verificación es visual (en el iPhone, matar la PWA y reabrir).
   Binding KV: `HUB_KV`.
 - **Widgets**: Service Token de Cloudflare Access (Client ID + Secret) pegado en el script de Scriptable.
 
+## Ajustes visuales rápidos
+Se hacen en `~/HubEdicion/index.html` (capa "IDENTIDAD A") y se portan con `sync-cloud.sh`:
+- **`--glow`**: intensidad de los halos (0,72 oscuro · 0,3 claro).
+- **`--grain-k`**: intensidad del grano de fondo y materiales, ambos temas (0,5 desde el 30-oct = mitad).
+
 ## Modelo, reglas y detalles técnicos
 Todo lo que explica **cómo** funciona (contrato del payload, extracción, `deriveModel`, Carrera/fantasma,
 archivo histórico, sprint y estados, movimiento, claves de KV y del navegador, plantilla de Notion y trampas
