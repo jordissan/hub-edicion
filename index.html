@@ -650,7 +650,7 @@ html.mini #focus .fdrop{padding:2px 8px}
   .anat .bar{width:var(--w);transition:none}
   .ptrack i{width:var(--w);transition:none}
   .side,.side-tg .ic,.side .fade,.greet,.ind,.spr,body,html{transition:none}
-  .amb i,.wsegs i.l{animation:none}
+  .amb i,.wsegs i.l::after{animation:none}
 }
 
 /* =====================================================================
@@ -764,8 +764,10 @@ html.side-closed .ind::after{opacity:0}
 .wsegs{grid-column:2/4;display:flex;gap:2px;height:4px}
 .wsegs i{flex:1;border-radius:2px;background:color-mix(in srgb,var(--txt) 9%,transparent)}
 .wsegs i.d{background:var(--c)}
-.wsegs i.l{background:color-mix(in srgb,var(--c) 40%,transparent);animation:wpulse 2.6s ease-in-out infinite}
-@keyframes wpulse{50%{background:var(--c)}}
+/* etapa en curso: late fundiendo una capa de color pleno (opacidad, la GPU; animar el color repintaba el sidebar en cada cuadro) */
+.wsegs i.l{position:relative;background:color-mix(in srgb,var(--c) 40%,transparent)}
+.wsegs i.l::after{content:"";position:absolute;inset:0;border-radius:inherit;background:var(--c);opacity:0;animation:wpulse 2.6s ease-in-out infinite}
+@keyframes wpulse{50%{opacity:1}}
 .sfoot{display:grid;padding:12px;border-top:1px solid var(--hair)}
 .sfoot>*{grid-area:1/1}
 .spr{position:relative;overflow:hidden;width:244px;border-radius:18px;padding:14px;transition:opacity .25s ease .14s,transform .45s var(--ease);
@@ -819,7 +821,8 @@ html.side-closed .spr-mini{opacity:1;pointer-events:auto;transition-delay:.2s}
 
 /* ---- gráficas: halos con la perilla --glow ---- */
 .settled .gbar.glw{filter:url(#fxGlow)}
-.settled #donut .seg{filter:url(#fxGlowD)}
+.settled #donut .dsegs{filter:url(#fxGlowD)}
+#donut.swirl .dsegs{filter:none}
 .settled #race .rline{filter:url(#fxGlowL)}
 :root:not([data-theme="light"]) .heat .cell.s5{box-shadow:0 0 12px rgba(217,237,47,calc(.55*var(--glow)))}
 .heat .cell.s5.today,.heat .cell.today{box-shadow:0 0 0 1.5px var(--sun)}
@@ -862,7 +865,7 @@ html.mini #focus .fplan,html.mini #focus .fmode button i{display:none}
 
 @media(prefers-reduced-motion:reduce){
   .side,.side-tg .ic,.side .fade,.greet,.ind,.spr,.spr-mini,.rpg,body,html{transition:none}
-  .wsegs i.l,.spr.run .spr-t{animation:none}
+  .wsegs i.l::after,.spr.run .spr-t{animation:none}
   .amb .o1{transition:none}
 }
 </style>
@@ -2087,19 +2090,25 @@ function renderMesa(M){
     const reset=()=>setC(fmtHM(p.total),'tiempo exacto invertido','');
     S('circle',{cx:C,cy:C,r:R,fill:'none',stroke:'var(--panel2)','stroke-width':18},donut);
     const totalGaps=gap*p.etapas.length; let off=circ*0.25;
+    // un solo grupo lleva el halo: un desenfoque por cuadro en vez de uno por segmento
+    const gs=S('g',{class:'dsegs'},donut);
     p.etapas.forEach(([nm,h,ses,fase],i)=>{ const len=Math.max(h/p.total*(circ-totalGaps),2);
-      const seg=S('circle',{cx:C,cy:C,r:R,class:'seg dseg',stroke:cols[fase],'stroke-dasharray':`${len} ${circ-len}`,'stroke-dashoffset':off},donut); seg.style.setProperty('--i',i); seg.dataset.len=len; seg.dataset.off=off; off-=len+gap;
+      const seg=S('circle',{cx:C,cy:C,r:R,class:'seg dseg',stroke:cols[fase],'stroke-dasharray':`${len} ${circ-len}`,'stroke-dashoffset':off},gs); seg.style.setProperty('--i',i); seg.dataset.len=len; seg.dataset.off=off; off-=len+gap;
       seg.addEventListener('pointerenter',()=>{donut.classList.add('dfx');seg.classList.add('hot');setC(fmtHM(h),nm,`${fmtMXN(p.price*h/p.total)} · ${fmt(h/p.total*100)} %`,colsTx[fase]);});
       seg.addEventListener('pointerleave',()=>{donut.classList.remove('dfx');seg.classList.remove('hot');reset();}); });
     reset();
     // entrada del donut: cada segmento crece y gira hasta su sitio, en cascada; el centro sube
+    // mientras giran, sin halo (.swirl): el filtro SVG se recalcula en cada cuadro y en WebKit va
+    // por CPU; vuelve al terminar, igual que en la entrada por scroll (llega con .settled)
     window.__swirlDonut=()=>{ if(reduced)return;
-      donut.querySelectorAll('.seg').forEach((s,i)=>{ const len=+s.dataset.len, o=+s.dataset.off;
-        s.animate([{strokeDasharray:`0 ${circ}`,strokeDashoffset:o+circ*.18,opacity:0},
+      const an=[...donut.querySelectorAll('.seg')].map((s,i)=>{ const len=+s.dataset.len, o=+s.dataset.off;
+        return s.animate([{strokeDasharray:`0 ${circ}`,strokeDashoffset:o+circ*.18,opacity:0},
                    {strokeDasharray:`${len} ${circ-len}`,strokeDashoffset:o,opacity:1}],
           {duration:600,delay:30+i*32,easing:EASE_FX,fill:'backwards'}); });
       [cx,cs,cs2].forEach((t,i)=>t.animate([{opacity:0,transform:'translateY(6px)'},{opacity:1,transform:'none'}],
-        {duration:320,delay:120+i*40,easing:EASE_FX,fill:'backwards'})); };
+        {duration:320,delay:120+i*40,easing:EASE_FX,fill:'backwards'}));
+      const tok=renderMesa._swirl=(renderMesa._swirl||0)+1; donut.classList.add('swirl');
+      Promise.allSettled(an.map(a=>a.finished)).then(()=>{ if(renderMesa._swirl===tok) donut.classList.remove('swirl'); }); };
     const sorted=[...p.etapas].sort((a,b)=>b[1]-a[1]);
     dlg.innerHTML=sorted.map(([nm,h,ses,fase])=>`<div class="dlr" data-tip="<b>${nm}</b><br>${fmtMXN(p.price*h/p.total)} · ${fmt(h)} h · ${fmt(h/p.total*100)} %"><span class="dot" style="background:${cols[fase]}"></span><span class="n">${nm}</span><b>${fmtMXN(p.price*h/p.total)}</b><span class="hh">${fmt(h)}h</span><span class="pp">${Math.round(h/p.total*100)}%</span></div>`).join(''); }
 
@@ -2118,7 +2127,9 @@ function renderMesa(M){
     fasetot.innerHTML=p.fases.map(([l,h,pct,c])=>`<div class="f"><div class="v"><i style="background:${c}"></i>${h!=null?fmt(h)+' h':'0 h'}</div><div class="l">${l}${pct!=null?' · '+pct+' %':''}</div></div>`).join('');
     fitLabels(); }
   // nombres de clip que no caben se ocultan (el tooltip los sigue mostrando)
-  function fitLabels(){ tapeBox.querySelectorAll('.clip .cn').forEach(n=>{n.style.display='';if(n.scrollWidth+12>n.parentElement.clientWidth)n.style.display='none';}); }
+  // (escribe, lee y escribe en tres pasadas: un solo cálculo de layout, no uno por clip)
+  function fitLabels(){ const ns=[...tapeBox.querySelectorAll('.clip .cn')]; ns.forEach(n=>n.style.display='');
+    ns.map(n=>n.scrollWidth+12>n.parentElement.clientWidth).forEach((hide,i)=>{ if(hide) ns[i].style.display='none'; }); }
   if(!renderMesa._fit){ renderMesa._fit=true; addEventListener('resize',fitLabels); }
 
   function select(key,anim){ const p=M.projects[key]; if(!p)return;
