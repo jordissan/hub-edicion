@@ -613,7 +613,7 @@ html.mini #focus .fdrop{padding:2px 8px}
   .top-in{padding:calc(14px + env(safe-area-inset-top)) 16px 12px;gap:10px;flex-wrap:nowrap}
   .logo{gap:9px;min-width:0}
   .logo .nm{font-size:15px}
-  .mark.sm{width:28px;height:28px}
+  .mark.sm{width:28px;height:28px;border-radius:6.5px}
   .top .rec .rl{display:none}
   .hero{margin-top:36px}
   .fsel,.fedit input{font-size:16px}   /* iOS hace zoom al enfocar campos de menos de 16 px */
@@ -712,12 +712,14 @@ html.side-closed .side-tg .ic{transform:none}
 .side .fade{transition:opacity .22s ease .16s}
 html.side-closed .side .fade{opacity:0;transition-delay:0s;pointer-events:none}
 .sbrand{display:flex;align-items:center;gap:12px;padding:22px 20px 18px;white-space:nowrap}
-.mark{position:relative;width:36px;height:36px;border-radius:11px;flex:none;display:grid;place-items:center;color:var(--txt);
-  background:linear-gradient(155deg,color-mix(in srgb,var(--txt) 14%,transparent),color-mix(in srgb,var(--txt) 3%,transparent));
-  box-shadow:inset 0 0 0 1px var(--edge),inset 0 1px 0 var(--hl)}
-.mark .ic{width:22px;height:22px}
-.mark.sm{width:30px;height:30px;border-radius:9px}
-.mark.sm .ic{width:18px;height:18px}
+/* la tesela ES el icono de la app (mismo dibujo que icon-*.png); radio ≈ 22,5 % como el Dock / iOS */
+.mark{position:relative;width:36px;height:36px;border-radius:9px;flex:none;overflow:hidden;background:#0c0c0e;
+  box-shadow:0 0 0 1px rgba(255,255,255,.07),0 6px 16px -8px rgba(0,0,0,.7)}
+.mark::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;  /* reflejo de vidrio sutil */
+  background:linear-gradient(160deg,rgba(255,255,255,.10),rgba(255,255,255,0) 46%);box-shadow:inset 0 1px 0 rgba(255,255,255,.10)}
+.mark .ic{display:block;width:100%;height:100%}
+.mark.sm{width:30px;height:30px;border-radius:7px}
+:root[data-theme="light"] .mark{box-shadow:0 0 0 1px rgba(0,0,0,.10),0 4px 12px -6px rgba(40,30,10,.35)}
 .bnm{font-family:var(--f-d);font-weight:800;font-size:13px;line-height:1.1;letter-spacing:.04em;font-variation-settings:'wdth' 118}
 .sst{margin-top:6px;font-size:9px;gap:7px}
 .sst i{width:6px;height:6px}
@@ -871,13 +873,17 @@ html.mini #focus .fplan,html.mini #focus .fmode button i{display:none}
 <!-- ============ iconografía: un objeto real por sección, mismo trazo (oct-2026) ============ -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
-    <!-- marca: tres pistas de la línea de tiempo (video / video / audio) y el playhead que las cruza -->
-    <symbol id="i-mark" viewBox="0 0 24 24">
-      <rect x="3.5" y="6.1" width="10.2" height="3.1" rx="1.55" fill="currentColor" stroke="none"/>
-      <rect x="7" y="10.5" width="13.5" height="3.1" rx="1.55" fill="currentColor" stroke="none" opacity=".72"/>
-      <rect x="3.5" y="14.9" width="12.4" height="3.1" rx="1.55" fill="currentColor" stroke="none" opacity=".46"/>
-      <path d="M12 6.4v14.4" stroke="var(--sun)" stroke-width="1.6"/>
-      <path d="M10.4 2.9h3.2a.6.6 0 0 1 .6.6v1.5L12 6.9 9.8 5V3.5a.6.6 0 0 1 .6-.6Z" fill="var(--sun)" stroke="none"/>
+    <!-- marca = el icono de la app (icon-180/512.png): tres medidores sobre su carril, en la tesela casi negra -->
+    <symbol id="i-mark" viewBox="0 0 512 512">
+      <rect width="512" height="512" fill="#0c0c0e" stroke="none"/>
+      <g stroke="none">
+        <rect x="136" y="116" width="60" height="280" rx="30" fill="#23232a"/>
+        <rect x="226" y="116" width="60" height="280" rx="30" fill="#23232a"/>
+        <rect x="316" y="116" width="60" height="280" rx="30" fill="#23232a"/>
+        <rect x="136" y="256" width="60" height="140" rx="30" fill="#5b9dff"/>
+        <rect x="226" y="146" width="60" height="250" rx="30" fill="#c8f24e"/>
+        <rect x="316" y="216" width="60" height="180" rx="30" fill="#34d399"/>
+      </g>
     </symbol>
     <!-- carrera = bandera a cuadros (la meta contra tu fantasma) -->
     <symbol id="i-carrera" viewBox="0 0 24 24">
