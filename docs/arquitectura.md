@@ -134,11 +134,11 @@ Un solo archivo: CSS (tokens Pantone, tema claro/oscuro) + HTML + un `<script>` 
    - **Sidebar `#side`** (≥1024 px; plegado = `html.side-closed`, guardado en `scSide`). Sin
      preferencia guardada, arranca desplegado desde 1280 px. El pre-script del `<head>` pone la
      clase antes de pintar, así no parpadea.
-   - **Marca = icono de la app.** El símbolo `#i-mark` (viewBox 512) replica `icon-180/512.png`
-     (apple-touch-icon y `manifest.json`): tesela `#0c0c0e`, tres carriles `#23232a` y barras azul
-     `#5b9dff` · lima `#c8f24e` · menta `#34d399`. La tesela `.mark` (36 px sidebar, `.sm` 30 px
-     barra móvil) ES el icono, con reflejo de vidrio en `::after`; igual en tema claro. Si cambia
-     el icono de la app, cambian los PNG y este símbolo a la vez.
+   - **Marca = icono de la app.** El símbolo `#i-mark` (tres pistas de timeline + playhead
+     `--sun`) es la fuente. `icon-180/192/512.png` (apple-touch-icon, favicon y `manifest.json`)
+     son ese mismo dibujo sobre tesela OLED `#050506` con vidrio y halo lima, a ancho completo
+     (iOS/macOS redondean las esquinas). Si cambia la marca, se regeneran los PNG (y se copian a
+     `cloud/` a mano: `sync-cloud.sh` no los porta). `server.py` los sirve por lista blanca.
    - **`renderSide(M)`** pinta el saludo, el dato vivo de cada sección y "En la mesa" (anillo de
      avance + segmentos por etapa). Tocar una boda llama a `renderMesa._select`.
    - **Espejo del sprint:** un `MutationObserver` sobre `#tcode`, `#focus`, `#focusBtn` y la etapa
