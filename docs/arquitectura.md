@@ -121,13 +121,48 @@ Un solo archivo: CSS (tokens Pantone, tema claro/oscuro) + HTML + un `<script>` 
    de geometría al cruzar 640 px (hoy: Horas por día). La **Carrera** (`renderRace`) se dibuja al
    tamaño real del contenedor (viewBox = px) y un `ResizeObserver` la redibuja al cambiar el ancho;
    < 560 px usa la versión compacta (nombres como pastillas `#raceChips`). La curva es una guía
-   visual: escalones suavizados (25/50/25 con los vecinos) y trazo cúbico monótono
-   (Fritsch–Carlson, nunca baja ni se pasa); tooltip, tabla y cifras usan los valores reales. Tramos tras "edición
+   visual (`raceCurve`). Primero, suavizado gaussiano (σ 3,4 días) con reflejo impar en los bordes:
+   conserva el primer y el último valor reales y nunca baja. Después, cúbica monótona
+   (Fritsch–Carlson) sobre nudos cada 3 días más "edición lista" y el último día. Resultado: curvas
+   amplias, sin tirones, con los puntos clave sobre la línea. Tooltip, tabla y cifras usan los
+   valores reales. Tramos tras "edición
    lista" = Cambios (punteados, `.fadein`); las curvas de edición son `path.draw` (las anima
    `__playRace`). Las propuestas de diseño que llevaron a este hero están en
    `docs/propuestas/carrera.html`.
 4. **`Sprint`** — tarjeta de enfoque (§5).
-5. **Navegación + tema** — rail (≥1200 px) / tabbar (móvil), scroll-spy, tema en `scTheme`.
+5. **Navegación + tema**
+   - **Sidebar `#side`** (≥1024 px; plegado = `html.side-closed`, guardado en `scSide`). Sin
+     preferencia guardada, arranca desplegado desde 1280 px. El pre-script del `<head>` pone la
+     clase antes de pintar, así no parpadea.
+   - **`renderSide(M)`** pinta el saludo, el dato vivo de cada sección y "En la mesa" (anillo de
+     avance + segmentos por etapa). Tocar una boda llama a `renderMesa._select`.
+   - **Espejo del sprint:** un `MutationObserver` sobre `#tcode`, `#focus`, `#focusBtn` y la etapa
+     copia lo que pinta la tarjeta de Hoy. Su botón hace `click()` en el real, así que no hay
+     lógica duplicada. El anillo del riel y el del botón móvil (`.dock .fab`) usan el bloque de
+     `scSprint`; tocar el anillo lleva a la tarjeta.
+   - **Scroll-spy** (IntersectionObserver sobre `.hero`/`.sec`): marca `nav a` (sidebar y
+     tabbar), mueve la pastilla `#sInd`, actualiza la barra superior `.crumb` y pone `--amb1`
+     (luz ambiente, propiedad `@property` con transición).
+   - **Tema** en `scTheme`; al cambiarlo, `renderAll` + `applyGlow()`.
+   - **Identidad A (capa CSS al final del `<style>`):**
+     - El grano (`--grain`, ruido generado en un canvas) vive en `.amb::after` y en el `::before`
+       de `.card`, `.m` y el sidebar; nunca encima de los datos.
+     - Los halos de los SVG son filtros del sprite (`fxGlow` barras señaladas `.glw`, `fxGlowL`
+       la curva, `fxGlowD` el donut). Las barras usan degradados compartidos (`gfill()` →
+       `#gSun/#gVio/#gNar`).
+     - Una sola perilla: **`--glow`** (0,72 oscuro, −28 % vs la maqueta; 0,3 claro).
+       `applyGlow()` la lleva a los `feFuncA[data-g]`.
+     - Las rejillas responden al ancho real del contenido con container queries sobre `.wrap`
+       (con sidebar ya no basta el viewport).
+     - Rendimiento:
+       - Nada se mueve en bucle: la luz ambiente está quieta.
+       - El cambio de color por sección funde dos capas (`.amb .o1`) solo por opacidad, en la GPU.
+       - El grano son puntos claros y oscuros con alfa, sin `mix-blend-mode`.
+       - Los halos se encienden al terminar la entrada (`.settled`), así no se recalculan
+         cuadro a cuadro.
+       - Al plegar el sidebar (`html.side-anim`), la Carrera y el salto se redibujan una sola
+         vez al final.
+     - Duraciones de entrada: piezas 520 ms, cascada 32 ms, curva 950 ms, donut 600 ms.
 6. **Reveal** — cada pieza (hijos de `.hero`/`.sec` y de las rejillas) es una unidad `.rv`.
    Entra con WAAPI (no CSS, para no pisar los `transform` de hover) al cruzar el 8 % inferior,
    en cascada; se **rearma al salir del todo** y reentra desde la dirección del scroll (`.up`).
