@@ -46,7 +46,7 @@
   "today": "2026-10-28",
   "live": true,
   "degraded": false,                      // true = solo bodas de respaldo → publish.py NO publica
-  "weddings": [{                          // tablero: activas + finalizadas editadas en ≤45 días
+  "weddings": [{                          // tablero: activas + finalizadas con sesiones en ≤45 días
     "name", "icon", "studio", "status", "priority", "url",
     "price": 13000,                       // propiedad "Total" (MXN); el front usa 13000 si falta
     "projectStart", "projectEnd",
@@ -83,7 +83,7 @@ stageProgress, stageHours, scene}, weddings[{name, icon, progress, done, live, w
 | Función | Qué hace |
 |---|---|
 | `notion()` | Cliente HTTP: **throttle** 0,40 s entre peticiones (Notion ≈ 3 req/s) + **backoff** ante 429/5xx (6 intentos: 2-4-8-16-30 s, respeta `Retry-After`). Una extracción ≈ 200 peticiones ≈ 2 min. |
-| `discover_wedding_pages()` | Páginas `Tipo = Boda` de la DB "Trabajo". Deja fuera las **finalizadas sin cambios en 45 días** (`RECENT_DONE_DAYS`; "finalizada" = `DONE_STATUSES`, comparado en Python para que renombrar la opción en Notion no rompa la consulta). Si la consulta falla → `FALLBACK_WEDDING_PAGES` y `degraded: true`. |
+| `discover_wedding_pages()` | Páginas `Tipo = Boda` de la DB "Trabajo". Deja fuera las **finalizadas sin sesiones en 45 días** (`RECENT_DONE_DAYS`; la actividad sale de `lastActivity`/`lastEnd` del archivo previo o del fin de *Fecha*, y solo a falta de ambos de `last_edited_time`, para que una edición masiva en Notion no las regrese al tablero; "finalizada" = `DONE_STATUSES`, comparado en Python para que renombrar la opción en Notion no rompa la consulta). Si la consulta falla → `FALLBACK_WEDDING_PAGES` y `degraded: true`. |
 | `build_wedding()` | Busca la sub-DB "Tracking de Edición" → etapas → dentro de cada etapa, sub-DBs de **escenas** (título "Escena…") y de **sesiones**. Sin tracking: DB "Sesiones" directa = etapa "Correcciones". Parsea por **tipo** de propiedad y sin acentos (conviven "Sesión"/"Sesion"). |
 | `is_session_log_db()` | Una DB es de sesiones solo si tiene fechas **Inicio y Fin**. ⚠️ "Tiempo total" también titula su columna "Sesión". |
 | `merge_archive` / `backfill_ghosts` | Upsert del archivo con las finalizadas del tablero; reconstruye desde Notion (máx. `BACKFILL_MAX` = 2 por corrida) las entradas sin `ghost` o con `GHOST_VERSION` vieja. Subir la versión fuerza el re-backfill. |

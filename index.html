@@ -39,6 +39,7 @@ if(/[?&]mini\b/.test(location.search))document.documentElement.classList.add('mi
   --f-d:'Archivo',system-ui,sans-serif;
   --f-b:'Inter',system-ui,sans-serif;
   --f-m:'JetBrains Mono',ui-monospace,monospace;
+  --f-t:ui-monospace,'SF Mono','JetBrains Mono',monospace;   /* prosa: la mono del sistema, como la leyenda del widget (1-nov) */
   --ease:cubic-bezier(.22,.9,.3,1);
 }
 :root[data-theme="light"]{
@@ -96,19 +97,20 @@ svg text{user-select:none}
 
 /* ============ dock móvil / tablet (<1024 px): barra de secciones + botón del sprint ============ */
 .dock{position:fixed;z-index:40;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));
-  display:flex;align-items:center;gap:10px;width:min(560px,calc(100vw - 24px))}
-.tabbar{flex:1;min-width:0;display:flex;justify-content:space-between;height:62px;padding:0 6px;border-radius:31px;
+  display:flex;align-items:center;gap:8px}
+/* solo iconos: celdas de 42 px; el texto queda para lectores de pantalla */
+.tabbar{flex:none;display:flex;height:52px;padding:0 5px;border-radius:26px;
   background:color-mix(in srgb,var(--bg) 52%,transparent);-webkit-backdrop-filter:blur(22px) saturate(1.5);backdrop-filter:blur(22px) saturate(1.5);
   box-shadow:inset 0 0 0 1px var(--edge),inset 0 1px 0 var(--hl),0 20px 40px -18px rgba(0,0,0,.6)}
-.tabbar a{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:16px;
+.tabbar a{flex:none;width:42px;display:grid;place-items:center;margin:5px 0;border-radius:21px;
   text-decoration:none;color:var(--dim)}
-.tabbar a .ic{width:19px;height:19px}
-.tabbar a span{font-family:var(--f-m);font-size:7.5px;font-weight:700;letter-spacing:.08em;white-space:nowrap}
-.tabbar a.on{color:var(--acc,var(--sun))}
-.fab{position:relative;flex:none;width:62px;height:62px;border:0;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--txt);
+.tabbar a .ic{width:20px;height:20px}
+.tabbar a span{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.tabbar a.on{color:var(--acc,var(--sun));background:color-mix(in srgb,var(--acc,var(--sun)) 14%,transparent)}
+.fab{position:relative;flex:none;width:52px;height:52px;border:0;border-radius:50%;display:grid;place-items:center;cursor:pointer;color:var(--txt);
   background:color-mix(in srgb,var(--bg) 52%,transparent);-webkit-backdrop-filter:blur(22px) saturate(1.5);backdrop-filter:blur(22px) saturate(1.5);
   box-shadow:inset 0 0 0 1px var(--edge),inset 0 1px 0 var(--hl),0 20px 40px -18px rgba(0,0,0,.6)}
-.fab svg{position:absolute;inset:7px;width:48px;height:48px}
+.fab svg{position:absolute;inset:5px;width:42px;height:42px}
 @media(min-width:1024px){.dock{display:none}}
 @media(max-width:1023px){body{padding-bottom:120px}}
 
@@ -390,6 +392,7 @@ html.mini #focus .fdrop{padding:2px 8px}
 .m .v .na{color:var(--naranja-tx)}
 .m .l{font-family:var(--f-m);font-size:10px;letter-spacing:.1em;color:var(--dim);margin-top:4px}
 .dia7card{margin-top:14px}
+.dia7card .cl{flex-wrap:wrap;row-gap:2px}.dia7card .cl h3{white-space:nowrap}
 .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:14px}
 .aip{display:flex;align-items:center;gap:14px;background:color-mix(in srgb,var(--violeta) 13%,var(--panel));
   border:1px solid color-mix(in srgb,var(--violeta) 38%,transparent);border-radius:20px;padding:16px 20px;color:var(--txt);
@@ -404,7 +407,9 @@ html.mini #focus .fdrop{padding:2px 8px}
 /* ============ ritmo ============ */
 .ritmo{display:grid;grid-template-columns:1.5fr 1fr;gap:14px}
 .ritmo .full{grid-column:1/-1}
-.heatwrap{overflow-x:auto;padding-bottom:4px}
+/* el ancho visible se ajusta a columnas enteras (renderHeat) y se centra: nunca asoma una columna cortada */
+.heatwrap{overflow-x:auto;padding-bottom:4px;margin-inline:auto;scroll-snap-type:x mandatory}
+.heatwrap .col,.heatwrap .heatdays{scroll-snap-align:start}
 .heat{display:grid;grid-auto-flow:column;gap:4px;width:max-content}
 .heat .col{display:grid;grid-template-rows:repeat(7,18px);gap:4px}
 .heat .cell{width:18px;height:18px;border-radius:5px;background:var(--panel2);border:1px solid var(--hair);
@@ -415,7 +420,7 @@ html.mini #focus .fdrop{padding:2px 8px}
 .heat .cell.s3{background:var(--h3);border-color:transparent}
 .heat .cell.s4{background:var(--h4);border-color:transparent}
 .heat .cell.s5{background:var(--h5);border-color:transparent}
-.heat .cell.today{box-shadow:0 0 0 1.5px var(--sun)}
+.heat .cell.today{box-shadow:inset 0 0 0 1.5px var(--sun)}  /* aro interior: el borde del scroll no lo corta */
 .heatrow{display:flex;gap:10px;align-items:flex-start}
 .heatdays{display:grid;grid-template-rows:repeat(7,18px);gap:4px;font-family:var(--f-m);font-size:9px;color:var(--dim);align-items:center}
 .heatmeta{display:flex;justify-content:space-between;align-items:center;margin-top:12px;flex-wrap:wrap;gap:10px}
@@ -428,12 +433,15 @@ html.mini #focus .fdrop{padding:2px 8px}
 .anat .arow{display:grid;grid-template-columns:150px 1fr;gap:12px;align-items:center;padding:7px 0}
 .anat .arow .nm{font-size:12.5px;color:var(--mut);text-align:right;line-height:1.2}
 .anat .track{position:relative;height:22px}
-.anat .track .mid{position:absolute;left:38%;top:-4px;bottom:-4px;width:1px;background:var(--hair2)}
+/* escala calibrada (1-nov): --l/--r = px reservados para los rótulos de cada lado, --mid = fracción
+   del ancho útil donde cae el cero (según lo ganado vs lo perdido). Nada toca el borde. */
+#anat{--span:calc(100% - var(--l,0px) - var(--r,0px));--x0:calc(var(--l,0px) + var(--mid,0) * var(--span))}
+.anat .track .mid{position:absolute;left:var(--x0);top:-4px;bottom:-4px;width:1px;background:var(--hair2)}
 .anat .bar{position:absolute;top:2px;height:18px;border-radius:0 4px 4px 0;width:0;
   transition:width .55s var(--ease);transition-delay:calc(var(--i,0)*55ms)}
 .in .anat .bar,.anat.in .bar{width:var(--w)}
-.anat .bar.save{background:var(--sun);left:38%}
-.anat .bar.more{background:var(--violeta);border-radius:4px 0 0 4px;right:62%}
+.anat .bar.save{background:var(--sun);left:var(--x0)}
+.anat .bar.more{background:var(--violeta);border-radius:4px 0 0 4px;right:calc(100% - var(--x0))}
 .anat .val{position:absolute;top:3px;font-family:var(--f-m);font-size:10.5px;font-weight:700;color:var(--mut);white-space:nowrap}
 
 /* ============ en la mesa · proyectos ============ */
@@ -505,7 +513,7 @@ html.mini #focus .fdrop{padding:2px 8px}
 .ruler{position:relative;height:20px;margin:14px 0 6px}
 .ruler .tick{position:absolute;top:0;font-family:var(--f-m);font-size:9.5px;color:var(--dim);letter-spacing:.08em;transform:translateX(-50%)}
 .ruler .tick i{display:block;width:1px;height:5px;background:var(--hair2);margin:3px auto 0}
-.tape{position:relative;display:flex;gap:2px;height:74px;border-radius:10px}
+.tape{position:relative;display:flex;gap:2px;height:52px;border-radius:10px}   /* 70 % de los 74 px originales (1-nov); móvil: 44 px */
 .clip{position:relative;border-radius:7px;min-width:5px;display:flex;align-items:flex-end;overflow:hidden;cursor:default;
   opacity:0;transform:translateX(-10px);
   transition:filter .15s ease,opacity .36s ease,transform .36s var(--ease);transition-delay:0s,calc(var(--i,0)*40ms),calc(var(--i,0)*40ms)}
@@ -521,7 +529,7 @@ html.mini #focus .fdrop{padding:2px 8px}
 .clip.hl .cn{color:#0e0c1f}
 :root[data-theme="light"] .clip.hl .cn{color:#f2f0ff}
 .clip .cn small{display:block;font-weight:400;opacity:.72}
-.playhead{position:absolute;top:-12px;bottom:-12px;width:1.5px;background:var(--naranja);z-index:2}
+.playhead{position:absolute;top:-8px;bottom:-8px;width:1.5px;background:var(--naranja);z-index:2}
 .playhead::before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:0;height:0;
   border-top:7px solid var(--naranja);border-left:6px solid transparent;border-right:6px solid transparent}
 .playhead.blink{animation:pulse 1.2s steps(2,jump-none) infinite}
@@ -629,9 +637,11 @@ html.mini #focus .fdrop{padding:2px 8px}
   .tiles{grid-template-columns:1fr 1fr}
   .dinero{grid-template-columns:1fr}
   .top .date{display:none}
-  .anat .arow{grid-template-columns:104px 1fr}
+  .anat .arow{grid-template-columns:96px 1fr;gap:10px;padding:5px 0}
   .anat .arow .nm{font-size:11px}
+  .anat .track{height:18px}.anat .bar{top:2px;height:14px}.anat .val{top:1px;font-size:10px}
   .clip .cn{display:none}
+  .tape{height:44px}.clip{border-radius:5px}.playhead{top:-7px;bottom:-7px}   /* cinta al 60 % del alto en móvil (1-nov) */
   .sec{margin-top:48px}
   .prow{grid-template-columns:1fr;gap:8px;padding:14px 10px}
   .pmeta{justify-content:flex-start;flex-wrap:wrap}
@@ -810,7 +820,7 @@ html.side-closed .spr-mini{opacity:1;pointer-events:auto;transition-delay:.2s}
 .hero .htiles .m:first-child .v,.dinero .kpi:first-child .v{color:var(--sun-tx);text-shadow:0 0 24px rgba(217,237,47,calc(.42*var(--glow)))}
 .kpi .v{font-weight:300;letter-spacing:-.04em}
 .kpi .v small{font-weight:400}
-.dbig{font-weight:300;font-size:44px;letter-spacing:-.035em}
+.dbig{font-weight:300;font-size:37px;letter-spacing:-.035em}   /* 15 % más chico que los 44 originales (1-nov) */
 .fasetot .f .v{font-weight:300;font-size:22px;letter-spacing:-.03em}
 .tc-head{gap:14px;margin-bottom:10px}
 .tc-head h2{font-family:var(--f-d);font-weight:300;font-size:30px;line-height:1.1;letter-spacing:-.03em;color:var(--txt);white-space:nowrap}
@@ -826,7 +836,7 @@ html.side-closed .spr-mini{opacity:1;pointer-events:auto;transition-delay:.2s}
 #donut.swirl .dsegs{filter:none}
 .settled #race .rline{filter:url(#fxGlowL)}
 :root:not([data-theme="light"]) .heat .cell.s5{box-shadow:0 0 12px rgba(217,237,47,calc(.55*var(--glow)))}
-.heat .cell.s5.today,.heat .cell.today{box-shadow:0 0 0 1.5px var(--sun)}
+.heat .cell.s5.today,.heat .cell.today{box-shadow:inset 0 0 0 1.5px var(--sun)}
 /* la cinta: clips iluminados, como en la línea de tiempo de un editor */
 .clip.prep{--c:var(--f-prep)} .clip.teas{--c:var(--f-teas)} .clip.doc{--c:var(--sun-block)} .clip.hl{--c:var(--violeta)} .clip.cam{--c:var(--naranja)}
 .clip:not(.pend){background:linear-gradient(180deg,color-mix(in srgb,var(--c) 90%,#fff),var(--c) 42%,color-mix(in srgb,var(--c) 84%,#000));
@@ -857,6 +867,13 @@ html.mini #focus .fplan,html.mini #focus .fmode button i{display:none}
   color:var(--sun-tx);text-shadow:0 0 26px rgba(217,237,47,calc(.42*var(--glow)))}
 .salto .sbig small{margin-left:4px;font-family:var(--f-m);font-size:14px;font-weight:600;letter-spacing:0;color:var(--mut);text-shadow:none}
 #jump{display:block;width:100%;max-width:none;overflow:visible}
+/* fila horizontal de 4 (escritorio): cifras grandes centradas y la comparación al pie (1-nov) */
+@container wrap (min-width:931px){
+  .dinero .kpi{display:flex;flex-direction:column}
+  .dinero .kpi .v{margin:auto 0;padding:14px 0;font-size:clamp(46px,5.9cqw,64px)}
+  .dinero .kpi .v small{font-size:15px}
+  .dinero .kpi .dlt{margin-top:0}
+}
 @container wrap (max-width:930px){ .dinero{grid-template-columns:repeat(3,minmax(0,1fr))} .salto{grid-column:1/-1} }
 @container wrap (max-width:560px){ .dinero{grid-template-columns:1fr 1fr} .dinero .kpi:nth-child(3){grid-column:1/-1} .kpi .v{font-size:30px} }
 
@@ -869,6 +886,20 @@ html.mini #focus .fplan,html.mini #focus .fmode button i{display:none}
   .wsegs i.l::after,.spr.run .spr-t{animation:none}
   .amb .o1{transition:none}
 }
+
+/* ============ PROSA EN MONO (1-nov) ============
+   Frases, descripciones, notas, leyendas y pie: SF Mono regular en mayúsculas y minúsculas normales,
+   como la leyenda del widget del iPhone (Previos · Hoy · Récord · Sábado). La mono es más ancha que
+   Inter, así que cada texto baja ~1 px para conservar el largo de línea. Las etiquetas en MAYÚSCULAS
+   (--f-m), cifras y titulares (--f-d) y nombres/controles (Inter) no cambian. */
+.hero .lede,.sec>.sub,.card .note,.legend .k,.dlr .n,.plan .row p,.aip .tx small,.focuscard .why,
+#heatMetaTxt,.colofon,.greet .g2{font-family:var(--f-t);font-weight:400;letter-spacing:0;line-height:1.55}
+.hero .lede{font-size:14px}
+.sec>.sub{font-size:13px}
+.plan .row p{font-size:12.5px}
+.card .note,.legend .k,.dlr .n,.aip .tx small,.focuscard .why,#heatMetaTxt,.colofon,.greet .g2{font-size:11.5px}
+.legend .k,.dlr .n{line-height:1.3}
+@media(max-width:640px){ .hero .lede{font-size:13.5px} .sec>.sub{font-size:12.5px} }
 </style>
 </head>
 <body>
@@ -1138,7 +1169,7 @@ html.mini #focus .fplan,html.mini #focus .fmode button i{display:none}
         </div>
       </div>
       <div class="heatmeta">
-        <span style="font-size:12.5px;color:var(--dim)" id="heatMetaTxt">—</span>
+        <span style="color:var(--dim)" id="heatMetaTxt">—</span>
         <span class="ramp">MENOS <i style="background:var(--panel2);border:1px solid var(--hair)"></i><i style="background:var(--h1)"></i><i style="background:var(--h2)"></i><i style="background:var(--h3)"></i><i style="background:var(--h4)"></i><i style="background:var(--h5)"></i> MÁS</span>
       </div>
     </div>
@@ -1174,7 +1205,7 @@ html.mini #focus .fplan,html.mini #focus .fmode button i{display:none}
   <p class="sub">La lista <b>es</b> el selector: toca una boda (aquí o en el sidebar) y todo lo de abajo se vuelve ese proyecto.</p>
   <div class="card">
     <div id="proj"></div>
-    <p class="note">Lo hecho es sólido; lo pendiente, <b>rayado</b>. Solo aparecen bodas con sesiones medidas; las entregadas que llevan 45 días sin cambios pasan al <b>Archivo</b>.</p>
+    <p class="note">Lo hecho es sólido; lo pendiente, <b>rayado</b>. Solo aparecen bodas con sesiones medidas; las entregadas que llevan 45 días sin sesiones pasan al <b>Archivo</b>.</p>
   </div>
   <div class="mesa2">
     <div class="card" id="donutCard">
@@ -1930,7 +1961,8 @@ function renderDia7(M){
   const svg=document.getElementById('dia7'); const dia7=M.dia7;
   const rec=Math.max(0,...dia7.map(d=>d[1]));
   function build(mob){
-    const W=mob?430:940,H=250,pl=mob?46:70,pr=mob?10:24,pt=44,pb=30,maxV=Math.max(6,rec*1.15),bw=(W-pl-pr)/7;
+    // en móvil, misma geometría que «Horas × día de la semana» (380×240, barras al 60 %)
+    const W=mob?380:940,H=mob?240:250,pl=mob?34:70,pr=10+(mob?0:14),pt=mob?30:44,pb=mob?28:30,maxV=Math.max(6,rec*(mob?1.12:1.15)),bw=(W-pl-pr)/7;
     svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.innerHTML='';
     const Y=v=>H-pb-v/maxV*(H-pt-pb);
     // guía de meta por día (la ventana es móvil: cada barra lleva su propia meta)
@@ -1938,15 +1970,15 @@ function renderDia7(M){
     dia7.forEach(([,,goal],i)=>{ if(!goal)return; const gy=Y(goal);
       const cont=j=>j>=0&&j<7&&dia7[j][2]===goal;
       S('line',{x1:pl+i*bw+(cont(i-1)?0:4),x2:pl+(i+1)*bw-(cont(i+1)?0:4),y1:gy,y2:gy,stroke:'var(--hair2)','stroke-width':1.5,'stroke-dasharray':'5 6'},svg);
-      if(goal===5&&!lbl5){lbl5=true;const ml=S('text',{x:pl+i*bw,y:gy-8,class:'ax'},svg);ml.textContent='meta 5 h';} });
+      if(goal===5&&!lbl5){lbl5=true;const ml=mob?S('text',{x:pl-7,y:gy+3,class:'ax','text-anchor':'end'},svg):S('text',{x:pl+i*bw,y:gy-8,class:'ax'},svg);ml.textContent=mob?'5h':'meta 5 h';} });
     S('line',{x1:pl,x2:W-pr,y1:H-pb,y2:H-pb,class:'gl'},svg);
     dia7.forEach(([lab,v,goal,corrH],i)=>{
-      const x=pl+i*bw+bw*0.22,w=bw*0.56,y0=H-pb,y=Y(v);
+      const x=pl+i*bw+bw*(mob?0.2:0.22),w=bw*(mob?0.6:0.56),y0=H-pb,y=Y(v);
       const isRec=v>0&&v===rec,isHoy=i===6,fill=isRec?'var(--naranja)':isHoy?'var(--sun)':'var(--violeta)';
       const bar=S('path',{class:'gbar'+(isRec||isHoy?' glw':''),fill:gfill(fill)},svg); bar.style.setProperty('--i',i);
       bar.setAttribute('d',v>0?barPath(x,y0,y,w,6):`M${x} ${y0-2.5} L${x} ${y0} L${x+w} ${y0} L${x+w} ${y0-2.5} Z`);
       if(v>0){const c=S('text',{x:x+w/2,y:y-10,class:'lbl hi fadein','text-anchor':'middle'},svg);c.textContent=fmtHM(v);}
-      const t=S('text',{x:x+w/2,y:H-pb+18,class:'ax','text-anchor':'middle'},svg);t.textContent=mob?lab.slice(-2):lab;
+      const t=S('text',{x:x+w/2,y:H-pb+(mob?16:18),class:'ax','text-anchor':'middle'},svg);t.textContent=mob?lab.slice(-2):lab;
       const corrTx=corrH>0?`<br>de ellas, ${fmtHM(corrH)} en cambios`:'';
       const tipTx=goal>0?`<b>${lab}</b><br>${v>0?fmtHM(v):'0 h'} de ${goal} h${isRec?' · récord de la semana':''}${isHoy?' · hoy':''}${corrTx}`:`<b>${lab}</b><br>${v>0?fmtHM(v)+' · ':''}descanso — sin meta${corrTx}`;
       const hs=S('rect',{x:pl+i*bw,y:pt,width:bw,height:H-pt-pb,fill:'transparent','data-tip':tipTx},svg);
@@ -2001,9 +2033,12 @@ function renderHeat(M){
   const first=M.firstDay?ymd(M.firstDay):end;
   const firstMon=new Date(first); firstMon.setDate(firstMon.getDate()-((firstMon.getDay()+6)%7));
   const dataWeeks=Math.round((endMon-firstMon)/604800000)+1;
-  // rellenar hacia atrás hasta llenar el ancho de la tarjeta (pitch = celda 18 + gap 4; ~26px de rótulos L..D)
-  const weeksFit=Math.max(1,Math.floor((hw.clientWidth-26)/22));
+  // rellenar hacia atrás hasta llenar el ancho de la tarjeta (pitch = celda 18 + gap 4; rótulos L..D + 10 de gap)
+  hw.style.width=''; const avail=hw.clientWidth, daysW=hw.querySelector('.heatdays').offsetWidth+10;
+  const weeksFit=Math.max(1,Math.floor((avail-daysW+4)/22));
   const weeks=Math.max(dataWeeks,weeksFit);
+  // ancho visible = columnas enteras → simétrico y sin columna cortada al hacer scroll
+  hw.style.width=(weeks>weeksFit?Math.floor((avail+4)/22)*22-4:daysW+weeks*22-4)+'px';
   const start=new Date(endMon); start.setDate(start.getDate()-(weeks-1)*7);
   const step=h=>h<=0?0:h<=1.5?1:h<=3?2:h<=4.5?3:h<=5.5?4:5;
   const MNU=['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
@@ -2016,7 +2051,7 @@ function renderHeat(M){
       const future=d>end, pre=iso<firstIso; const cls=(s?'s'+s:'')+(iso===M.today?' today':'');
       const lbl=`<b>${DIAS[d.getDay()]} ${d.getDate()} ${MNU[d.getMonth()].toLowerCase()}</b><br>${h?fmt(h)+' h trabajadas':(future?'—':pre?'aún no medías':'sin sesiones')}`;
       cells+=`<div class="cell ${cls}" style="--c:${wk}${future?';visibility:hidden':''}" data-tip="${lbl.replace(/"/g,'&quot;')}"></div>`; }
-    html+=`<div class="col">${cells}</div>`; mhtml+=`<span style="width:22px">${monthLabel}</span>`; }
+    html+=`<div class="col">${cells}</div>`; mhtml+=`<span style="width:${wk<weeks-1?22:18}px">${monthLabel}</span>`; }  // la última sin gap: mismo ancho que la retícula
   heat.innerHTML=html; months.innerHTML=mhtml; hw.scrollLeft=hw.scrollWidth;
   renderHeat._model=M; // el ancho manda: re-render al redimensionar (con el modelo vigente)
   if(!renderHeat._rsz){ renderHeat._rsz=true; let t=null;
@@ -2031,7 +2066,7 @@ function renderAdn(M){
   if(M.anat&&M.anat.length&&M.race&&M.race.hasGhost){
     anatCard.style.display='';
     document.getElementById('anatU').textContent=`${short(M.race.curName)} VS ${short(M.race.ghostName)}`;
-    document.getElementById('anatNote').innerHTML=`Comparación directa vs tu boda anterior. Verde = etapas donde ganaste tiempo.`;
+    document.getElementById('anatNote').innerHTML=`Comparación directa vs tu boda anterior. En lima, las etapas donde ganaste tiempo.`;
   } else { anatCard.style.display='none'; }
 }
 function short(nm){ return (nm||'').split(' + ')[0]; }
@@ -2047,11 +2082,20 @@ function renderSprints(M){
   S('line',{x1:pl,x2:W-pr,y1:H-pb,y2:H-pb,class:'gl'},svg);
 }
 function renderAnat(M){
-  const box=document.getElementById('anat'); const A=M.anat||[]; const max=Math.max(2,...A.map(a=>Math.abs(a[1])))*1.15,MID=38;
+  const box=document.getElementById('anat'); const A=M.anat||[];
+  // escala real: el cero cae donde toca según lo ganado vs lo perdido, y a cada lado se reserva
+  // el ancho del rótulo más largo (≈6,4 px por carácter mono + 8 de separación + 4 de aire)
+  const isZ=v=>Math.abs(v)<0.05, lbl=v=>isZ(v)?'0 h':(v>0?'+':'−')+fmt(Math.abs(v))+' h';
+  const posMax=Math.max(0,...A.map(a=>a[1])), negMax=Math.max(0,...A.map(a=>-a[1]));
+  const room=vs=>vs.length?Math.ceil(Math.max(...vs.map(v=>lbl(v).length))*6.4+12):0;
+  const tot=(posMax+negMax)||1;
+  box.style.setProperty('--l',room(A.filter(a=>a[1]<=-0.05).map(a=>a[1]))+'px');
+  box.style.setProperty('--r',room(A.filter(a=>a[1]>-0.05).map(a=>a[1]))+'px');
+  box.style.setProperty('--mid',negMax/tot);
   let html='';
-  A.forEach(([nm,v],i)=>{ const w=Math.abs(v)/max*(v>0?100-MID:MID);
-    const bar=Math.abs(v)<0.05?`<span class="val fadein" style="left:calc(${MID}% + 8px)">0 h</span>`:v>0?`<div class="bar save" style="--w:${w}%;--i:${i}"></div><span class="val fadein" style="left:calc(${MID+w}% + 8px)">+${fmt(v)} h</span>`
-      :`<div class="bar more" style="--w:${w}%;--i:${i}"></div><span class="val fadein" style="left:calc(${MID-w}% - 8px);transform:translateX(-100%)">−${fmt(Math.abs(v))} h</span>`;
+  A.forEach(([nm,v],i)=>{ const f=Math.abs(v)/tot, w=`calc(${f} * var(--span))`;
+    const bar=isZ(v)?`<span class="val fadein" style="left:calc(var(--x0) + 8px)">0 h</span>`:v>0?`<div class="bar save" style="--w:${w};--i:${i}"></div><span class="val fadein" style="left:calc(var(--x0) + ${f} * var(--span) + 8px)">${lbl(v)}</span>`
+      :`<div class="bar more" style="--w:${w};--i:${i}"></div><span class="val fadein" style="left:calc(var(--x0) - ${f} * var(--span) - 8px);transform:translateX(-100%)">${lbl(v)}</span>`;
     html+=`<div class="arow" data-tip="<b>${nm}</b><br>${Math.abs(v)<0.05?'igual que antes':(v>0?fmt(v)+' h menos':fmt(Math.abs(v))+' h más')+' que antes'}"><div class="nm">${nm}</div><div class="track"><div class="mid"></div>${bar}</div></div>`; });
   box.innerHTML=html;
   document.getElementById('anatTbl').innerHTML=`<table><thead><tr><th>Etapa</th><th>Δ horas</th></tr></thead><tbody>${A.map(([nm,v])=>`<tr><td>${nm}</td><td>${v>0?'−':'+'}${fmt(Math.abs(v))} h</td></tr>`).join('')}</tbody></table>`;
