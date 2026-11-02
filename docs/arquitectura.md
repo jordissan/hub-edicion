@@ -250,10 +250,11 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   `finish-escena` / `finish-etapa` / `discard` / `endcycle` / `start` / `undo`; devuelve
   `'ok'` o por qué no). La página manda `{k:'state', dest, note}` (destino propuesto y último
   aviso) para el menú en reposo. Oculta, la página recibe `window.__hubShown=false` (también
-  como `WKUserScript` para recargas): no hace latido ni suena, y el aviso lo da `NSSound`
-  ("Glass") si la meta/descanso se cumplió hace < 15 s. Login item con `SMAppService.mainApp`
+  como `WKUserScript` para recargas): no hace latido. En modo mini la página **nunca** pone su tono de
+  meta (`chimeOnce` calla si `MINI`): el aviso lo da siempre la app (`Sounds.play("goal")`,
+  visible u oculta) si la meta/descanso se cumplió hace < 15 s. Login item con `SMAppService.mainApp`
   (se registra en el primer arranque). Preferencias en `UserDefaults` (`panelVisible`,
-  `onDesktop`, `showRemaining`). `HUB_BASE=http://localhost:4611` apunta la app a otro server
+  `onDesktop`, `showRemaining`, `hk*`, `snd.*`). `HUB_BASE=http://localhost:4611` apunta la app a otro server
   (pruebas sin tocar el sprint real).
   Frame recordado (`setFrameAutosaveName`). `./build.sh` compila con `swiftc` (sin Xcode), firma
   ad-hoc, instala en `~/Applications` y registra el esquema. `HUB_SNAPSHOT=/ruta.png` (vía
@@ -266,8 +267,17 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   tecla base ya lleva ⌘, posible solo con atajos grabados antes). id 1 *alterna*: manda `finish` y,
   si responde `'no-run'`, `start` (así decide con el estado recién sincronizado por `pull()`,
   no con el último sondeo); id 2 manda `discard`. Mismo camino que el menú (`send(cmd)` →
-  `SprintCmd`). Feedback: `NSSound` (Pop / Hero / Funk) + el icono de la barra cambia 1,5 s a
-  `play`/`checkmark`/`xmark.circle` (`flash` en `render()`); si no aplica, `NSSound.beep()`.
+  `SprintCmd`). Feedback: `Sounds.play(acción)` + el icono de la barra cambia 1,5 s a
+  `play`/`checkmark`/`xmark.circle` (`flash` en `render()`); si no aplica, `Sounds.play("error")`.
+- **Sonidos** (`enum Sounds` + `soundsMenu()` en `main.swift`, *Opciones → Sonidos*): acciones
+  `start` (de serie Tink), `finish` (Hero), `discard` (Funk), `goal` (Glass, meta/descanso) y
+  `error` (aviso del sistema; también cuando falla una acción del menú). Guardado en
+  `UserDefaults` `snd.<acción>`: nombre de un sonido (`NSSound(named:)`, lista de
+  `/System/Library/Sounds` + `~/Library/Sounds`), `"·sistema"` = `NSSound.beep()` o `""` =
+  ninguno; sin clave = el de serie (*Restablecer* borra las claves). Vista previa: los
+  submenús tienen de delegado `SoundPreview` (`menu(_:willHighlight:)` suena al pasar).
+  Hasta nov-2026 iniciar era Pop; Jordi lo cambió a Tink. El grabador de atajos sigue usando
+  `NSSound.beep()` para rechazar una tecla.
   Configurable en *Opciones → Atajo de teclado* (presets N/B/P/J/K con ⌃⌥, *Grabar otro…* con
   un `NSAlert` + monitor local: exige ⌃ y/o ⌥, sin ⇧ ni ⌘, que se reservan; *Sin atajo*).
   `UserDefaults`: `hkCode` (keyCode virtual), `hkMods` (`NSEvent.ModifierFlags`), `hkChar`,
@@ -315,7 +325,7 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   previo a la sincronía cuenta como `rev` 1. La ventana pregunta con `?from=mini` (latido) →
   `miniOpen` → clase `.floating` en la tarjeta del dashboard. El aviso sonoro es **por
   cliente** (`scSprintChimed`, no se sincroniza) y el dashboard calla si la ventana está
-  abierta. Doble "Terminar" del mismo bloque no duplica: `/api/session` deduplica por `id`.
+  abierta; en la ventana suena la app nativa (*Opciones → Sonidos*), no el tono de la página. Doble "Terminar" del mismo bloque no duplica: `/api/session` deduplica por `id`.
   En la nube (`*.pages.dev`) no hay sincronía ni botón.
 
 ## 6. Claves de estado

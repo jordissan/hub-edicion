@@ -2411,7 +2411,8 @@ const Sprint=(function(){
   // ---- aviso sonoro suave (se habilita con el primer toque: iOS lo exige) ----
   let ac=null;
   const unlock=()=>{ try{ ac=ac||new (window.AudioContext||window.webkitAudioContext)(); if(ac.state==='suspended') ac.resume(); }catch(e){} };
-  function chimeOnce(key){ if(load(LSCH)===key) return; put(LSCH,key); if(!floatOpen) chime(); }
+  // en la ventanita (modo mini) suena la app nativa con el sonido elegido en Opciones → Sonidos
+  function chimeOnce(key){ if(load(LSCH)===key) return; put(LSCH,key); if(!floatOpen&&!MINI) chime(); }
   function chime(){ if(!ac||document.hidden||!shown()) return; try{ const t=ac.currentTime;
     [[784,0],[1175,.16]].forEach(([f,d])=>{ const o=ac.createOscillator(), g=ac.createGain(); o.type='sine'; o.frequency.value=f;
       g.gain.setValueAtTime(0,t+d); g.gain.linearRampToValueAtTime(.1,t+d+.02); g.gain.exponentialRampToValueAtTime(.0001,t+d+.6);
