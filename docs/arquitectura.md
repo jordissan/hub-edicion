@@ -13,7 +13,8 @@
                                    │  API (token de integración, lectura + escritura)
           ┌────────────────────────┴────────────────────────┐
    LOCAL (Mac, backup/dev)                         NUBE (siempre encendida)
-   server.py · launchd · :4599                     GitHub Actions cada 30 min
+   server.py · launchd · :4599                     GitHub Actions (aviso del Mac c/15 min
+     └─ c/15 min: gh workflow run ───────────▶        + cron */30 de respaldo, ver §10)
      GET  /api/data     payload completo             publish.py → importa server.py
      GET  /api/summary  resumen widgets                ├─ drain_pending(): cola de sprints → Notion
      POST /api/session  registra un sprint             ├─ build_data() / build_summary()
@@ -28,7 +29,7 @@
                                                      functions/api/close    → Notion o cola KV
           └────────────────────────┬────────────────────────┘
                      index.html (el MISMO archivo en ambos)
-                     snapshot embebido → loadLive() → deriveModel() → render*
+                     últimos datos guardados (o snapshot) → loadLive() → deriveModel() → render*
                      Widgets: iPhone (Scriptable → nube) · Mac (SwiftBar → local)
 ```
 
@@ -185,9 +186,18 @@ Un solo archivo: CSS (tokens Pantone, tema claro/oscuro) + HTML + un `<script>` 
    los 1,6 s. Paneles-lista (`LIST_ROWS`): la tarjeta hace fade y sus filas entran con `cascade`
    (izquierda → derecha). Ganchos: `__playRace`/`__resetRace`, `__swirlDonut`.
    ⚠️ Si la tarjeta misma lleva la clase del componente (`.card.anat`) usa `.anat.in …`, no `.in .anat …`.
-7. **Boot** — snapshot → `loadLive()`: en la nube (`*.pages.dev`) pide primero `/api/edicion`, en
-   local `/api/data`; el otro de respaldo. Refresca solo al volver a la app o cada 10 min si los
-   datos tienen > 5 min. ↻ = `fresh` (local: extracción síncrona; nube: relee KV).
+7. **Boot** — pinta al instante la **última lectura viva guardada** en este navegador
+   (`localStorage scLastData`); solo si no hay (primera vez, o iOS la borró) usa el snapshot
+   embebido. Luego `loadLive()`: en la nube (`*.pages.dev`) pide primero `/api/edicion`, en
+   local `/api/data`; el otro de respaldo. Si llega el **mismo `generatedAt`** que ya está
+   pintado, no se redibuja nada: solo se enciende EN VIVO (`renderChrome`). Cada lectura viva
+   se guarda en `scLastData`. Marcas para medir: `performance.getEntriesByType('mark')` →
+   `hub:inicial`, `hub:vivo`, `hub:vivo-igual`. Refresca solo al volver a la app o cada 10 min
+   si los datos tienen > 5 min. ↻ = `fresh` (local: extracción síncrona; nube: relee KV).
+   **Fuentes**: el alfabeto latino de Archivo, Inter y JetBrains Mono se sirve desde el propio
+   sitio (`/fonts/*-latin-v1.woff2`, mismos archivos de Google Fonts, OFL) con `preload`; los
+   demás alfabetos siguen apuntando a fonts.gstatic.com y solo se bajan si aparecen. Caché de un
+   año (`cloud/_headers`; local, `server.py`): si se cambian, **renombrar** (`-v2`).
 
 **Interfaz viva** (`@media(hover:hover)`, tras `.settled`): la barra bajo el cursor crece y el
 resto se atenúa (`.fx` en el `<svg>` + `.hot` en la marca); el centro del donut muestra etapa ·
@@ -341,6 +351,7 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
 | Mac | `.cache.json` · `.archive.json` | caché local · archivo histórico local |
 | Mac | `.sprint-state.json` | sprint compartido dashboard ⇄ ventana flotante (`{rev, data}`) |
 | Navegador | `scTheme` | tema claro/oscuro |
+| Navegador | `scLastData` | última lectura viva (payload completo, ~90 KB) para pintar al abrir |
 | Navegador | `scSprint` · `scSprintBrk` · `scSprintCyc` | bloque en curso · descanso · ciclo |
 | Navegador | `scSprintMode` · `scSprintDest` · `scSprintPend` | esquema · último destino · registro pendiente |
 | Navegador | `scSprintClose` · `scSprintClosed` | cierre en espera (8 s para deshacer) · ids cerrados aún no reflejados en el tablero |
@@ -369,6 +380,7 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
 6. Para ver la versión nueva en el iPhone: **matar la PWA** desde el app switcher y reabrir.
 
 Datos a mano: `gh workflow run "Publicar dashboard" -R jordissan/hub-edicion`.
+`sync-cloud.sh` también copia `fonts/` (las fuentes) a `cloud/fonts/`.
 
 ## 9. Trampas conocidas
 
@@ -384,5 +396,50 @@ Datos a mano: `gh workflow run "Publicar dashboard" -R jordissan/hub-edicion`.
 - **Privacidad — el repo de la nube es público**: el código no tiene tokens, pero `index.html`
   lleva embebido `SNAPSHOT_DATA` con datos reales (nombres de parejas, precios, estudio,
   sesiones), visibles en GitHub aunque el sitio esté detrás de Access. Opciones: repo privado
-  (Actions deja de ser gratis ilimitado: ~48 corridas/día rebasan los 2 000 min/mes; habría que
-  bajar el cron a cada hora) o un snapshot anonimizado en la copia de la nube.
+  (Actions deja de ser gratis ilimitado: con el aviso cada 15 min serían hasta 96 corridas/día
+  × 2 min ≈ 5 800 min/mes, muy por encima de los ~2 000 del plan Free; habría que quitar el aviso
+  del Mac y dejar el cron cada hora) o un snapshot anonimizado en la copia de la nube.
+
+## 10. Refresco de la nube y rendimiento de carga (nov-2026)
+
+**Cada cuánto se actualiza la nube.** El cron `*/30` de `publish.yml` **no se cumple**: GitHub
+retrasa o descarta los `schedule` en horas de carga ("some queued jobs may be dropped", docs de
+GitHub). Medido sep-nov 2026: ~5 corridas/día, mediana **~4 h 15 min** entre corridas (máx. 10 h).
+Un `workflow_dispatch` sí arranca al momento, así que el **server local lo pide cada 15 min**
+(`start_cloud_ping` en `server.py`, con el `gh` ya autenticado del Mac; `/Users/jordi/bin/gh`):
+- si la última corrida (de cualquier tipo) empezó hace < 12 min, no pide otra → máx. ~4/h;
+- solo en el server del puerto 4599 (no en Actions, que no llama a `main()`, ni en copias de
+  prueba con otro `DASHBOARD_PORT`); se apaga con `HUB_CLOUD_PING=0`;
+- log en `/tmp/hub-edicion.err` (`[nube] HH:MM · pedida` / `error: …`);
+- con el Mac dormido o sin red no pasa nada: el cron de GitHub queda de respaldo.
+
+**Consumo (peor caso: 96 corridas/día) frente a los límites gratuitos:**
+
+| Recurso | Por corrida | Al día (96) | Límite gratuito |
+|---|---|---|---|
+| GitHub Actions | ~1 min 45 s (se factura redondeado a 2 min) | ~190 min | repo **público**: runners estándar gratis, sin tope ([docs](https://docs.github.com/en/billing/concepts/product-billing/github-actions)) |
+| Notion API | ~250 peticiones en ~100 s (2,5/s por el throttle) | ~24 000 | 3 peticiones/s de media por integración, sin cuota diaria ([docs](https://developers.notion.com/reference/request-limits)) |
+| Cloudflare KV escrituras | 3 (`data`, `summary`, `archive`) | 288 | 1 000/día ([docs](https://developers.cloudflare.com/kv/platform/limits/)) |
+| Cloudflare KV lecturas | ~2 + cola | ~200 + aperturas | 100 000/día |
+| Pages Functions | — | aperturas de la PWA | cuentan en las 100 000 peticiones/día del plan Free de Workers |
+
+No se puede mover la extracción a un Worker de Cloudflare gratis: admite 50 sub-peticiones por
+invocación y una extracción hace ~250. Alternativa si algún día se quiere refresco con la Mac
+apagada: un Worker con Cron Trigger (5 por cuenta en Free) que haga el `workflow_dispatch` con un
+token de GitHub de solo "Actions: write".
+
+**Carga (medido en el Mac, servidor de prueba con la caché copiada, 5 aperturas c/u):**
+
+| | Antes | Después |
+|---|---|---|
+| Primer pintado | ~83 ms, con los datos de **julio** (snapshot) | ~90 ms, con la **última lectura real** |
+| Datos reales en pantalla | ~240 ms (segundo dibujo completo) | ~90 ms |
+| EN VIVO confirmado | ~240 ms | ~110 ms (sin redibujar si no cambió) |
+| Fuentes | CSS de fonts.googleapis.com bloqueando el pintado (142 ms en frío) + fonts.gstatic.com | mismo origen, precargadas, sin conexiones extra |
+
+En el iPhone el ahorro absoluto es mayor (CPU más lenta → cada dibujo completo cuesta más; en
+datos móviles, cada conexión nueva a Google son 2-3 idas y vueltas). Ya estaban bien y no se
+tocaron: la nube no consulta Notion al abrir (lee KV precalculado), Cloudflare ya comprime HTML
+y JSON, y paralelizar Notion no acelera nada (manda el límite de 3/s). Pendiente opcional: un
+service worker (abrir sin red), con el coste de que cada versión nueva se vea a la segunda apertura.
+

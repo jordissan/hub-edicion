@@ -11,7 +11,7 @@ apagada, detrás de login, **100% gratis**.
 ## Arquitectura
 
 ```
-GitHub Actions (cron cada 30 min · TZ America/Mexico_City)
+GitHub Actions (workflow_dispatch del Mac cada 15 min + cron */30 de respaldo · TZ America/Mexico_City)
   publish.py → server.py extrae Notion → escribe data.json + summary.json en Cloudflare KV (namespace "hub")
   (+ archivo histórico: lee edicion:archive de KV, server.merge_archive lo actualiza con las
    bodas entregadas con horas trackeadas, y lo re-publica — viaja embebido en data.json como "archive")
@@ -49,9 +49,20 @@ con su `server.py` + launchd en el puerto 4599 — es **backup/dev** para probar
 - `.github/workflows/publish.yml` — cron + `workflow_dispatch`. Secretos: `NOTION_TOKEN`, `CF_API_TOKEN`,
   `CF_ACCOUNT_ID`, `CF_KV_NAMESPACE_ID`. Lleva `env: TZ: America/Mexico_City` (el runner es UTC).
 - `index.html`, `manifest.json`, `icon-*.png` — el sitio estático.
+- `fonts/*-latin-v1.woff2` — Archivo, Inter y JetBrains Mono (alfabeto latino, mismos archivos de Google Fonts,
+  OFL), precargados desde `index.html`. Los copia `sync-cloud.sh`.
+- `_headers` — caché de un año para `/fonts/*` (si cambian las fuentes, renombrar a `-v2`).
 
 ## Cómo se actualizan los datos
-- **Solo:** cada 30 min (cron de Actions). GitHub pausa crons si el repo no tiene actividad en 60 días.
+- **Cada 15 min con la Mac encendida:** el `server.py` local (launchd) corre `gh workflow run publish.yml`
+  si la última corrida empezó hace más de 12 min. Log: `/tmp/hub-edicion.err` (`[nube] …`). Apagar con
+  `HUB_CLOUD_PING=0`.
+- **Respaldo (Mac apagada):** el cron `*/30` de Actions. GitHub **no lo cumple**: retrasa o descarta los
+  `schedule` en horas de carga; medido sep-nov 2026, ~5 corridas/día (mediana ~4 h entre corridas).
+  GitHub pausa crons si el repo no tiene actividad en 60 días.
+- **Consumo** (peor caso 96 corridas/día, todo gratis): Actions ~190 min/día (repo público = sin tope);
+  Notion ~250 peticiones por corrida a 2,5/s (límite 3/s, sin cuota diaria); KV 288 escrituras/día de 1 000.
+  Tabla y fuentes en `docs/arquitectura.md` §10.
 - **A mano / ya:** `gh workflow run "Publicar dashboard" -R jordissan/hub-edicion` (o Actions → Run workflow).
 
 ## Cómo cambiar el dashboard (mantenimiento)
@@ -99,3 +110,10 @@ KV namespace `hub` → Pages "Connect to Git" (Framework None, output `/`) → b
 Run workflow → Zero Trust Free → Access app self-hosted sobre `hub-edicion.pages.dev` (login PIN, sesión 1 mes,
 policy Allow email) → Service Token + policy Service Auth para los widgets.
 GOTCHA UI: para crear el proyecto Pages, en Workers&Pages → Create application → abajo "Looking to deploy Pages? Get started".
+
+## Carga rápida (nov-2026)
+- La PWA pinta al abrir la **última lectura guardada** en el iPhone (`localStorage scLastData`) en vez del
+  snapshot de julio, y si `/api/edicion` trae el mismo `generatedAt` no redibuja (solo enciende EN VIVO).
+- Fuentes desde el propio sitio, sin la hoja de Google que bloqueaba el primer pintado.
+- Medido en el Mac: datos reales en pantalla de ~240 ms a ~90 ms. Detalle en `docs/arquitectura.md` §10.
+

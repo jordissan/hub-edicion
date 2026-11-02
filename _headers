@@ -1,0 +1,4 @@
+# Cabeceras de Cloudflare Pages (https://developers.cloudflare.com/pages/configuration/headers/)
+# Las fuentes llevan versión en el nombre (-v1): si cambian, se renombran → caché de un año sin revalidar.
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
