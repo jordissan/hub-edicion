@@ -1092,6 +1092,72 @@ def get_data(fresh=False):
     return cached                   # respuesta instantánea
 
 
+# ── Refresco de la nube desde el Mac (cada 15 min) ───────────────────────────
+# El cron de GitHub ("*/30") no se cumple: GitHub lo retrasa o lo descarta en horas
+# de carga y en la práctica corría ~5 veces al día (mediana ~4 h entre corridas,
+# medido sep-nov 2026). Un "workflow_dispatch" sí arranca al momento, así que el
+# server local (siempre encendido por launchd) lo pide cada 15 min con el `gh` ya
+# autenticado del Mac. Si en los últimos 12 min ya hubo una corrida (cron, manual
+# o de este mismo aviso) no pide otra → como mucho ~4 por hora. Con el Mac dormido
+# o sin red no pasa nada: el cron de GitHub sigue de respaldo.
+# Solo corre en el server local del puerto por defecto (no en Actions, que importa
+# este archivo sin llamar a main(), ni en copias de prueba con otro puerto).
+# Apagar: HUB_CLOUD_PING=0 en el entorno.
+CLOUD_REPO = "jordissan/hub-edicion"
+CLOUD_WORKFLOW = "publish.yml"
+CLOUD_PING_EVERY = 15 * 60       # s entre avisos
+CLOUD_PING_MIN_GAP = 12 * 60     # no pedir otra si la última corrida empezó hace menos
+_GH_CANDIDATES = ("/Users/jordi/bin/gh", "/opt/homebrew/bin/gh", "/usr/local/bin/gh")
+
+
+def _gh_path():
+    import shutil
+    for p in _GH_CANDIDATES:
+        if os.path.exists(p):
+            return p
+    return shutil.which("gh")
+
+
+def cloud_ping_once():
+    """Pide a GitHub una corrida del extractor de la nube si no hubo una reciente.
+    Devuelve un texto corto con lo que hizo (para el log)."""
+    import subprocess
+    gh = _gh_path()
+    if not gh:
+        return "sin gh"
+    try:
+        out = subprocess.run(
+            [gh, "run", "list", "-R", CLOUD_REPO, "-w", CLOUD_WORKFLOW, "-L", "1",
+             "--json", "createdAt", "--jq", ".[0].createdAt // \"\""],
+            capture_output=True, text=True, timeout=30)
+        last = (out.stdout or "").strip()
+        if out.returncode == 0 and last:
+            started = datetime.datetime.fromisoformat(last.replace("Z", "+00:00"))
+            age = (datetime.datetime.now(datetime.timezone.utc) - started).total_seconds()
+            if age < CLOUD_PING_MIN_GAP:
+                return "reciente (%d min)" % (age // 60)
+        r = subprocess.run([gh, "workflow", "run", CLOUD_WORKFLOW, "-R", CLOUD_REPO],
+                           capture_output=True, text=True, timeout=30)
+        return "pedida" if r.returncode == 0 else "error: %s" % (r.stderr or "").strip()[:200]
+    except Exception as e:
+        return "error: %s" % e
+
+
+def _cloud_ping_loop():
+    time.sleep(90)                   # deja arrancar el server (y no pide nada en reinicios rápidos)
+    while True:
+        res = cloud_ping_once()
+        if not res.startswith("reciente"):
+            sys.stderr.write("[nube] %s · %s\n" % (time.strftime("%H:%M"), res))
+        time.sleep(CLOUD_PING_EVERY)
+
+
+def start_cloud_ping():
+    if os.environ.get("HUB_CLOUD_PING", "1") == "0" or PORT != 4599:
+        return
+    threading.Thread(target=_cloud_ping_loop, daemon=True).start()
+
+
 # ── Servidor HTTP ────────────────────────────────────────────────────────────
 _session_done = {}   # id del sprint -> resultado (evita duplicados si el navegador reintenta)
 _close_done = {}     # id del cierre -> resultado (ídem)
@@ -1134,14 +1200,14 @@ def sprint_state(from_mini=False, incoming=None):
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
-    def _send(self, code, body, ctype="application/json; charset=utf-8"):
+    def _send(self, code, body, ctype="application/json; charset=utf-8", cache="no-store"):
         if isinstance(body, str):
             body = body.encode("utf-8")
         self.send_response(code)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", cache)
         self.end_headers()
         self.wfile.write(body)
 
@@ -1269,11 +1335,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
             "/icon-180.png": "image/png",
             "/icon-192.png": "image/png",
             "/icon-512.png": "image/png",
+            # fuentes del dashboard (alfabeto latino; el nombre lleva versión → caché larga)
+            "/fonts/archivo-latin-v1.woff2": "font/woff2",
+            "/fonts/inter-latin-v1.woff2": "font/woff2",
+            "/fonts/jetbrains-mono-latin-v1.woff2": "font/woff2",
         }
         if path in statics:
             try:
                 with open(os.path.join(HERE, path.lstrip("/")), "rb") as f:
-                    self._send(200, f.read(), statics[path])
+                    self._send(200, f.read(), statics[path],
+                               "public, max-age=31536000, immutable" if path.startswith("/fonts/") else "no-store")
             except Exception:
                 self._send(404, "Not found", "text/plain; charset=utf-8")
             return
@@ -1320,6 +1391,7 @@ def main():
     _load_disk_cache()                       # carga instantánea de la última extracción
     if get_token():                          # precalienta en 2º plano para la 1ª carga
         _refresh_in_background()
+    start_cloud_ping()                       # la nube se refresca cada 15 min mientras el Mac esté encendido
     ThreadingServer(("0.0.0.0", PORT), Handler).serve_forever()
 
 
