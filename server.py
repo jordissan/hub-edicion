@@ -667,12 +667,22 @@ DISCOVERY_DEGRADED = [False]
 DROPPED_DONE_PAGES = []
 
 
-def discover_wedding_pages():
+def discover_wedding_pages(archive=None):
     """Trae TODAS las páginas Tipo=Boda y descarta solo las finalizadas que llevan
     inactivas más de RECENT_DONE_DAYS días — para no perder proyectos recién
     cerrados (p.ej. correcciones post-entrega que acabas hoy) ni las que siguen en
-    curso o en correcciones. Robusto ante renombrados del estado en Notion."""
+    curso o en correcciones. Robusto ante renombrados del estado en Notion.
+
+    "Inactiva" = última SESIÓN trackeada (lastActivity del archivo histórico), no la
+    fecha de edición de la página: una edición masiva en Notion (p. ej. la reestructura
+    del 1-nov-2026, que añadió "Cliente / Línea" a todas las filas) ponía todas las
+    bodas entregadas como "editadas hoy" y las regresaba al tablero. Cuenta la más
+    reciente entre esa última sesión y el fin del rango "Fecha" (la entrega); solo si
+    no hay ninguna de las dos se usa last_edited_time (así una boda recién cerrada
+    nunca se queda fuera sin archivarse)."""
     DISCOVERY_DEGRADED[0] = False
+    last_act = {(e.get("name") or "").strip().lower(): (e.get("lastActivity") or e.get("lastEnd"))
+                for e in (archive or []) if e.get("name")}
     del DROPPED_DONE_PAGES[:]
     cutoff = (datetime.date.today() - datetime.timedelta(days=RECENT_DONE_DAYS)).isoformat()
     filt = {"property": "Tipo", "select": {"equals": "Boda"}}
@@ -682,8 +692,12 @@ def discover_wedding_pages():
             kept = []
             for p in pages:
                 status = (p_select(p.get("properties", {}), "Status") or "").strip().lower()
-                edited = (p.get("last_edited_time") or "")[:10]
-                if status in DONE_STATUSES and edited < cutoff:
+                props = p.get("properties", {})
+                name = (p_title(props, "Nombre") or title_any(props)).strip().lower()
+                ps, pe = first_date(props)  # rango "Fecha" del proyecto: el fin es la entrega
+                activity = max(last_act.get(name) or "", (pe or ps or "")[:10]) \
+                    or (p.get("last_edited_time") or "")[:10]
+                if status in DONE_STATUSES and activity < cutoff:
                     DROPPED_DONE_PAGES.append(p)  # para rellenar su curva en el archivo
                     continue  # finalizada y sin actividad reciente → fuera del tablero
                 kept.append(p)
@@ -754,6 +768,9 @@ def wedding_archive_stats(w):
             span = max(1, (b - a).days + 1)
         except ValueError:
             pass
+    # última actividad real: cualquier sesión (edición o cambios) o fecha de etapa
+    acts = days + [(x.get("inicio") or "")[:10] for s in w["stages"] for x in (s.get("sessionLog") or [])]
+    acts = [d for d in acts if d]
     rondas, any_corr = set(), False
     for s in w["stages"]:
         if not s.get("isCorrections"):
@@ -767,6 +784,7 @@ def wedding_archive_stats(w):
         "hours": hours, "scenes": scenes, "span": span,
         "price": w.get("price"), "rounds": len(rondas) or (1 if any_corr else 0),
         "lastEnd": days[-1] if days else None,
+        "lastActivity": max(acts) if acts else None,  # lo usa discover_wedding_pages
         "ghost": wedding_ghost(w),
     }
 
@@ -834,13 +852,14 @@ def backfill_ghosts(archive):
 
 
 def build_data(prev_archive=None):
-    pages = discover_wedding_pages()
+    prev = load_archive() if prev_archive is None else prev_archive
+    pages = discover_wedding_pages(prev)
     weddings = [build_wedding(p) for p in pages]
     # ordenar: activas (con etapa en progreso) primero
     weddings.sort(key=lambda w: 0 if any(s["estado"] == "live" for s in w["stages"]) else 1)
     # archivo histórico: local se persiste en disco; el extractor de la nube pasa
     # el previo leído de KV (prev_archive) y publica el resultado él mismo.
-    archive = merge_archive(load_archive() if prev_archive is None else prev_archive, weddings)
+    archive = merge_archive(prev, weddings)
     backfill_ghosts(archive)
     save_archive(archive)
     now = datetime.datetime.now()
