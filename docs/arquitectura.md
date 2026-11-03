@@ -407,6 +407,13 @@ Datos a mano: `gh workflow run "Publicar dashboard" -R jordissan/hub-edicion`.
   limpieza); campos de < 16 px hacen zoom al enfocar; la caché de la PWA solo se va matando la app.
 - **Panel de preview de Claude Code**: si está oculto no corre frames (IntersectionObserver,
   rAF y timers se frenan) — una captura fuerza un frame. Las transiciones no avanzan durante un eval.
+- **Barra de título de la app del Mac (Safari, macOS 26+)**: la franja de ~32 pt de arriba
+  (semáforos) la dibuja macOS: es translúcida, el contenido pasa por debajo y la oscurece
+  ~80 % con gris `#101012`. No se controla desde la página (ni `theme-color` ni safe-area la
+  cambian); los `position:fixed/sticky` con `top:0` quedan justo debajo. Por eso la cabecera
+  fija «Tú / Hoy» (≥1024 px) usa el mismo vidrio en tema oscuro: tokens `--top-bg`
+  (`#101012` al 82 %) y `--top-fx` (`blur(24px)`) → las dos franjas se leen como una sola
+  (3-nov-2026). El tema claro conserva el vidrio anterior (62 % de `--bg`).
 - **Snapshot embebido**: refrescarlo por concatenación de texto, nunca con `re.sub` (se come
   las barras invertidas del JSON y rompe el script).
 - **Privacidad — el repo de la nube es público**: el código no tiene tokens, pero `index.html`

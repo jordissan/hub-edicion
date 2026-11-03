@@ -731,12 +731,16 @@ html.mini #focus .fdrop{padding:2px 8px}
   --glow:.72;   /* intensidad de TODOS los halos (−28 % vs la maqueta, pedido de Jordi); applyGlow() la lleva a los SVG */
   --grain-o:.55; --grain-c:.42; --amb-a:17%; --amb-b:5%;
   --grain-k:.5;  /* intensidad global del grano (×, ambos temas): .5 = mitad, pedido de Jordi 30-oct */
+  /* cabecera fija (≥1024): mismo vidrio que la barra de título de macOS en la app del Mac
+     (medido 3-nov: oscurece ~80 % con gris #101012) → las dos franjas de arriba se leen como una */
+  --top-bg:color-mix(in srgb,#101012 82%,transparent); --top-fx:blur(24px);
 }
 :root[data-theme="light"]{
   --g1:rgba(255,255,255,.86); --g2:rgba(255,255,255,.62); --edge:rgba(26,27,21,.08); --hl:rgba(255,255,255,.95);
   --side-bg:linear-gradient(170deg,rgba(255,255,255,.8),rgba(255,255,255,.55));
   --tg-bg:#ffffff; --shadow:0 30px 60px -44px rgba(60,50,20,.35);
   --glow:.3; --grain-o:.45; --grain-c:.32; --amb-a:26%; --amb-b:8%;
+  --top-bg:color-mix(in srgb,var(--bg) 62%,transparent); --top-fx:blur(18px) saturate(1.3);
 }
 
 /* ---- luz ambiente + grano (capa fija detrás de todo) ---- */
@@ -761,8 +765,8 @@ html.side-closed .side{width:76px}
   .side{display:block}
   body{padding-left:268px;transition:padding-left .38s var(--ease)}
   html.side-closed body{padding-left:76px}
-  .top{position:sticky;top:0;z-index:30;background:color-mix(in srgb,var(--bg) 62%,transparent);
-    -webkit-backdrop-filter:blur(18px) saturate(1.3);backdrop-filter:blur(18px) saturate(1.3)}
+  .top{position:sticky;top:0;z-index:30;background:var(--top-bg,color-mix(in srgb,var(--bg) 62%,transparent));
+    -webkit-backdrop-filter:var(--top-fx,blur(18px) saturate(1.3));backdrop-filter:var(--top-fx,blur(18px) saturate(1.3))}
   .top-in{padding-top:13px;padding-bottom:13px;min-height:62px}
   .top .logo{display:none}
   .crumb{display:flex}
