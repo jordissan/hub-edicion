@@ -89,6 +89,7 @@ GitHub: la verificación es visual (en el iPhone, matar la PWA y reabrir).
 Se hacen en `~/HubEdicion/index.html` (capa "IDENTIDAD A") y se portan con `sync-cloud.sh`:
 - **`--glow`**: intensidad de los halos (0,72 oscuro · 0,3 claro).
 - **`--grain-k`**: intensidad del grano de fondo y materiales, ambos temas (0,5 desde el 30-oct = mitad).
+- **`--top-bg` / `--top-fx`** (cabecera fija «Tú / Hoy», ≥1024 px): en oscuro, `#101012` al 82 % + `blur(24px)`, igual que la barra de título translúcida de macOS en la app del Mac → arriba se ve una sola franja homogénea (3-nov). El tema claro mantiene el 62 % de `--bg`.
 - **Tabbar móvil** (`.dock`/`.tabbar`): solo iconos en celdas de 42 px, alto 52 px (1-nov); los textos siguen en el HTML, ocultos, para lectores de pantalla.
 - **Intensidad diaria** (`renderHeat`): el ancho visible del heatmap se fija a columnas enteras (22 px por semana) y se centra; `scroll-snap` por columna (1-nov).
 - **`--f-t`** (prosa): fuente de frases, descripciones, notas, leyendas y pie — la mono del sistema, como el widget. Se cambia en la capa "PROSA EN MONO" al final del CSS.
