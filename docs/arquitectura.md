@@ -258,8 +258,18 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   acciones **no se reimplementan**: `callAsyncJavaScript` → `window.SprintCmd(c)` en la página
   mini aunque esté oculta, que primero hace `pull()` y luego ejecuta (`finish` /
   `finish-escena` / `finish-etapa` / `discard` / `endcycle` / `start` / `undo`; devuelve
-  `'ok'` o por qué no). La página manda `{k:'state', dest, note}` (destino propuesto y último
-  aviso) para el menú en reposo. Oculta, la página recibe `window.__hubShown=false` (también
+  `'ok'` o por qué no). La página manda `{k:'state', dest, note, pick, etapas, etapa, escenas,
+  escena}` (destino propuesto, último aviso y las listas de `#fTarget`/`#fScene` tal cual, cada
+  opción `{v, t, g}` con `g` = su `optgroup`) desde `paint()` y `remember()`.
+  **Etapa ▸ / Escena ▸** (nov-2026): submenús del reloj en reposo y en el descanso (`pick` =
+  sin bloque y con etapas; con bloque no salen, como en la ventana: `run` fija db/escena del
+  registro). Se rellenan al abrirse (`fillPick`, delegado con `identifier` "etapa"/"escena"),
+  ✓ en la actual, título "Etapa: …" / "Escena: …" que se refresca si llega un `state` con el
+  menú abierto. Elegir = `SprintCmd('etapa:<db>'|'escena:<id>')`: pone el valor en el
+  `<select>` y dispara `change` (mismo `fillScenes`/`remember` → `scSprintDest` → sync); con
+  bloque devuelve `running`. Al abrir el menú la app pide `SprintCmd('sync')` (oculta, la
+  página no hace `pull()` sola). `scSprintDest.escena`: `''` = «Sin escena» elegida a propósito
+  (se respeta en esa etapa), `null` = proponer (la recordada / última sesión / primera abierta). Oculta, la página recibe `window.__hubShown=false` (también
   como `WKUserScript` para recargas): no hace latido. En modo mini la página **nunca** pone su tono de
   meta (`chimeOnce` calla si `MINI`): el aviso lo da siempre la app (`Sounds.play("goal")`,
   visible u oculta) si la meta/descanso se cumplió hace < 15 s. Login item con `SMAppService.mainApp`

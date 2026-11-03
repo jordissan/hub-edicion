@@ -111,6 +111,12 @@ Run workflow → Zero Trust Free → Access app self-hosted sobre `hub-edicion.p
 policy Allow email) → Service Token + policy Service Auth para los widgets.
 GOTCHA UI: para crear el proyecto Pages, en Workers&Pages → Create application → abajo "Looking to deploy Pages? Get started".
 
+## Sprint desde la barra de menús del Mac (nov-2026)
+- El reloj de la barra de menús (app `mac/SprintFlotante/`, solo local) tiene **Etapa ▸** y **Escena ▸**
+  para elegir el destino del próximo bloque. En la nube no cambia nada (no hay sincronía del sprint en
+  `pages.dev`); el `index.html` solo gana las órdenes `etapa:`/`escena:` de `SprintCmd` (modo mini) y
+  respeta «Sin escena» elegida a propósito. Detalle en `docs/arquitectura.md` (Barra de menús).
+
 ## Carga rápida (nov-2026)
 - La PWA pinta al abrir la **última lectura guardada** en el iPhone (`localStorage scLastData`) en vez del
   snapshot de julio, y si `/api/edicion` trae el mismo `generatedAt` no redibuja (solo enciende EN VIVO).
