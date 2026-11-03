@@ -2439,14 +2439,15 @@ const Sprint=(function(){
   function fillScenes(){
     const t=cur(); if(!t){ selE.hidden=true; return; }
     const open=id=>t.scenes.some(sc=>sc.id===id && sc.estado!=='done');
-    const remembered=(load(LSD)||{}).escena;
+    const d=load(LSD)||{}, remembered=d.escena;
     const grp=(lab,arr)=>arr.length?`<optgroup label="${lab}">${arr.map(sc=>`<option value="${sc.id}">${esc(sc.nm)}</option>`).join('')}</optgroup>`:'';
     selE.innerHTML=`<option value="">Sin escena</option>`
       +grp('En curso',t.scenes.filter(sc=>sc.estado==='live'))
       +grp('Por hacer',t.scenes.filter(sc=>sc.estado!=='live'&&sc.estado!=='done'))
       +grp('Terminadas',t.scenes.filter(sc=>sc.estado==='done'));
     // propuesta: la recordada o la de tu última sesión si no está terminada; si no, la primera en curso; si no, la siguiente por hacer
-    const want=[remembered,t.lastScene].find(id=>id&&open(id))
+    // "Sin escena" elegida a propósito en esta etapa ('' guardado, no null) se respeta
+    const want=d.db===t.db&&remembered==='' ? '' : [remembered,t.lastScene].find(id=>id&&open(id))
       || (t.scenes.find(sc=>sc.estado==='live')||t.scenes.find(sc=>sc.estado==='wait')||{}).id;
     selE.value=want||''; selE.hidden=!t.scenes.length;
   }
@@ -2459,7 +2460,7 @@ const Sprint=(function(){
     selT.value=targets.some(t=>t.db===prev)?prev:(targets[0]?targets[0].db:'');
     fillScenes();
   }
-  function remember(){ save(LSD,{db:selT.value, escena:selE.value||null, tipo}); }
+  function remember(){ save(LSD,{db:selT.value, escena:selE.hidden?null:selE.value, tipo}); if(MINI) tellNative(); }
   function setTipo(t){ tipo=t; seg.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===t)); }
 
   // ---- aviso sonoro suave (se habilita con el primer toque: iOS lo exige) ----
@@ -2525,7 +2526,10 @@ const Sprint=(function(){
   let lastTold='';
   function tellNative(){
     const t=cur(), sc=t&&selE.value?t.scenes.find(s=>s.id===selE.value):null, txt=h=>{ const d=document.createElement('div'); d.innerHTML=h||''; return d.textContent.trim(); };
-    const st={k:'state', dest:t?[t.etapa,sc&&sc.nm].filter(Boolean).join(' · '):'', note:txt(clsMsg||note), busy};
+    // listas de etapa y escena tal cual están en la ventana (grupo = optgroup); solo se eligen sin bloque en marcha
+    const opts=sel=>sel.hidden?[]:[...sel.options].map(o=>({v:o.value, t:o.text, g:o.parentNode.tagName==='OPTGROUP'?o.parentNode.label:''}));
+    const st={k:'state', dest:t?[t.etapa,sc&&sc.nm].filter(Boolean).join(' · '):'', note:txt(clsMsg||note), busy,
+      pick:!run&&targets.length>0, etapas:opts(selT), etapa:selT.value, escenas:opts(selE), escena:selE.hidden?null:selE.value};
     const j=JSON.stringify(st); if(j!==lastTold){ lastTold=j; try{ window.webkit.messageHandlers.hub.postMessage(st); }catch(e){} } }
   function startTick(){ clearInterval(tick); tick=(run||load(LSB))?setInterval(paint,1000):null; }
 
@@ -2698,6 +2702,12 @@ const Sprint=(function(){
       if(c==='endcycle'){ if(run||!brk) return 'no-break'; drop.click(); return 'ok'; }
       if(c==='start'){ if(run) return 'running'; startBlock(); return 'ok'; }
       if(c==='undo'){ undoClose(); return 'ok'; }
+      // menú del reloj → Etapa ▸ / Escena ▸: mismo efecto que tocar las listas (no con un bloque en marcha)
+      const pk=/^(etapa|escena):(.*)$/.exec(c);
+      if(pk){ if(run) return 'running';
+        const sel=pk[1]==='etapa'?selT:selE, v=pk[2];
+        if(sel.hidden||![...sel.options].some(o=>o.value===v)) return 'unknown';
+        sel.value=v; sel.dispatchEvent(new Event('change')); paint(); return 'ok'; }
       return 'unknown'; };
     // ¿se puede arrastrar la ventana desde (x,y)? Sí, salvo sobre controles. La app nativa lo
     // pregunta al mover el ratón (aunque la ventana no tenga el foco) y decide en el mousedown.
