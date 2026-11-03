@@ -112,9 +112,9 @@ policy Allow email) → Service Token + policy Service Auth para los widgets.
 GOTCHA UI: para crear el proyecto Pages, en Workers&Pages → Create application → abajo "Looking to deploy Pages? Get started".
 
 ## Sprint desde la barra de menús del Mac (nov-2026)
-- El reloj de la barra de menús (app `mac/SprintFlotante/`, solo local) tiene **Etapa ▸** y **Escena ▸**
-  para elegir el destino del próximo bloque. En la nube no cambia nada (no hay sincronía del sprint en
-  `pages.dev`); el `index.html` solo gana las órdenes `etapa:`/`escena:` de `SprintCmd` (modo mini) y
+- El reloj de la barra de menús (app `mac/SprintFlotante/`, solo local) tiene **Etapa ▸**, **Escena ▸** y
+  **Esquema ▸** para elegir destino y esquema del próximo bloque. En la nube no cambia nada (no hay sincronía del sprint en
+  `pages.dev`); el `index.html` solo gana las órdenes `etapa:`/`escena:`/`modo:` de `SprintCmd` (modo mini) y
   respeta «Sin escena» elegida a propósito. Detalle en `docs/arquitectura.md` (Barra de menús).
 
 ## Carga rápida (nov-2026)

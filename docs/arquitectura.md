@@ -259,15 +259,21 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   mini aunque esté oculta, que primero hace `pull()` y luego ejecuta (`finish` /
   `finish-escena` / `finish-etapa` / `discard` / `endcycle` / `start` / `undo`; devuelve
   `'ok'` o por qué no). La página manda `{k:'state', dest, note, pick, etapas, etapa, escenas,
-  escena}` (destino propuesto, último aviso y las listas de `#fTarget`/`#fScene` tal cual, cada
-  opción `{v, t, g}` con `g` = su `optgroup`) desde `paint()` y `remember()`.
+  escena, pickModo, modos, modo}` (destino propuesto, último aviso, las listas de
+  `#fTarget`/`#fScene` tal cual —cada opción `{v, t, g}` con `g` = su `optgroup`— y los esquemas
+  de `SCHEMES` con su `TAG`) desde `paint()` y `remember()`.
   **Etapa ▸ / Escena ▸** (nov-2026): submenús del reloj en reposo y en el descanso (`pick` =
   sin bloque y con etapas; con bloque no salen, como en la ventana: `run` fija db/escena del
   registro). Se rellenan al abrirse (`fillPick`, delegado con `identifier` "etapa"/"escena"),
   ✓ en la actual, título "Etapa: …" / "Escena: …" que se refresca si llega un `state` con el
   menú abierto. Elegir = `SprintCmd('etapa:<db>'|'escena:<id>')`: pone el valor en el
   `<select>` y dispara `change` (mismo `fillScenes`/`remember` → `scSprintDest` → sync); con
-  bloque devuelve `running`. Al abrir el menú la app pide `SprintCmd('sync')` (oculta, la
+  bloque devuelve `running`. **Esquema ▸** solo en reposo (`pickModo` = sin bloque ni
+  descanso): `SprintCmd('modo:<k>')` = `setMode(k)` como el botón (reinicia el ciclo; `custom`
+  usa `mode.custom` sin abrir Ajustar); con bloque `running`, en descanso `break`. Submenús
+  genéricos en `main.swift` (`PICKS`, `can`, `pickers`, `fillPick`). Prueba sin pantalla:
+  `swiftc -D DUMP_MENU` imprime el menú y ejecuta `HUB_PICK="modo:pomo,etapa:<db>,…"` por
+  `send` (no va en la build de `build.sh`). Al abrir el menú la app pide `SprintCmd('sync')` (oculta, la
   página no hace `pull()` sola). `scSprintDest.escena`: `''` = «Sin escena» elegida a propósito
   (se respeta en esa etapa), `null` = proponer (la recordada / última sesión / primera abierta). Oculta, la página recibe `window.__hubShown=false` (también
   como `WKUserScript` para recargas): no hace latido. En modo mini la página **nunca** pone su tono de
