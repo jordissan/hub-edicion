@@ -157,7 +157,10 @@ Un solo archivo: CSS (tokens Pantone, tema claro/oscuro) + HTML + un `<script>` 
        que multiplica la opacidad por tema (`--grain-o` fondo 0,55/0,45 · `--grain-c` materiales 0,42/0,32).
      - Los halos de los SVG son filtros del sprite (`fxGlow` barras señaladas `.glw`, `fxGlowL`
        la curva, `fxGlowD` el donut). Las barras usan degradados compartidos (`gfill()` →
-       `#gSun/#gVio/#gNar`).
+       `#gSun/#gVio/#gNar`). La opacidad de su base es **`--bar-fade`**: 0,42 en oscuro y 0,61 en claro
+       (velo −33 %, 3-nov-2026).
+     - Heatmap «Intensidad diaria»: `--h1…--h5` por tema. En claro va de lima pálido a oliva-lima
+       vivo (`#dae7b7 → #799100`), sin llegar a oscuro, más un halo en `.s5` (3-nov-2026).
      - Una sola perilla: **`--glow`** (0,72 oscuro, −28 % vs la maqueta; 0,3 claro).
        `applyGlow()` la lleva a los `feFuncA[data-g]`.
      - Las rejillas responden al ancho real del contenido con container queries sobre `.wrap`
@@ -412,7 +415,8 @@ Datos a mano: `gh workflow run "Publicar dashboard" -R jordissan/hub-edicion`.
   ~80 % con gris `#101012`. No se controla desde la página (ni `theme-color` ni safe-area la
   cambian); los `position:fixed/sticky` con `top:0` quedan justo debajo. Por eso la cabecera
   fija «Tú / Hoy» (≥1024 px) usa el mismo vidrio en tema oscuro: tokens `--top-bg`
-  (`#101012` al 82 %) y `--top-fx` (`blur(24px)`) → las dos franjas se leen como una sola
+  (`--bg` al 82 %; primero fue `#101012`, pero Safari a veces pinta la franja sólida con el negro de
+  `--bg`) y `--top-fx` (`blur(24px)`) → las dos franjas se leen como una sola
   (3-nov-2026). El tema claro conserva el vidrio anterior (62 % de `--bg`).
 - **Snapshot embebido**: refrescarlo por concatenación de texto, nunca con `re.sub` (se come
   las barras invertidas del JSON y rompe el script).
