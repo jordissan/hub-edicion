@@ -89,9 +89,11 @@ GitHub: la verificación es visual (en el iPhone, matar la PWA y reabrir).
 Se hacen en `~/HubEdicion/index.html` (capa "IDENTIDAD A") y se portan con `sync-cloud.sh`:
 - **`--glow`**: intensidad de los halos (0,72 oscuro · 0,3 claro).
 - **`--grain-k`**: intensidad del grano de fondo y materiales, ambos temas (0,5 desde el 30-oct = mitad).
-- **`--top-bg` / `--top-fx`** (cabecera fija «Tú / Hoy», ≥1024 px): en oscuro, `#101012` al 82 % + `blur(24px)`, igual que la barra de título translúcida de macOS en la app del Mac → arriba se ve una sola franja homogénea (3-nov). El tema claro mantiene el 62 % de `--bg`.
+- **`--top-bg` / `--top-fx`** (cabecera fija «Tú / Hoy», ≥1024 px): en oscuro, `--bg` al 82 % + `blur(24px)` para igualar la barra de título de macOS en la app del Mac, que unas veces es translúcida (oscurece ~80 %) y otras Safari la pinta sólida con el negro de `--bg` → arriba se ve una sola franja homogénea (3-nov). El tema claro mantiene el 62 % de `--bg`.
 - **Tabbar móvil** (`.dock`/`.tabbar`): solo iconos en celdas de 42 px, alto 52 px (1-nov); los textos siguen en el HTML, ocultos, para lectores de pantalla.
 - **Intensidad diaria** (`renderHeat`): el ancho visible del heatmap se fija a columnas enteras (22 px por semana) y se centra; `scroll-snap` por columna (1-nov).
+- **`--h1…--h5`** (colores del heatmap): en claro, de lima pálido a oliva-lima vivo, `#dae7b7 → #799100` (OKLCH L .90→.62, C .07→.17), con halo en `.s5` escalado por `--glow`. Antes terminaba casi en negro (`#334305`) (3-nov).
+- **`--bar-fade`**: opacidad de la base de las barras con degradado (`#gSun/#gVio/#gNar`): 0,42 en oscuro y 0,61 en claro, o sea, velo −33 % (3-nov).
 - **`--f-t`** (prosa): fuente de frases, descripciones, notas, leyendas y pie — la mono del sistema, como el widget. Se cambia en la capa "PROSA EN MONO" al final del CSS.
 
 ## Modelo, reglas y detalles técnicos

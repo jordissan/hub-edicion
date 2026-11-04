@@ -88,6 +88,7 @@ if(/[?&]mini\b/.test(location.search))document.documentElement.classList.add('mi
      Validado con validate_palette: CVD ΔE 16,4 · visión normal 18,1 (todos los pares). */
   --f-prep:#5aa3ec; --f-teas:#40d9c1; --f-prep-tx:#5aa3ec; --f-teas-tx:#40d9c1;
   --ghost:#7c7c88; --debar:#3d3d46;
+  --bar-fade:.42;   /* base de las barras con degradado (gSun/gVio/gNar): opacidad abajo */
   --h1:#4a4e12; --h2:#6c7218; --h3:#8f971f; --h4:#b4c226; --h5:#d9ed2f;
   --tipbg:#1c1c21;
   --f-d:'Archivo',system-ui,sans-serif;
@@ -105,7 +106,10 @@ if(/[?&]mini\b/.test(location.search))document.documentElement.classList.add('mi
   --sun-tx:#5f7511; --naranja-tx:#b8431a; --violeta-tx:#5646b8;
   --f-prep-tx:#2563a8; --f-teas-tx:#0b7a6a;
   --debar:#d8d7cf;
-  --h1:#9fb223; --h2:#82981a; --h3:#657d11; --h4:#4b620a; --h5:#334305;
+  --bar-fade:.61;   /* velo de las barras −33 % en claro (3-nov): se desvanecen 39 % en vez de 58 % */
+  /* retícula (3-nov): como en oscuro, más horas = más color (OKLCH L .90→.62, C .07→.17, h≈120);
+     antes se oscurecía hasta casi negro (#334305) */
+  --h1:#dae7b7; --h2:#c0d384; --h3:#a6be4e; --h4:#8ea70c; --h5:#799100;
   --tipbg:#ffffff;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -731,9 +735,10 @@ html.mini #focus .fdrop{padding:2px 8px}
   --glow:.72;   /* intensidad de TODOS los halos (−28 % vs la maqueta, pedido de Jordi); applyGlow() la lleva a los SVG */
   --grain-o:.55; --grain-c:.42; --amb-a:17%; --amb-b:5%;
   --grain-k:.5;  /* intensidad global del grano (×, ambos temas): .5 = mitad, pedido de Jordi 30-oct */
-  /* cabecera fija (≥1024): mismo vidrio que la barra de título de macOS en la app del Mac
-     (medido 3-nov: oscurece ~80 % con gris #101012) → las dos franjas de arriba se leen como una */
-  --top-bg:color-mix(in srgb,#101012 82%,transparent); --top-fx:blur(24px);
+  /* cabecera fija (≥1024): imita la barra de título de macOS en la app del Mac (medido 3-nov):
+     cuando es translúcida oscurece ~80 %; cuando Safari la pinta sólida es el negro de --bg →
+     tono --bg al 82 % para que las dos franjas de arriba se lean como una en ambos casos */
+  --top-bg:color-mix(in srgb,var(--bg) 82%,transparent); --top-fx:blur(24px);
 }
 :root[data-theme="light"]{
   --g1:rgba(255,255,255,.86); --g2:rgba(255,255,255,.62); --edge:rgba(26,27,21,.08); --hl:rgba(255,255,255,.95);
@@ -894,6 +899,7 @@ html.side-closed .spr-mini{opacity:1;pointer-events:auto;transition-delay:.2s}
 #donut.swirl .dsegs{filter:none}
 .settled #race .rline{filter:url(#fxGlowL)}
 :root:not([data-theme="light"]) .heat .cell.s5{box-shadow:0 0 12px rgba(217,237,47,calc(.55*var(--glow)))}
+:root[data-theme="light"] .heat .cell.s5:not(.today){box-shadow:0 0 10px rgba(121,145,0,calc(.9*var(--glow)))}
 .heat .cell.s5.today,.heat .cell.today{box-shadow:inset 0 0 0 1.5px var(--sun)}
 /* la cinta: clips iluminados, como en la línea de tiempo de un editor */
 .clip.prep{--c:var(--f-prep)} .clip.teas{--c:var(--f-teas)} .clip.doc{--c:var(--sun-block)} .clip.hl{--c:var(--violeta)} .clip.cam{--c:var(--naranja)}
@@ -1015,9 +1021,9 @@ html.mini #focus .fplan,html.mini #focus .fmode button i{display:none}
     </symbol>
     <symbol id="i-arch" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="4" rx="1.2"/><path d="M5.5 9v8.5A1.5 1.5 0 0 0 7 19h10a1.5 1.5 0 0 0 1.5-1.5V9M10 12.5h4"/></symbol>
     <!-- barras: degradado vertical (luz arriba, se apaga hacia la base) -->
-    <linearGradient id="gSun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--sun)"/><stop offset="1" style="stop-color:var(--sun);stop-opacity:.42"/></linearGradient>
-    <linearGradient id="gVio" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--violeta)"/><stop offset="1" style="stop-color:var(--violeta);stop-opacity:.42"/></linearGradient>
-    <linearGradient id="gNar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--naranja)"/><stop offset="1" style="stop-color:var(--naranja);stop-opacity:.42"/></linearGradient>
+    <linearGradient id="gSun" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--sun)"/><stop offset="1" style="stop-color:var(--sun);stop-opacity:var(--bar-fade)"/></linearGradient>
+    <linearGradient id="gVio" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--violeta)"/><stop offset="1" style="stop-color:var(--violeta);stop-opacity:var(--bar-fade)"/></linearGradient>
+    <linearGradient id="gNar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style="stop-color:var(--naranja)"/><stop offset="1" style="stop-color:var(--naranja);stop-opacity:var(--bar-fade)"/></linearGradient>
     <!-- halos (la intensidad la escala applyGlow() con --glow: data-g = intensidad base) -->
     <filter id="fxGlow" x="-60%" y="-60%" width="220%" height="220%" color-interpolation-filters="sRGB">
       <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="b"/>
