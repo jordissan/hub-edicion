@@ -2540,6 +2540,8 @@ const Sprint=(function(){
     const opts=sel=>sel.hidden?[]:[...sel.options].map(o=>({v:o.value, t:o.text, g:o.parentNode.tagName==='OPTGROUP'?o.parentNode.label:''}));
     const st={k:'state', dest:t?[t.etapa,sc&&sc.nm].filter(Boolean).join(' · '):'', note:txt(clsMsg||note), busy,
       pick:!run&&targets.length>0, etapas:opts(selT), etapa:selT.value, escenas:opts(selE), escena:selE.hidden?null:selE.value,
+      // tipo de sesión, como sus dos botones (se elige en reposo y en descanso, nunca con el bloque en marcha)
+      tipos:[...seg.querySelectorAll('button')].map(b=>({v:b.dataset.t, t:b.textContent.trim(), g:''})), tipo,
       // esquemas, como sus botones (nombre + tiempos); solo en reposo, igual que en la ventana
       pickModo:!run&&!load(LSB), modos:Object.entries(SCHEMES).map(([k,v])=>({v:k, t:v.nm+(TAG[k]()?' · '+TAG[k]():''), g:''})), modo:mode.k};
     const j=JSON.stringify(st); if(j!==lastTold){ lastTold=j; try{ window.webkit.messageHandlers.hub.postMessage(st); }catch(e){} } }
@@ -2714,11 +2716,15 @@ const Sprint=(function(){
       if(c==='endcycle'){ if(run||!brk) return 'no-break'; drop.click(); return 'ok'; }
       if(c==='start'){ if(run) return 'running'; startBlock(); return 'ok'; }
       if(c==='undo'){ undoClose(); return 'ok'; }
-      // menú del reloj → Etapa ▸ / Escena ▸: mismo efecto que tocar las listas (no con un bloque en marcha)
+      // menú del reloj → Etapa ▸ / Escena ▸ / Tipo ▸: mismo efecto que tocar las listas (no con un bloque en marcha)
       // Esquema ▸: como tocar su botón (Propio usa tus minutos guardados; se cambian en la ventana)
       const md=/^modo:(.*)$/.exec(c);
       if(md){ if(run) return 'running'; if(brk) return 'break'; if(!SCHEMES[md[1]]) return 'unknown';
         editing=false; setMode(md[1]); return 'ok'; }
+      // Tipo ▸: como tocar Edición/Gestión (se guarda y se sincroniza; el bloque en marcha conserva el suyo)
+      const tp=/^tipo:(.*)$/.exec(c);
+      if(tp){ if(run) return 'running'; if(![...seg.querySelectorAll('button')].some(b=>b.dataset.t===tp[1])) return 'unknown';
+        setTipo(tp[1]); remember(); paint(); return 'ok'; }
       const pk=/^(etapa|escena):(.*)$/.exec(c);
       if(pk){ if(run) return 'running';
         const sel=pk[1]==='etapa'?selT:selE, v=pk[2];
