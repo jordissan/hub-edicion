@@ -117,7 +117,7 @@ GOTCHA UI: para crear el proyecto Pages, en Workers&Pages → Create application
 ## Sprint desde la barra de menús del Mac (nov-2026)
 - El reloj de la barra de menús (app `mac/SprintFlotante/`, solo local) tiene **Etapa ▸**, **Escena ▸**, **Tipo ▸**
   (Edición/Gestión) y **Esquema ▸** para elegir destino, tipo y esquema del próximo bloque. En la nube no cambia nada (no hay sincronía del sprint en
-  `pages.dev`); el `index.html` solo gana las órdenes `etapa:`/`escena:`/`tipo:`/`modo:` de `SprintCmd` (modo mini) y
+  `pages.dev`); el `index.html` solo gana las órdenes `etapa:`/`escena:`/`tipo:`/`modo:`/`tipo-toggle` (atajo ⌃⌥B, Edición ↔ Gestión) de `SprintCmd` (modo mini) y
   respeta «Sin escena» elegida a propósito. Detalle en `docs/arquitectura.md` (Barra de menús).
 
 ## Carga rápida (nov-2026)

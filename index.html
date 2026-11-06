@@ -2734,6 +2734,12 @@ const Sprint=(function(){
       const tp=/^tipo:(.*)$/.exec(c);
       if(tp){ if(run) return 'running'; if(![...seg.querySelectorAll('button')].some(b=>b.dataset.t===tp[1])) return 'unknown';
         setTipo(tp[1]); remember(); paint(); return 'ok'; }
+      // ⌃⌥B (atajo global de la app nativa): alterna Edición ↔ Gestión; mismas reglas que Tipo ▸ (no con un bloque en marcha).
+      // Contesta 'ok:<tipo que quedó>' para que la app avise cuál es.
+      if(c==='tipo-toggle'){ if(run) return 'running';
+        const bs=[...seg.querySelectorAll('button')]; if(bs.length<2) return 'unknown';
+        const n=bs[(Math.max(0,bs.findIndex(b=>b.dataset.t===tipo))+1)%bs.length].dataset.t;
+        setTipo(n); remember(); paint(); return 'ok:'+n; }
       const pk=/^(etapa|escena):(.*)$/.exec(c);
       if(pk){ if(run) return 'running';
         const sel=pk[1]==='etapa'?selT:selE, v=pk[2];

@@ -308,8 +308,17 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   no con el último sondeo); id 2 manda `discard`. Mismo camino que el menú (`send(cmd)` →
   `SprintCmd`). Feedback: `Sounds.play(acción)` + el icono de la barra cambia 1,5 s a
   `play`/`checkmark`/`xmark.circle` (`flash` en `render()`); si no aplica, `Sounds.play("error")`.
+  **id 4 = Edición ↔ Gestión (⌃⌥B, 6-nov-2026)**: mismos modificadores que la tecla base, tecla B
+  (`HotKey.tipoKey`; si la base ya es B, N). `toggleTipo()` → `SprintCmd('tipo-toggle')` (index.html,
+  junto a `tipo:`): rota `#fTipo` con `setTipo` + `remember()` + `paint()`; devuelve `'ok:<tipo>'`,
+  `'running'` con bloque en marcha (misma regla que Tipo ▸: el bloque conserva su `run.tipo`) o
+  `'unknown'`. Aviso: `flash` ahora lleva texto (el reloj muestra 2 s «Edición»/«Gestión» con icono
+  `scissors`/`folder`) y suena la acción `tipo` (Pop; 1 toque = Edición, 2 = Gestión); en error,
+  `Sounds.play("error")`. El menú añade bajo *Tipo ▸* «Cambiar a «…»» con el atajo como `keyEquivalent`.
+  Probar sin pantalla: `HUB_PICK="hotkey:4,…"` en la build `-D DUMP_MENU` ejecuta `hotKey(4)` e
+  imprime el título de la barra; `HUB_LOG=1` registra el resultado de cada `RegisterEventHotKey`.
 - **Sonidos** (`enum Sounds` + `soundsMenu()` en `main.swift`, *Opciones → Sonidos*): acciones
-  `start` (de serie Tink), `finish` (Hero), `discard` (Funk), `goal` (Glass, meta/descanso) y
+  `start` (de serie Tink), `finish` (Hero), `discard` (Funk), `goal` (Glass, meta/descanso), `tipo` (Pop, ⌃⌥B) y
   `error` (aviso del sistema; también cuando falla una acción del menú). Guardado en
   `UserDefaults` `snd.<acción>`: nombre de un sonido (`NSSound(named:)`, lista de
   `/System/Library/Sounds` + `~/Library/Sounds`), `"·sistema"` = `NSSound.beep()` o `""` =
