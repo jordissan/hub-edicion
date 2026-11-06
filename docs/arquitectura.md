@@ -106,6 +106,12 @@ Un solo archivo: CSS (tokens Pantone, tema claro/oscuro) + HTML + un `<script>` 
    - **Cambios/Correcciones**: fuera de las horas *efectivas* (Carrera, ahorro, $/h, "edición
      lista"), dentro del tiempo trabajado (Hoy, Ritmo, racha, heatmap). Una etapa de Cambios
      viva no "reabre" la boda (`hasLive` la ignora).
+   - **Boda en curso** (`inProgress`, nov-2026): `hasLive` **o** (con horas efectivas, no archivada,
+     con alguna etapa de edición ≠ `done` —en curso o sin iniciar— y `status` que NO sea
+     Finalizadas/Hecho/Correcciones). Cambios nunca cuenta. Antes se decía "terminada" cuando no
+     había etapa `live`, y una boda con la etapa siguiente aún sin iniciar (Ale + Lorenzo, 5-nov,
+     Montaje HL/SF ⚪️) se daba por entregada. Una boda en curso queda fuera de `refCur`/`refGhost`,
+     de la Carrera y de las métricas finales; chip EN CURSO en Proyectos y fila en Hoy.
    - **Carrera**: `refCur`/`refGhost` = las 2 bodas con edición terminada más recientes (incluye
      archivadas reconstruidas desde `ghost`); compara **solo fases compartidas**.
    - **h/escena** sin teaser; **$/h** con todo (el precio lo incluye).

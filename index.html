@@ -1340,6 +1340,14 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
   // "en curso" = alguna etapa de EDICIÓN viva; una ronda de Cambios activa no
   // reabre la boda (seguiría siendo "edición terminada" para Carrera/refCur)
   const hasLive = w => (w.stages||[]).some(s=>s.estado==='live' && !isCorr(s));
+  // "edición en curso" (nov-2026): una boda NO está terminada mientras le quede alguna etapa
+  // de edición sin cerrar — esté "en curso" o aún "sin iniciar" (p.ej. Montaje HL/SF tras
+  // terminar el color). Cambios no cuenta (es una sesión global de ajustes). Si Notion ya la
+  // marca Finalizadas/Correcciones, o viene del archivo, manda eso. Sin horas = aún no empieza.
+  const DELIVERED_ST = /^(finalizad|hecho|complet|done|correc)/;
+  const editPending = w => (w.stages||[]).some(s=>!isCorr(s) && s.estado!=='done');
+  const inProgress = w => hasLive(w) ||
+    (!w.archived && effH(w)>0 && editPending(w) && !DELIVERED_ST.test((w.status||'').trim().toLowerCase()));
   // ---- etapas: fase + rol ----------------------------------------------------
   // Plantilla nueva (oct-2026): Fase = PREP · TEAS · DCT · HL/SF · CMB, etapas
   // "Setup", "Música (TEAS)", "Montaje (DCT)"… Plantilla vieja: Fase = Documental /
@@ -1511,7 +1519,7 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
     const bestDowName = DOWNAMES[bestDowIdx];
     // boda en curso para HOY (cualquiera del tablero, mida o no aún) y sus etapas activas:
     // varias pueden ir en paralelo (p.ej. Montaje (TEAS) + Música (HL/SF))
-    const liveAny = weddings.find(hasLive) || null;
+    const liveAny = weddings.find(inProgress) || null;
     const activeWed = liveAny ? (liveAny.name||'').trim() : null;
     const activeStages = liveAny ? (liveAny.stages||[]).filter(s=>s.estado==='live' && !isCorr(s)).map(s=>shortName(s.etapa)) : [];
 
@@ -1547,7 +1555,7 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
       // chip de estado
       const st=(w.status||'').toLowerCase();
       let chip;
-      if (hasLive(w)) chip=['now','EN CURSO'];
+      if (inProgress(w)) chip=['now','EN CURSO'];
       else if (/correc/.test(st)) chip=['now','EN ESPERA DE CAMBIOS'];
       else chip=['done','ENTREGADA'];
       return {
@@ -1560,7 +1568,7 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
 
     // orden: en curso primero, luego por inicio reciente
     const measSorted = measured.slice().sort((a,b)=>{
-      const la=hasLive(a)?0:1, lb=hasLive(b)?0:1;
+      const la=inProgress(a)?0:1, lb=inProgress(b)?0:1;
       if(la!==lb) return la-lb;
       return (b.projectStart||'').localeCompare(a.projectStart||'');
     });
@@ -1590,11 +1598,12 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
     }
 
     // boda en curso (para Hoy y selección por defecto de Proyectos)
-    const liveW = measSorted.find(hasLive) || null;
+    const liveW = measSorted.find(inProgress) || null;
 
     // ---- pareja de referencia: las 2 bodas con EDICIÓN ya terminada más recientes ----
     // (retrospectivo — siempre significativo, no depende de que la actual esté avanzada).
-    // "edición terminada" = medida y sin etapas live (puede estar en correcciones).
+    // "edición terminada" = medida y sin ninguna etapa de edición pendiente (en curso o sin
+    // iniciar; Cambios no cuenta — puede estar en correcciones).
     const lastEffDate = w => { let m=null; for(const s of (w.stages||[])){ if(isCorr(s))continue; for(const x of (s.sessionLog||[])){ if(x.inicio&&(m==null||x.inicio.slice(0,10)>m))m=x.inicio.slice(0,10);} } return m||w.projectEnd||w.projectStart||''; };
     // bodas entregadas que ya salieron del tablero (45 días sin cambios): se
     // reconstruyen desde su "ghost" del archivo para que sigan sirviendo de fantasma
@@ -1615,7 +1624,7 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
     for (const w of fromArchive.slice().sort((a,b)=>(b.lastEnd||'').localeCompare(a.lastEnd||''))){
       const pm=projModel(w); pm.archived=true; pm.chip=['done','ENTREGADA'];
       if(!projects[pm.key]){ projects[pm.key]=pm; archOrder.push(pm.key); } }
-    const editComplete = measured.filter(w=> !hasLive(w)).concat(fromArchive);
+    const editComplete = measured.filter(w=> !inProgress(w)).concat(fromArchive);
     editComplete.sort((a,b)=> lastEffDate(b).localeCompare(lastEffDate(a)));
     const refCur   = editComplete[0] || null;   // p.ej. Lourdes
     const refGhost = editComplete[1] || null;    // p.ej. Camila
