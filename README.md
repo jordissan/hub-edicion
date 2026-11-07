@@ -126,3 +126,13 @@ GOTCHA UI: para crear el proyecto Pages, en Workers&Pages → Create application
 - Fuentes desde el propio sitio, sin la hoja de Google que bloqueaba el primer pintado.
 - Medido en el Mac: datos reales en pantalla de ~240 ms a ~90 ms. Detalle en `docs/arquitectura.md` §10.
 
+
+## Reacomodo de tarjetas + sprint compacto (7-nov-2026)
+- **Cuadrícula de 12 columnas** (capa «REACOMODO DE TARJETAS» al final del `<style>`): una fila solo junta
+  tarjetas de altura natural parecida, nunca se estira una tarjeta para rellenar. Hoy = sprint (1/3) + seis
+  cifras 3×2 (2/3), luego *Horas por día* (3/4) + *Plan de hoy* (1/4). El *Insight* va en *Tus sesiones*,
+  bajo *Duración*. *Horas por día* se dibuja a escala real (alto fijo).
+- **Sprint compacto**: vidrio oscuro como el del sidebar; esquema, destino y «cerrar al terminar» en
+  ventanas emergentes. En la nube se comporta igual (no depende de `/api`). La ventana flotante del Mac no cambia.
+- Tras publicar, en el iPhone hay que **matar y reabrir la PWA** para saltar su caché.
+- Detalle en `docs/arquitectura.md` (capa de render y `Sprint`).

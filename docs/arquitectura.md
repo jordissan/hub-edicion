@@ -125,7 +125,9 @@ Un solo archivo: CSS (tokens Pantone, tema claro/oscuro) + HTML + un `<script>` 
 3. **Capa de render** — `fmt/fmtHM/fmtMXN`, `S()` (SVG), `barPath`, tooltip, `liveBar`;
    `render{Chrome,Hero,Race,Hoy,Dia7,Ritmo,Adn,Mesa,Tarifa}`. `renderAll` aísla cada sección
    (si una falla, las demás se pintan). `regRebuild(nombre, fn)` registra las gráficas que cambian
-   de geometría al cruzar 640 px (hoy: Horas por día). La **Carrera** (`renderRace`) se dibuja al
+   de geometría al cruzar 640 px (hoy: Horas por día). **Horas por día** en escritorio se dibuja a
+   escala real (viewBox = ancho de su tarjeta × 250, alto fijo) y un `ResizeObserver` sobre
+   `.dia7card` la redibuja vía `rebuilds.get('dia7')` si cambia el ancho (7-nov-2026). La **Carrera** (`renderRace`) se dibuja al
    tamaño real del contenedor (viewBox = px) y un `ResizeObserver` la redibuja al cambiar el ancho;
    < 560 px usa la versión compacta (nombres como pastillas `#raceChips`). La curva es una guía
    visual (`raceCurve`). Primero, suavizado gaussiano (σ 3,4 días) con reflejo impar en los bordes:
@@ -136,7 +138,18 @@ Un solo archivo: CSS (tokens Pantone, tema claro/oscuro) + HTML + un `<script>` 
    lista" = Cambios (punteados, `.fadein`); las curvas de edición son `path.draw` (las anima
    `__playRace`). Las propuestas de diseño que llevaron a este hero están en
    `docs/propuestas/carrera.html`.
-4. **`Sprint`** — tarjeta de enfoque (§5).
+4. **`Sprint`** — tarjeta de enfoque (§5). Justo después, el módulo **sprint compacto** (7-nov-2026,
+   solo si `!MINI`): reacomoda los nodos reales de `#focus` (mismos ids y listeners) dentro de
+   tres ventanas emergentes `.sx-pop` — esquema (`#fMode`, `#fPlan`, `#fAdj`, `#fEdit`), destino
+   (`#fPick`) y ⋯ (`#fCut`, `#fDrop`) — y les pone disparadores (`.sx-chip`, `.sx-destbtn`, `.sx-more`)
+   cuyos textos y visibilidad sigue un `MutationObserver` (los `hidden` que pone `paint()`). Clase
+   `.focuscard.sx`. **La ventana flotante (`?mini=1`) no se toca**: su CSS depende de
+   `#focus>div:nth-child(1|2)` y `.fact`, que se conservan en el HTML.
+   **Acomodo (reacomodo B, 7-nov-2026):** cuadrícula de 12 columnas (capa «REACOMODO DE TARJETAS» al
+   final del `<style>`, con `@container wrap` ≥931 / ≤930 y `@media` ≤640). `.hoy` = `#focus`,
+   `.cifras` (envuelve `#tilesRow` y `#miniRow`, que van con `display:contents`), `.dia7card`,
+   `.plan`. `#aipBox` vive en `.adn` entre *Duración* y `#anatCard`. Ojo: esa capa usa selectores
+   simples y depende de ir **al final** de la hoja principal (no en `<style id="fonts">`).
 5. **Navegación + tema**
    - **Sidebar `#side`** (≥1024 px; plegado = `html.side-closed`, guardado en `scSide`). Sin
      preferencia guardada, arranca desplegado desde 1280 px. El pre-script del `<head>` pone la
