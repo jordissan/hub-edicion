@@ -964,6 +964,192 @@ html.mini #focus .fplan,html.mini #focus .fmode button i{display:none}
 .card .note,.legend .k,.dlr .n,.aip .tx small,.focuscard .why,#heatMetaTxt,.colofon,.greet .g2{font-size:11.5px}
 .legend .k,.dlr .n{line-height:1.3}
 @media(max-width:640px){ .hero .lede{font-size:13.5px} .sec>.sub{font-size:12.5px} }
+
+/* ================================================================================================
+   REACOMODO DE TARJETAS (7-nov-2026, propuesta B «Bloques» elegida por Jordi; maqueta en
+   docs/propuestas/reacomodo-tarjetas.html). Cuadrícula de 12 columnas, mismo gap de 14 px.
+   Reglas: cada gráfica va en el ancho donde su texto queda a tamaño de diseño (15 barras 7 col,
+   7 barras 5 col); una fila solo junta tarjetas de altura natural parecida — si no, se apilan
+   piezas en la columna corta. Nunca se estira una tarjeta sola para rellenar.
+   ================================================================================================ */
+.hoy .cifras :is(#miniRow,#tilesRow){display:contents}
+.hoy .m{min-height:100px}
+/* Plan en columna angosta: el subtítulo baja de línea (igual que «Horas por día») */
+.hoy .plan .cl{flex-wrap:wrap;row-gap:2px}
+.hoy .plan .cl h3{white-space:nowrap}
+/* «Duración» se estira si la lista de Ahorro crece: reparte el aire arriba y abajo de la gráfica (no la agranda) */
+.adn>.card:first-child{display:flex;flex-direction:column}
+.adn>.card:first-child>svg{margin-block:auto}
+.adn>#aipBox{margin:0}
+
+/* —— escritorio (contenido ≥ 931 px) —— */
+@container wrap (min-width:931px){
+  :is(.hoy,.ritmo,.adn,.mesa2,.dinero){grid-template-columns:repeat(12,minmax(0,1fr))}
+  /* Hoy: sprint compacto (4) + seis cifras 3×2 (8) · la semana (9) + el plan (3) */
+  #focus{grid-area:1/1/2/5}
+  .hoy .cifras{grid-area:1/5/2/13;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+  .hoy .dia7card{grid-area:2/1/3/10;margin:0}
+  .hoy .plan{grid-area:2/10/3/13}
+  /* Ritmo: 15 barras (7) junto a 7 barras (5) → miden lo mismo de alto */
+  .ritmo>:nth-child(1){grid-column:span 7}
+  .ritmo>:nth-child(2){grid-column:span 5}
+  .ritmo>.full{grid-column:1/-1}
+  /* Sesiones: Duración + Insight (5) junto a Ahorro por etapa (7) */
+  .adn{grid-template-rows:1fr auto;align-items:stretch}
+  .adn>.card:first-child{grid-area:1/1/2/6}
+  .adn>#aipBox{grid-area:2/1/3/6}
+  .adn>#anatCard{grid-area:1/6/3/13}
+  /* Proyectos: dos listas que crecen con las mismas etapas → mitad y mitad · Tarifa: cuatro cifras de 1/4 */
+  .mesa2>*{grid-column:span 6}
+  .dinero>*{grid-column:span 3}
+}
+/* escritorio angosto (contenido < 1040): el plan pasa a 4 col para no partirse */
+@container wrap (min-width:931px) and (max-width:1039px){
+  .hoy .dia7card{grid-area:2/1/3/9}
+  .hoy .plan{grid-area:2/9/3/13}
+}
+/* —— tableta y escritorio con poco ancho (contenido ≤ 930 px) —— */
+@container wrap (max-width:930px){
+  :is(.hoy,.ritmo,.adn){grid-template-columns:repeat(12,minmax(0,1fr))}
+  /* el sprint a todo lo ancho (reloj · destino · botón en una fila), las cifras en 3×2, la semana con el plan */
+  #focus{grid-area:1/1/2/13}
+  .hoy .cifras{grid-area:2/1/3/13;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+  .hoy .dia7card{grid-area:3/1/4/9;margin:0}
+  .hoy .plan{grid-area:3/9/4/13}
+  .ritmo>:nth-child(1){grid-column:span 7}
+  .ritmo>:nth-child(2){grid-column:span 5}
+  .ritmo>.full{grid-column:1/-1}
+  .adn{grid-template-rows:1fr auto;align-items:stretch}
+  .adn>.card:first-child{grid-area:1/1/2/7}
+  .adn>#aipBox{grid-area:2/1/3/7}
+  .adn>#anatCard{grid-area:1/7/3/13}
+  .adn .anat .arow{grid-template-columns:96px 1fr;gap:10px}
+}
+/* —— móvil (≤ 640 px): una columna; las cifras de dos en dos —— */
+@media(max-width:640px){
+  :is(.ritmo,.adn){grid-template-columns:1fr}
+  :is(.ritmo,.adn)>:nth-child(n){grid-column:auto}
+  .adn{grid-template-rows:none}
+  .adn>:is(.card,#aipBox){grid-area:auto}
+  .hoy{grid-template-columns:1fr 1fr}
+  .hoy>:is(#focus,.cifras,.dia7card,.plan){grid-area:auto;grid-column:1/-1}
+  .hoy .cifras{grid-template-columns:1fr 1fr}
+  .hoy .plan{order:1}.hoy .dia7card{order:2}
+}
+
+/* ================================================================================================
+   SPRINT COMPACTO (7-nov-2026, parte del reacomodo B) — la tarjeta deja de ser un bloque lima y usa el mismo
+   material que el sprint del sidebar: vidrio oscuro con la luz lima en la esquina, el reloj en
+   Archivo Light lima y el botón lima. Lo que casi no se toca va plegado en menús:
+   · ESQUEMA ▾ (arriba a la derecha): esquemas, ciclo dibujado, Editar tiempos.
+   · DESTINO ▾ (junto al reloj): etapa · escena · Edición/Gestión.
+   · ⋯ (junto al botón, solo con bloque o descanso): cerrar también en Notion y descartar.
+   Solo en el dashboard: la ventana flotante (html.mini) no cambia.
+   ================================================================================================ */
+.focuscard.sx{position:relative;overflow:visible;container:sx/inline-size;gap:0;justify-content:flex-start;color:var(--txt);
+  background:radial-gradient(120% 110% at 0% 100%,rgba(217,237,47,calc(.16*var(--glow))),transparent 60%),linear-gradient(180deg,var(--g1),var(--g2));
+  border:1px solid var(--edge);border-radius:20px;box-shadow:inset 0 1px 0 var(--hl),var(--shadow);padding:18px 20px}
+.focuscard.sx.sx-open{z-index:30}
+.focuscard.sx>div:nth-child(2),.focuscard.sx>.fact{display:none}
+.focuscard.sx .cl h3{color:var(--mut)}
+.focuscard.sx .cl .u{color:var(--sun-tx)}
+.focuscard.sx .fpop{color:var(--dim);margin:-6px -8px -6px 0}
+.focuscard.sx .fpop:hover{background:color-mix(in srgb,var(--txt) 8%,transparent);color:var(--txt)}
+.focuscard.sx.floating .fpop{color:var(--sun-tx);background:color-mix(in srgb,var(--sun) 14%,transparent)}
+
+/* chip de esquema (arriba) y disparadores */
+.sx-chip{display:inline-flex;align-items:center;gap:5px;margin-left:auto;border:1px solid var(--hair2);background:color-mix(in srgb,var(--txt) 4%,transparent);
+  color:var(--mut);border-radius:999px;padding:5px 8px 5px 10px;font-family:var(--f-m);font-weight:700;font-size:9.5px;letter-spacing:.1em;
+  text-transform:uppercase;cursor:pointer;white-space:nowrap;transition:border-color .15s ease,color .15s ease,transform .16s var(--ease)}
+.sx-chip i{font-style:normal;opacity:.6}
+.sx-chip:hover,.sx-chip[aria-expanded="true"]{border-color:color-mix(in srgb,var(--sun) 55%,transparent);color:var(--txt)}
+.sx-chip:active{transform:scale(.96)}
+.sx-chip+.fbtns{margin-left:6px}
+.sx-chip[hidden]+.fbtns{margin-left:auto}
+.sx-chev{width:9px;height:9px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s var(--ease)}
+[aria-expanded="true"]>.sx-chev{transform:rotate(180deg)}
+
+/* reloj + destino en una fila */
+.sx-core{display:flex;align-items:center;gap:16px;margin:14px 0 14px;min-width:0}
+.focuscard.sx .tcode{flex:none;font-family:var(--f-d);font-weight:300;font-size:50px;letter-spacing:-.04em;line-height:.9;color:var(--sun-tx);
+  text-shadow:0 0 26px rgba(217,237,47,calc(.42*var(--glow)))}
+.focuscard.sx.brk .tcode{opacity:.55}
+.sx-dest{position:relative;flex:1;min-width:0;display:flex;justify-content:flex-end}
+.sx-destbtn{display:grid;grid-template-columns:minmax(0,auto) auto;align-items:center;column-gap:8px;max-width:100%;min-width:0;text-align:right;
+  border:0;background:none;color:var(--txt);cursor:pointer;padding:6px 8px;margin:-6px -8px;border-radius:10px;transition:background-color .15s ease}
+.sx-destbtn:hover,.sx-destbtn[aria-expanded="true"]{background:color-mix(in srgb,var(--txt) 6%,transparent)}
+.sx-destbtn b{font-family:var(--f-b);font-weight:600;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sx-destbtn small{grid-column:1;font-family:var(--f-m);font-weight:700;font-size:9.5px;letter-spacing:.1em;color:var(--dim);margin-top:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sx-destbtn .sx-chev{grid-row:1/3;grid-column:2;color:var(--dim)}
+/* con el bloque en marcha, la etiqueta fija ocupa el mismo lugar (y marca en lima lo que se cerrará) */
+.focuscard.sx .flbl{margin:0;text-align:right;font-size:13.5px;min-width:0}
+.focuscard.sx .flbl small{color:var(--dim);font-size:9.5px}
+.focuscard.sx .flbl .fnm.cut{background:var(--sun-block);color:var(--ink)}
+
+/* botón principal + ⋯ */
+.sx-act{position:relative;display:flex;gap:8px}
+.focuscard.sx .fgo{flex:1;background:var(--sun-block);color:var(--ink);border-radius:12px;padding:12px 0;font-size:12px;letter-spacing:.08em;
+  font-variation-settings:'wdth' 112;box-shadow:0 10px 26px -14px rgba(217,237,47,calc(.7*var(--glow)))}
+.focuscard.sx .fgo .fcutk{background:var(--ink);color:var(--sun-block)}
+.sx-more{flex:none;width:42px;border:1px solid var(--hair2);border-radius:12px;background:color-mix(in srgb,var(--txt) 4%,transparent);color:var(--mut);
+  cursor:pointer;font-size:16px;line-height:1;letter-spacing:.05em;transition:border-color .15s ease,color .15s ease,transform .16s var(--ease)}
+.sx-more:hover,.sx-more[aria-expanded="true"]{border-color:color-mix(in srgb,var(--sun) 55%,transparent);color:var(--txt)}
+.sx-more:active{transform:scale(.95)}
+
+/* línea de contexto: una o dos líneas, gris (errores y avisos siguen aquí) */
+.focuscard.sx .why{margin-top:10px!important;color:var(--dim);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.focuscard.sx .why b,.focuscard.sx .why a{color:var(--mut)}
+.focuscard.sx .fpend{color:var(--mut);border-top-color:var(--hair)}
+.focuscard.sx .flink{color:var(--txt)}
+.focuscard.sx .fcls{margin-top:8px;color:var(--mut)}
+
+/* ventanas emergentes */
+.sx-pop{position:absolute;z-index:40;width:300px;max-width:calc(100vw - 32px);padding:14px;border-radius:16px;
+  background:linear-gradient(180deg,var(--g1),var(--g2)),var(--tg-bg);border:1px solid var(--hair2);
+  box-shadow:0 24px 50px -18px rgba(0,0,0,.75),inset 0 1px 0 var(--hl);
+  transform-origin:top right;animation:sxIn .16s var(--ease)}
+@keyframes sxIn{from{opacity:0;transform:translateY(-4px) scale(.98)}}
+.sx-pop[hidden]{display:none}
+.sx-pop .sx-cap{font-family:var(--f-m);font-weight:700;font-size:9.5px;letter-spacing:.14em;color:var(--dim);margin:0 0 10px}
+.sx-pop-mode{top:46px;right:14px}
+.sx-pop-dest{top:calc(100% + 10px);right:-8px;transform-origin:top right}
+.sx-pop-more{bottom:calc(100% + 10px);right:0;transform-origin:bottom right}
+/* controles de dentro, en el material oscuro */
+.focuscard.sx .fmode{margin-top:0}
+.focuscard.sx .fmode button{border-color:var(--hair2);color:var(--mut)}
+.focuscard.sx .fmode button:hover{border-color:color-mix(in srgb,var(--txt) 30%,transparent);color:var(--txt)}
+.focuscard.sx .fmode button[aria-pressed="true"]{background:var(--sun-block);border-color:var(--sun-block);color:var(--ink)}
+.focuscard.sx .fplan i{background:var(--sun);color:var(--ink)}
+.focuscard.sx .fplan i.b{background:transparent;box-shadow:inset 0 0 0 1px var(--hair2)}
+.focuscard.sx .fplan i.cur{box-shadow:0 0 0 2px color-mix(in srgb,var(--sun) 35%,transparent)}
+.focuscard.sx .fplan i.open{background:repeating-linear-gradient(90deg,var(--sun) 0 6px,transparent 6px 11px)}
+.sx-pop .sx-adj{display:flex;justify-content:flex-end;margin-top:12px}
+.focuscard.sx .fadj{margin:0;border-color:var(--hair2);color:var(--mut)}
+.focuscard.sx .fadj:hover{border-color:color-mix(in srgb,var(--txt) 30%,transparent);color:var(--txt)}
+.focuscard.sx .fedit{margin-top:12px;color:var(--mut)}
+.focuscard.sx .fedit input{color:var(--txt);background:color-mix(in srgb,var(--txt) 5%,transparent);border-color:var(--hair2)}
+.focuscard.sx .fedit input:focus-visible{outline-color:var(--sun)}
+.focuscard.sx .fedit .fok{background:var(--sun-block);color:var(--ink)}
+.focuscard.sx .fpick{margin-top:0}
+.focuscard.sx .fsel{color:var(--txt);border-color:var(--hair2);background-color:color-mix(in srgb,var(--txt) 5%,transparent);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%238e8e96' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")}
+.focuscard.sx .fsel option,.focuscard.sx .fsel optgroup{color:initial}
+.focuscard.sx .fsel:focus-visible{outline-color:var(--sun)}
+.focuscard.sx .fseg,.focuscard.sx .fcut{background:color-mix(in srgb,var(--txt) 5%,transparent);border-color:var(--hair2)}
+.focuscard.sx .fseg button,.focuscard.sx .fcut button{color:var(--mut)}
+.focuscard.sx .fseg button[aria-pressed="true"],.focuscard.sx .fcut button[aria-checked="true"]{background:var(--sun-block);color:var(--ink)}
+.focuscard.sx .fcut button.on{background:color-mix(in srgb,var(--sun) 16%,transparent);color:var(--txt)}
+.focuscard.sx .fdrop{display:block;margin:10px auto 0;color:var(--mut)}
+.focuscard.sx .fdrop:hover{color:var(--txt)}
+
+/* tarjeta ancha (tableta / móvil apaisado): reloj · destino · botón en una sola fila */
+@container sx (min-width:560px){
+  .focuscard.sx>div:first-child{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(200px,260px);column-gap:20px;align-items:center}
+  .focuscard.sx .cl,.focuscard.sx .why,.focuscard.sx .fpend,.focuscard.sx .fcls{grid-column:1/-1}
+  .focuscard.sx .sx-core{grid-column:1/3;margin:14px 0 0}
+  .focuscard.sx .sx-act{grid-column:3;margin-top:14px}
+}
 </style>
 </head>
 <body>
@@ -1188,26 +1374,21 @@ html.mini #focus .fplan,html.mini #focus .fmode button i{display:none}
         <div class="fcls" id="fCls" hidden></div>
       </div>
     </div>
+    <!-- las seis cifras del día y la semana, en 3×2 junto al sprint (reacomodo 7-nov) -->
+    <div class="cifras"><div class="tiles" id="tilesRow"></div><div class="mini" id="miniRow"></div></div>
+    <div class="card dia7card">
+      <div class="cl"><h3>Horas por día</h3><span class="u">ÚLTIMOS 7 · META 5 H L–V · 2 H SÁB</span></div>
+      <svg id="dia7" viewBox="0 0 940 250" role="img" aria-label="Horas editadas por día en los últimos siete días frente a tu meta diaria"></svg>
+      <div class="legend">
+        <span class="k"><i class="sw" style="background:var(--violeta)"></i>previos</span>
+        <span class="k"><i class="sw" style="background:var(--naranja)"></i>récord de la semana</span>
+        <span class="k"><i class="sw" style="background:var(--sun)"></i>hoy</span>
+      </div>
+    </div>
     <div class="card plan">
       <div class="cl"><h3>Plan de hoy</h3><span class="u">GENERADO DE TU PATRÓN</span></div>
       <div id="planRows"></div>
     </div>
-    <div class="mini" id="miniRow"></div>
-  </div>
-  <div class="card dia7card">
-    <div class="cl"><h3>Horas por día</h3><span class="u">ÚLTIMOS 7 · META 5 H L–V · 2 H SÁB</span></div>
-    <svg id="dia7" viewBox="0 0 940 250" role="img" aria-label="Horas editadas por día en los últimos siete días frente a tu meta diaria"></svg>
-    <div class="legend">
-      <span class="k"><i class="sw" style="background:var(--violeta)"></i>previos</span>
-      <span class="k"><i class="sw" style="background:var(--naranja)"></i>récord de la semana</span>
-      <span class="k"><i class="sw" style="background:var(--sun)"></i>hoy</span>
-    </div>
-  </div>
-  <div class="tiles" id="tilesRow"></div>
-  <div class="aip" id="aipBox" hidden>
-    <svg class="ic"><use href="#i-insight"/></svg>
-    <div class="tx"><b id="aipTitle"></b><small id="aipSub"></small></div>
-    <span class="tag2">INSIGHT</span>
   </div>
 </section>
 
@@ -1249,6 +1430,12 @@ html.mini #focus .fplan,html.mini #focus .fmode button i{display:none}
       <div class="cl"><h3>Duración de sesiones</h3></div>
       <svg id="sprints" viewBox="0 0 430 240" role="img" aria-label="Histograma de duración de sesiones"></svg>
       <p class="note" id="sprintNote">—</p>
+    </div>
+    <!-- el Insight resume «Ahorro por etapa»: va bajo «Duración», junto a la lista (reacomodo 7-nov) -->
+    <div class="aip" id="aipBox" hidden>
+      <svg class="ic"><use href="#i-insight"/></svg>
+      <div class="tx"><b id="aipTitle"></b><small id="aipSub"></small></div>
+      <span class="tag2">INSIGHT</span>
     </div>
     <div class="card anat" id="anatCard">
       <div class="cl"><h3>Ahorro por etapa</h3><span class="u" id="anatU"></span></div>
@@ -2035,7 +2222,8 @@ function renderDia7(M){
   const rec=Math.max(0,...dia7.map(d=>d[1]));
   function build(mob){
     // en móvil, misma geometría que «Horas × día de la semana» (380×240, barras al 60 %)
-    const W=mob?380:940,H=mob?240:250,pl=mob?34:70,pr=10+(mob?0:14),pt=mob?30:44,pb=mob?28:30,maxV=Math.max(6,rec*(mob?1.12:1.15)),bw=(W-pl-pr)/7;
+    // escritorio a escala real: el ancho del dibujo = el de la tarjeta y el alto fijo (no crece al ensancharse)
+    const W=mob?380:Math.max(380,Math.round(svg.getBoundingClientRect().width)||940),H=mob?240:250,pl=mob?34:70,pr=10+(mob?0:14),pt=mob?30:44,pb=mob?28:30,maxV=Math.max(6,rec*(mob?1.12:1.15)),bw=(W-pl-pr)/7;
     svg.setAttribute('viewBox',`0 0 ${W} ${H}`); svg.innerHTML='';
     const Y=v=>H-pb-v/maxV*(H-pt-pb);
     // guía de meta por día (la ventana es móvil: cada barra lleva su propia meta)
@@ -2060,6 +2248,9 @@ function renderDia7(M){
   }
   regRebuild('dia7',build); build(MQM.matches);
 }
+// si cambia el ancho de su tarjeta (sidebar, ventana), «Horas por día» se vuelve a dibujar a escala real
+(()=>{ const c=document.querySelector('.dia7card'); if(!c||!window.ResizeObserver) return; let w=0;
+  new ResizeObserver(()=>{ const n=Math.round(c.getBoundingClientRect().width); if(n&&n!==w){ const first=!w; w=n; if(!first) rebuilds.get('dia7')?.(MQM.matches); } }).observe(c); })();
 
 /* ================= RITMO ================= */
 function renderRitmo(M){
@@ -2762,6 +2953,77 @@ const Sprint=(function(){
     med=M.medMin||26;                 // el bloque en curso guarda su propia meta (run.target)
     baseTargets=M.sprintTargets||[]; refreshTargets(); paintModes(); paint();
   } };
+})();
+
+/* ================= SPRINT COMPACTO (reacomodo 7-nov) =================
+   Reacomoda las piezas REALES de la tarjeta (mismos ids, mismos listeners, misma lógica de Sprint)
+   dentro de tres ventanas emergentes. Solo en el dashboard: con ?mini=1 no se toca nada. */
+(function(){
+  const $=id=>document.getElementById(id);
+  const card=$('focus'); if(!card||MINI) return {on(){},off(){}};
+  const d1=card.children[0], d2=card.children[1], fact=card.querySelector('.fact'), cl=d1.querySelector('.cl'), fbtns=cl.querySelector('.fbtns');
+  const ftime=d2.querySelector('.ftime');
+  const pick=$('fPick'), lbl=$('fLbl'), modeBox=$('fMode'), plan=$('fPlan'), why=$('focusWhy'), pend=$('fPend'),
+        code=$('tcode'), adj=$('fAdj'), edit=$('fEdit'), cut=$('fCut'), btn=$('focusBtn'), drop=$('fDrop'), cls=$('fCls'),
+        selT=$('fTarget'), selE=$('fScene'), seg=$('fTipo');
+  const CHEV='<svg class="sx-chev" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4"/></svg>';
+  const el=(tag,cls,html)=>{ const e=document.createElement(tag); if(cls) e.className=cls; if(html!=null) e.innerHTML=html; return e; };
+  // piezas nuevas
+  const chip=el('button','sx-chip'); chip.type='button'; chip.setAttribute('aria-haspopup','dialog'); chip.setAttribute('aria-expanded','false');
+  chip.title='Esquema y tiempos';
+  const popMode=el('div','sx-pop sx-pop-mode'); popMode.hidden=true; popMode.setAttribute('role','dialog'); popMode.setAttribute('aria-label','Esquema de trabajo');
+  const adjRow=el('div','sx-adj');
+  const core=el('div','sx-core'), dest=el('div','sx-dest');
+  const destBtn=el('button','sx-destbtn'); destBtn.type='button'; destBtn.setAttribute('aria-haspopup','dialog'); destBtn.setAttribute('aria-expanded','false');
+  destBtn.title='Dónde se registra: etapa · escena · tipo';
+  const popDest=el('div','sx-pop sx-pop-dest'); popDest.hidden=true; popDest.setAttribute('role','dialog'); popDest.setAttribute('aria-label','Dónde se registra');
+  const act=el('div','sx-act'), more=el('button','sx-more','⋯'); more.type='button'; more.setAttribute('aria-label','Más opciones del bloque');
+  more.setAttribute('aria-haspopup','dialog'); more.setAttribute('aria-expanded','false');
+  const popMore=el('div','sx-pop sx-pop-more'); popMore.hidden=true; popMore.setAttribute('role','dialog'); popMore.setAttribute('aria-label','Al terminar');
+  const pops=[[chip,popMode],[destBtn,popDest],[more,popMore]];
+  let on=false, mo=null;
+
+  function close(except){ pops.forEach(([b,p])=>{ if(p!==except){ p.hidden=true; b.setAttribute('aria-expanded','false'); } });
+    card.classList.toggle('sx-open',pops.some(([,p])=>!p.hidden)); }
+  function toggle(b,p){ const open=p.hidden; close(p); p.hidden=!open; b.setAttribute('aria-expanded',String(open));
+    card.classList.toggle('sx-open',open);
+    if(open){ const f=p.querySelector('select:not([hidden]),button[aria-pressed="true"],button[aria-checked="true"],button,input'); f&&f.focus({preventScroll:true}); } }
+  pops.forEach(([b,p])=>b.addEventListener('click',e=>{ e.stopPropagation(); toggle(b,p); }));
+  document.addEventListener('click',e=>{ if(on&&!e.target.closest('.sx-pop,.sx-chip,.sx-destbtn,.sx-more')) close(); });
+  document.addEventListener('keydown',e=>{ if(on&&e.key==='Escape'&&pops.some(([,p])=>!p.hidden)){ const o=pops.find(([,p])=>!p.hidden); close(); o[0].focus(); } });
+  // elegir esquema o tocar Listo cierra el menú; tocar el reloj (en reposo) abre los tiempos
+  modeBox.addEventListener('click',e=>{ if(on&&e.target.closest('button')) setTimeout(()=>{ if(!edit.offsetParent||edit.hidden) close(); },0); });
+  $('fOk').addEventListener('click',()=>{ if(on) setTimeout(close,0); });
+  adj.addEventListener('click',e=>e.stopPropagation());
+  code.addEventListener('click',e=>{ if(on&&!card.matches('.run,.brk')){ e.stopPropagation(); setTimeout(()=>{ if(popMode.hidden) toggle(chip,popMode); },0); } });
+  cut.addEventListener('click',()=>{ if(on) setTimeout(close,0); });
+
+  // lo que dicen los disparadores = lo que está elegido adentro
+  const optTx=s=>s&&!s.hidden&&s.selectedIndex>=0&&s.options[s.selectedIndex]?s.options[s.selectedIndex].text:'';
+  function label(){ if(!on) return;
+    const m=modeBox.querySelector('[aria-pressed="true"]');
+    chip.innerHTML=(m?m.innerHTML:'Esquema')+CHEV;
+    chip.hidden=!!modeBox.hidden;                                         // con bloque o descanso, manda el estado de arriba
+    const t=optTx(selT), sc=selE.value?optTx(selE):'', tp=(seg.querySelector('[aria-pressed="true"]')||{}).textContent||'';
+    destBtn.innerHTML=`<b>${t||'Elige la etapa'}</b><small>${[tp,sc||(selE.hidden?'':'Sin escena')].filter(Boolean).join(' · ').toUpperCase()}</small>`+CHEV;
+    destBtn.hidden=!!pick.hidden;
+    more.hidden=!!cut.hidden&&!!drop.hidden;
+    pops.forEach(([b,p])=>{ if(b.hidden&&!p.hidden) close(); });
+  }
+  const queue=(()=>{ let q=false; return ()=>{ if(!q){ q=true; queueMicrotask(()=>{ q=false; label(); }); } }; })();
+
+  (function arm(){ on=true; card.classList.add('sx');
+      cl.insertBefore(chip,fbtns);
+      popMode.innerHTML='<div class="sx-cap">ESQUEMA</div>'; adjRow.append(adj); popMode.append(modeBox,plan,adjRow,edit);
+      popDest.innerHTML='<div class="sx-cap">SE REGISTRA EN</div>'; popDest.append(pick);
+      popMore.innerHTML='<div class="sx-cap">AL TERMINAR, CERRAR TAMBIÉN EN NOTION</div>'; popMore.append(cut,drop);
+      dest.append(destBtn,lbl,popDest); core.append(code,dest);
+      act.append(btn,more,popMore);
+      d1.append(popMode,core,act,why,pend,cls);
+      mo=new MutationObserver(queue);
+      [pick,modeBox,cut,drop,selT,selE,seg].forEach(n=>mo.observe(n,{attributes:true,childList:true,subtree:true}));
+      selT.addEventListener('change',queue); selE.addEventListener('change',queue);
+      label(); })();
 })();
 
 /* ================= sprint en el sidebar y en el botón móvil: espejo de la tarjeta de Hoy =================
