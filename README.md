@@ -153,3 +153,11 @@ GOTCHA UI: para crear el proyecto Pages, en Workers&Pages → Create application
 - **`server.py`**: escrituras atómicas de la caché y el archivo, registro de sesión sin duplicados
   (`_session_lock`), `SPRINT_KEYS` con el cierre de escena/etapa, y el server local solo en `127.0.0.1`.
   Nada de esto cambia lo que publica `publish.py`.
+
+## Auditoría de diseño: legibilidad y móvil (10-nov-2026)
+- Solo presentación (CSS y funciones `render*`); `publish.py`, `functions/` y el payload no cambian.
+- Letra mínima de 11 px, `--dim` con 4,5:1, gráficas de barras a tamaño real en el iPhone, lima =
+  mejora / violeta = empeora por signo (`tone()`), `--sun-data` para datos en tema claro, lista única
+  de etapas en Proyectos, áreas táctiles de 44 px y cabecera fija en móvil. Detalle en
+  `docs/arquitectura.md` §4 («Auditoría de diseño»).
+- Tras publicar, en el iPhone hay que **matar y reabrir la PWA** para saltar su caché.

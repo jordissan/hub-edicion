@@ -139,7 +139,7 @@ Un solo archivo: CSS (tokens Pantone, tema claro/oscuro) + HTML + un `<script>` 
 3. **Capa de render** — `fmt/fmtHM/fmtMXN`, `S()` (SVG), `barPath`, tooltip, `liveBar`;
    `render{Chrome,Hero,Race,Hoy,Dia7,Ritmo,Adn,Mesa,Tarifa}`. `renderAll` aísla cada sección
    (si una falla, las demás se pintan). `regRebuild(nombre, fn)` registra las gráficas que cambian
-   de geometría al cruzar 640 px (hoy: Horas por día). **Horas por día** en escritorio se dibuja a
+   de geometría al cruzar 640 px (hoy: Horas por día y la lista de Etapas). **Horas por día** en escritorio se dibuja a
    escala real (viewBox = ancho de su tarjeta × 250, alto fijo) y un `ResizeObserver` sobre
    `.dia7card` la redibuja vía `rebuilds.get('dia7')` si cambia el ancho (7-nov-2026). La **Carrera** (`renderRace`) se dibuja al
    tamaño real del contenedor (viewBox = px) y un `ResizeObserver` la redibuja al cambiar el ancho;
@@ -165,6 +165,47 @@ Un solo archivo: CSS (tokens Pantone, tema claro/oscuro) + HTML + un `<script>` 
    lista" = Cambios (punteados, `.fadein`); las curvas de edición son `path.draw` (las anima
    `__playRace`). Las propuestas de diseño que llevaron a este hero están en
    `docs/propuestas/carrera.html`.
+   **Auditoría de diseño (10-nov-2026, `docs/propuestas/auditoria-diseno-2026-11-10.md`; respaldo
+   `docs/historico/index.pre-auditoria.2026-11-10.html`)** — solo presentación, ni datos ni cálculos:
+   - **Tokens** en `:root`: texto `--fs-micro 11 · --fs-label 12 · --fs-sm 13 · --fs-md 14 · --fs-body 15`
+     (nada por debajo de 11 px; display y `clamp()` aparte), radios `--r-xs/sm/md/lg/pill`, tracking
+     `--tr-label .08em · --tr-wide .1em`. `--dim` sube a 5,2:1 (`#878791`; claro `#66666c`). En claro,
+     `--sun-tx #4f620c` y `--naranja-tx #a83c16` (>=4,5:1 sobre sus pastillas tintadas).
+   - **`--sun-data`** = lima cuando es un dato (barras de avance, fase Documental en `PHASES`, cinta,
+     sidebar): en claro `#799100` (3:1 sobre blanco). `--sun-block` queda para botones con texto `--ink`.
+     En claro también `--f-prep #3b82d6 · --f-teas #0e9683 · --naranja #d9642c`.
+   - **Regla de color** (comentario junto a los tokens): lima = hoy / actual / mejor; violeta = referencia
+     y peor; naranja = estado y atención, Cambios, récord de la semana; gris = contexto. Un cambio toma
+     color por su signo con `tone(delta, menosEsMejor)` → `.is-better/.is-worse/.is-flat` (titular,
+     tiles del hero, deltas y salto de Tarifa). Nada se colorea por posición (`:first-child`).
+   - **Barras a tamaño real**: `fitChart(svg, fn)` + `chartW(svg, def)` (un `ResizeObserver` compartido,
+     `fitW`) para `renderHod`, `renderWeek`, `renderSprints`; `renderDia7` también en móvil. Sin `viewBox`
+     fijo en el marcado; alto 240. Hod rotula cada 4 h bajo 420 px y acorta «VENTANA DE ORO · N %».
+     Al plegar el sidebar se redibujan una vez (`fitW.forEach`). Dia7 móvil escribe «3h42m» (sin espacio).
+     Los `aria-label` de `#hod` y `#week` se escriben desde los datos.
+   - **Proyectos (D2)**: `#etapas` es la lista única (estado · horas · $ · %; `%` oculto en el iPhone).
+     `#dlg` bajo la dona = resumen por **fase** (`p.fases`); los totales de La cinta (`#fasetot`) se
+     quitaron. Realce cruzado: `renderMesa._hotEt(nm)` (segmento ↔ fila, con el centro reactivo) y
+     `_hotFase(f)` (fila de fase ↔ sus segmentos). iPhone: las fases completas arrancan plegadas
+     (`button.ephase[aria-expanded]`, estado en `renderMesa._phOpen`, `.erow.folded`).
+   - **Historial**: en el iPhone solo las 3 bodas más recientes (`tr.old` + `#histMore`, `histAll`).
+     *Carrera de todas*: curvas de contexto con `ctxCol(r)` (rampa `--ghost`→`--mut`, opacidad .8–1,
+     >=3:1), rótulo con el primer nombre al final de cada curva (`.rctx`, separación mínima 12 px y línea
+     fina si se desplaza); la leyenda son `<button aria-pressed>`.
+   - **Táctil (M1)**: capa al final del `<style>` con `@media (pointer:coarse),(max-width:640px)`:
+     controles a 36–48 px visibles y `::after` invisible hasta 44 px. La tabbar pinta su pastilla en
+     `a::before` (la celda entera, 52 px, es el área táctil). Clips de La cinta <24 px: sin `tabindex`
+     ni tooltip táctil. `html.mini` (ventana flotante) queda fuera.
+   - **Cabecera fija bajo 1024 px (M2)**: `.top` sticky; pasado el hero (`html.in-sec`, lo pone
+     `setSec`) la miga `.crumb` reemplaza a la marca.
+   - **Otros**: `.aip` en dos filas y etiquetas cortas (`.l .lg/.sh`) bajo 640 px; `#fab`/`#sMini` en
+     reposo muestran ▶ y su `aria-label` dice el estado; con `#focus` a la vista (>=60 %)
+     `html.sprint-card-in-view` pasa `.spr-go` a contorno; con alto <=820 px el sprint del sidebar va en
+     una fila; *Horas por día* `pt=30` y escala `max(meta, récord)×1,1`; «Etapa activa» vacía dice
+     «Sin etapa» y abre el destino del sprint (`[data-goto="dest"]`).
+   - **Duraciones (S3)**: exactas de un día, una sesión o un total → `4h 14m` (`fmtHM`); agregados y
+     comparaciones → decimal `20,3 h`; menos de 6 min → `N min` (`fmtDur`, un decimal fijo, en Etapas y
+     el resumen por fase). Una tarjeta, un formato. El `′` queda solo en los esquemas del sprint.
 4. **`Sprint`** — tarjeta de enfoque (§5). Justo después, el módulo **sprint compacto** (7-nov-2026,
    solo si `!MINI`): reacomoda los nodos reales de `#focus` (mismos ids y listeners) dentro de
    tres ventanas emergentes `.sx-pop` — esquema (`#fMode`, `#fPlan`, `#fAdj`, `#fEdit`), destino
@@ -195,7 +236,9 @@ Un solo archivo: CSS (tokens Pantone, tema claro/oscuro) + HTML + un `<script>` 
    - **Scroll-spy** (IntersectionObserver sobre `.hero`/`.sec`): marca `nav a` (sidebar y
      tabbar), mueve la pastilla `#sInd`, actualiza la barra superior `.crumb` y pone `--amb1`
      (luz ambiente, propiedad `@property` con transición).
-   - **Tema** en `scTheme`; al cambiarlo, `renderAll` + `applyGlow()`.
+   - **Tema** en `scTheme` (`''` = oscuro elegido); sin elección, el pre-script del `<head>` sigue
+     `prefers-color-scheme`. Al cambiarlo, `renderAll` + `applyGlow()` y `<meta name="theme-color">`
+     pasa a `#f0eee9` / `#050506`.
    - **Identidad A (capa CSS al final del `<style>`):**
      - El grano (`--grain`, ruido generado en un canvas) vive en `.amb::after` y en el `::before`
        de `.card`, `.m` y el sidebar; nunca encima de los datos.
