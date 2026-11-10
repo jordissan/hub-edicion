@@ -22,7 +22,7 @@ Uso:
     python3 server.py --check    # prueba el token y lista las bodas detectadas
 """
 
-import os, sys, json, time, threading, unicodedata, urllib.request, urllib.error, datetime, socketserver, http.server
+import os, re, sys, json, time, threading, unicodedata, urllib.request, urllib.error, datetime, socketserver, http.server
 
 # ── Configuración ────────────────────────────────────────────────────────────
 PORT = int(os.environ.get("DASHBOARD_PORT", "4599"))
@@ -400,7 +400,7 @@ def build_wedding(page):
             "orden": p_orden(sp),
             "start": s_start, "end": s_end,
             # "Cambios"/"Correcciones" se trackean pero NO cuentan como tiempo de edición
-            # (dependen de terceros: Claudio/Romina). OJO: "correcciones" plural ≠
+            # (dependen de terceros: el estudio). OJO: "correcciones" plural ≠
             # "Corrección de Color y Finalización" (etapa normal de edición, singular).
             "isCorrections": ("cambios" in s_etapa.lower()) or ("correcciones" in s_etapa.lower()),
             "scenes": [], "hours": None, "sessions": 0, "sessionLog": [],
@@ -728,30 +728,49 @@ def discover_wedding_pages(archive=None):
 ARCHIVE_FILE = os.path.join(HERE, ".archive.json")
 
 
-GHOST_VERSION = 2  # v2: + estado y nº de sesiones por etapa (para el Archivo de Proyectos)
+GHOST_VERSION = 3  # v2: + estado y nº de sesiones por etapa (para el Archivo de Proyectos)
+                   # v3: + minutos por hora del día (hod), duración de cada sesión (durs) y
+                   #     boda de 1 o 2 días (nDays) — para el Historial y "Tu ritmo" con todo
+
+# boda de 2 días = tiene una escena "Día 1…" (misma regla que daysOf del front)
+DAY1_RE = re.compile(r"^\s*d[ií]a\s*(1|uno|previo)\b", re.I)
+
+
+def wedding_days(w):
+    for s in w.get("stages") or []:
+        for sc in (s.get("scenes") or []):
+            if DAY1_RE.match(sc.get("escena") or "") or sc.get("dia") == "Día 1":
+                return 2
+    return 1
 
 
 def wedding_ghost(w):
     """Esqueleto compacto de una boda para que la Carrera ("Contra tu fantasma"), el
     ADN, Dinero y el Archivo de Proyectos puedan seguir usándola cuando sale del
     tablero: por etapa, su estado, horas, nº de sesiones y escenas, y los minutos
-    trabajados por día (no cada sesión)."""
+    trabajados por día (no cada sesión). Desde v3 también los minutos por hora del día
+    y la duración de cada sesión: lo poco que hace falta para "Tu ritmo" e Historial."""
     stages = []
     for s in w.get("stages") or []:
-        days = {}
+        days, hod, durs = {}, {}, []
         for x in (s.get("sessionLog") or []):
             if x.get("inicio"):
                 d = x["inicio"][:10]
-                days[d] = days.get(d, 0) + (x.get("min") or 0)
+                m = x.get("min") or 0
+                days[d] = days.get(d, 0) + m
+                h = x["inicio"][11:13]
+                if h.isdigit():
+                    hod[str(int(h))] = hod.get(str(int(h)), 0) + m
+                durs.append(m)
         stages.append({
             "etapa": s.get("etapa"), "fase": s.get("fase"),
             "isCorrections": bool(s.get("isCorrections")),
             "estado": s.get("estado"), "sessions": s.get("sessions") or 0,
             "hours": s.get("hours"), "nScenes": len(s.get("scenes") or []),
-            "days": days,
+            "days": days, "hod": hod, "durs": durs,
         })
     return {"v": GHOST_VERSION, "projectStart": w.get("projectStart"),
-            "projectEnd": w.get("projectEnd"), "stages": stages}
+            "projectEnd": w.get("projectEnd"), "nDays": wedding_days(w), "stages": stages}
 
 
 def wedding_archive_stats(w):
@@ -789,6 +808,18 @@ def wedding_archive_stats(w):
     }
 
 
+def _write_json_atomic(path, obj):
+    """Escribe a un temporal y lo renombra encima. Si el Mac se apaga o el proceso muere a
+    media escritura, el archivo anterior queda intacto (antes podía quedar truncado: y un
+    .archive.json ilegible se leía como "sin historia" y se sobrescribía vacío)."""
+    tmp = path + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(obj, f, ensure_ascii=False)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, path)
+
+
 def load_archive():
     try:
         with open(ARCHIVE_FILE, "r") as f:
@@ -800,8 +831,7 @@ def load_archive():
 
 def save_archive(archive):
     try:
-        with open(ARCHIVE_FILE, "w") as f:
-            json.dump(archive, f, ensure_ascii=False)
+        _write_json_atomic(ARCHIVE_FILE, archive)
     except Exception as e:
         sys.stderr.write("[archivo] no se pudo guardar %s: %s\n" % (ARCHIVE_FILE, e))
 
@@ -1045,8 +1075,7 @@ def _load_disk_cache():
 
 def _save_disk_cache():
     try:
-        with open(CACHE_FILE, "w") as f:
-            json.dump({"at": _cache["at"], "data": _cache["data"]}, f, ensure_ascii=False)
+        _write_json_atomic(CACHE_FILE, {"at": _cache["at"], "data": _cache["data"]})
     except Exception:
         pass
 
@@ -1205,6 +1234,9 @@ def start_cloud_ping():
 
 # ── Servidor HTTP ────────────────────────────────────────────────────────────
 _session_done = {}   # id del sprint -> resultado (evita duplicados si el navegador reintenta)
+_session_lock = threading.Lock()   # un registro a la vez: si llega un reintento del MISMO sprint
+                                   # mientras el primero sigue escribiendo en Notion (lento / 429),
+                                   # espera y recibe su resultado en vez de crear la sesión dos veces
 _close_done = {}     # id del cierre -> resultado (ídem)
 
 
@@ -1213,7 +1245,10 @@ _close_done = {}     # id del cierre -> resultado (ídem)
 # versión con "rev" (ms) más reciente. La ventana flotante pregunta con ?from=mini y
 # eso sirve de latido: el dashboard sabe si está abierta (miniOpen).
 SPRINT_FILE = os.path.join(HERE, ".sprint-state.json")
-SPRINT_KEYS = ("scSprint", "scSprintPend", "scSprintDest", "scSprintMode", "scSprintBrk", "scSprintCyc")
+SPRINT_KEYS = ("scSprint", "scSprintPend", "scSprintDest", "scSprintMode", "scSprintBrk", "scSprintCyc",
+               # cierre de escena/etapa en espera y ids recién cerrados: el front ya los sincronizaba, pero
+               # aquí se descartaban → el reloj del Mac nunca veía «Deshacer el cierre» ni su aviso de error
+               "scSprintClose", "scSprintClosed")
 _sprint_lock = threading.Lock()
 _sprint = {"rev": 0, "data": {}}
 _mini_seen = [0.0]
@@ -1236,8 +1271,7 @@ def sprint_state(from_mini=False, incoming=None):
                 _sprint["rev"] = int(rev)
                 _sprint["data"] = {k: data.get(k) for k in SPRINT_KEYS}
                 try:
-                    with open(SPRINT_FILE, "w") as f:
-                        json.dump(_sprint, f, ensure_ascii=False)
+                    _write_json_atomic(SPRINT_FILE, _sprint)
                 except Exception as e:
                     sys.stderr.write("[sprint] no se pudo guardar: %s\n" % e)
         return {"rev": _sprint["rev"], "data": _sprint["data"],
@@ -1329,27 +1363,28 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if err:
             self._send(400, json.dumps({"ok": False, "error": err}, ensure_ascii=False))
             return
-        if item["id"] in _session_done:
-            self._send(200, json.dumps(_session_done[item["id"]]))
-            return
-        # solo DBs de Sesiones / etapas / escenas del tablero (no escribe donde le pidan)
-        targets = session_targets(_cache.get("data"))
-        if not any(t["stage"] for t in targets.values()):
-            _do_build(wait=True)  # caché de antes del sprint (sin ids de etapa) → reconstruir una vez
+        with _session_lock:
+            if item["id"] in _session_done:
+                self._send(200, json.dumps(_session_done[item["id"]]))
+                return
+            # solo DBs de Sesiones / etapas / escenas del tablero (no escribe donde le pidan)
             targets = session_targets(_cache.get("data"))
-        terr = target_error(item, targets)
-        if terr:
-            self._send(400, json.dumps({"ok": False, "error": terr}, ensure_ascii=False))
-            return
-        try:
-            res = create_session(item)
-        except Exception as e:
-            self._send(502, json.dumps({"ok": False, "error": str(e)[:300]}, ensure_ascii=False))
-            return
-        out = {"ok": True, "url": res.get("url"), "moved": res.get("moved", [])}
-        if res.get("warn"):
-            out["warn"] = res["warn"]
-        _session_done[item["id"]] = out
+            if not any(t["stage"] for t in targets.values()):
+                _do_build(wait=True)  # caché de antes del sprint (sin ids de etapa) → reconstruir una vez
+                targets = session_targets(_cache.get("data"))
+            terr = target_error(item, targets)
+            if terr:
+                self._send(400, json.dumps({"ok": False, "error": terr}, ensure_ascii=False))
+                return
+            try:
+                res = create_session(item)
+            except Exception as e:
+                self._send(502, json.dumps({"ok": False, "error": str(e)[:300]}, ensure_ascii=False))
+                return
+            out = {"ok": True, "url": res.get("url"), "moved": res.get("moved", [])}
+            if res.get("warn"):
+                out["warn"] = res["warn"]
+            _session_done[item["id"]] = out
         _refresh_in_background()   # que el tablero la muestre en cuanto termine de reconstruirse
         cloud_ping_soon()          # y que la nube (iPhone) la vea en ~3 min aunque se cierre la tapa
         self._send(200, json.dumps(out))
@@ -1439,7 +1474,8 @@ def main():
     if get_token():                          # precalienta en 2º plano para la 1ª carga
         _refresh_in_background()
     start_cloud_ping()                       # la nube se refresca cada 15 min mientras el Mac esté encendido
-    ThreadingServer(("0.0.0.0", PORT), Handler).serve_forever()
+    # solo este Mac (antes 0.0.0.0: cualquiera en la misma Wi-Fi podía leer los datos o registrar sesiones)
+    ThreadingServer(("127.0.0.1", PORT), Handler).serve_forever()
 
 
 if __name__ == "__main__":
