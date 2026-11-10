@@ -66,9 +66,11 @@
   }],
   "archive": [{                           // bodas entregadas con horas (persistente)
     "name", "icon", "hours", "scenes", "span", "price", "rounds", "lastEnd", "archivedAt",
-    "ghost": { "v": 2, "projectStart", "projectEnd",
+    "ghost": { "v": 3, "projectStart", "projectEnd", "nDays": 1,   // nDays: boda de 1 o 2 días (v3)
                "stages": [{ "etapa", "fase", "isCorrections", "estado", "sessions",
-                            "hours", "nScenes", "days": { "2026-09-07": 26 } }] }
+                            "hours", "nScenes", "days": { "2026-09-07": 26 },
+                            "hod": { "11": 95 },      // v3: minutos por hora del día
+                            "durs": [22, 41, 9] }] }  // v3: duración de cada sesión (min)
   }]
 }
 ```
@@ -109,7 +111,7 @@ Un solo archivo: CSS (tokens Pantone, tema claro/oscuro) + HTML + un `<script>` 
    - **Boda en curso** (`inProgress`, nov-2026): `hasLive` **o** (con horas efectivas, no archivada,
      con alguna etapa de edición ≠ `done` —en curso o sin iniciar— y `status` que NO sea
      Finalizadas/Hecho/Correcciones). Cambios nunca cuenta. Antes se decía "terminada" cuando no
-     había etapa `live`, y una boda con la etapa siguiente aún sin iniciar (Ale + Lorenzo, 5-nov,
+     había etapa `live`, y una boda con la etapa siguiente aún sin iniciar (una boda del 5-nov,
      Montaje HL/SF ⚪️) se daba por entregada. Una boda en curso queda fuera de `refCur`/`refGhost`,
      de la Carrera y de las métricas finales; chip EN CURSO en Proyectos y fila en Hoy.
    - **Carrera**: `refCur`/`refGhost` = las 2 bodas con edición terminada más recientes (incluye
@@ -120,6 +122,14 @@ Un solo archivo: CSS (tokens Pantone, tema claro/oscuro) + HTML + un `<script>` 
      (1 o 2 días) solo si ambas son del tablero (el archivo no guarda escenas).
    - **h/escena** sin teaser; **$/h** con todo (el precio lo incluye).
    - **Heatmap**: sesiones del tablero + `ghost.days` de las archivadas fuera del tablero.
+   - **Historial** (9-nov-2026): `M.hist` = una fila por boda medida (tablero + archivo, orden por
+     `projectStart`) con `sin`/`con` (`histRow(w,P)`: eff, editDay, daysWorked, span, hDay, hWeek,
+     `curve` sin Cambios hasta "edición lista"; *sin* = todas las fases menos TEAS) + hpe, perH
+     (precio ÷ effH, `priceGuess` si no hay Total), teaser, nDays, live. Promedios/récords en el
+     render (`histStats`, excluye `live`). `M.ritmoAll` = hod/semana/duraciones con TODO el historial
+     (tablero + `ghost.hod/days/durs`); `hodMissing` cuenta archivadas sin `hod` todavía.
+     Render: `renderHist` (tabla), `drawProg`, `drawAll` (tamaño real, ResizeObserver), `histHot`
+     (realce sin redibujar). Ritmo/Sesiones: `rv(M)` mezcla `ritmoAll` si `ritmoHist`.
    - **Avance %** = etapas de edición hechas / etapas de edición (Cambios no cuenta): el 100 %
      es terminar la última etapa (Montaje HL/SF). Varias etapas pueden ir en curso a la vez.
    - **Rentabilidad**: $/h, $/escena, $/etapa sobre el precio cobrado (`Total`) de la última
@@ -134,11 +144,24 @@ Un solo archivo: CSS (tokens Pantone, tema claro/oscuro) + HTML + un `<script>` 
    `.dia7card` la redibuja vía `rebuilds.get('dia7')` si cambia el ancho (7-nov-2026). La **Carrera** (`renderRace`) se dibuja al
    tamaño real del contenedor (viewBox = px) y un `ResizeObserver` la redibuja al cambiar el ancho;
    < 560 px usa la versión compacta (nombres como pastillas `#raceChips`). La curva es una guía
-   visual (`raceCurve`). Primero, suavizado gaussiano (σ 3,4 días) con reflejo impar en los bordes:
+   visual (`raceCurve`). Primero, suavizado gaussiano (σ 1,7 días: «con ritmo», elegido por Jordi el
+   9-nov sobre el σ 3,4 anterior, que la dejaba casi recta) con reflejo impar en los bordes:
    conserva el primer y el último valor reales y nunca baja. Después, cúbica monótona
-   (Fritsch–Carlson) sobre nudos cada 3 días más "edición lista" y el último día. Resultado: curvas
-   amplias, sin tirones, con los puntos clave sobre la línea. Tooltip, tabla y cifras usan los
-   valores reales. Tramos tras "edición
+   (Fritsch–Carlson) sobre nudos cada 2 días más "edición lista" y el último día. Resultado: curvas
+   suaves, sin tirones, con los puntos clave sobre la línea. Tooltip, tabla y cifras usan los
+   valores reales.
+   **TRAZO (9-nov-2026) — un solo sistema para todas las gráficas de línea** (Carrera, Historial ·
+   Progreso, Historial · Carrera de todas, salto de Tarifa). CSS (bloque «TRAZO» junto a `.gl`):
+   `.ln` (puntas y uniones redondas) con `--ln-1` 2,75 px protagonista (`.l1`) · `--ln-2` 2 px
+   comparación · `--ln-3` 1,5 px contexto (`.l3`); `.ln.off` = punteado `3 6` (cambios / boda en
+   curso); `.gd` = guía punteada `2 5` (rejilla de valores, promedio, meta, bajada al eje — también
+   en las gráficas de barras; el eje 0 sigue sólido con `.gl`). JS: `TZ` (radios, filo y suavizado),
+   `curveOf(P)` (cúbica monótona por los puntos; la usa también Progreso, que antes iba con rectas),
+   `curveY(C,x)` (altura de la curva en una x: anillos del cursor), `guide()` y `mark()` (anillo =
+   hito · lleno = elegido/ahora). El halo `fxGlowL` va en `.rline` (curva de la Carrera y la boda
+   elegida en «todas»). **Trampa:** en SVG el CSS gana a los atributos de presentación: el color de
+   una guía o el tamaño de un rótulo con clase se fijan por atributo solo si el CSS no los define
+   (`.gd` no fija `stroke`; el tamaño del nombre en Progreso móvil va por `style`). Tramos tras "edición
    lista" = Cambios (punteados, `.fadein`); las curvas de edición son `path.draw` (las anima
    `__playRace`). Las propuestas de diseño que llevaron a este hero están en
    `docs/propuestas/carrera.html`.
@@ -417,6 +440,7 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
 | Mac | `.cache.json` · `.archive.json` | caché local · archivo histórico local |
 | Mac | `.sprint-state.json` | sprint compartido dashboard ⇄ ventana flotante (`{rev, data}`) |
 | Navegador | `scTheme` | tema claro/oscuro |
+| Navegador | `hubHistMet` · `hubRitmoHist` | dato elegido en Progreso del Historial · Tu ritmo en *Historial* (`1`) o *Tablero* |
 | Navegador | `hubRaceIncl` | selector de la Carrera: `1` = con teaser, `0`/sin clave = sin teaser |
 | Navegador | `scLastData` | última lectura viva (payload completo, ~90 KB) para pintar al abrir |
 | Navegador | `scSprint` · `scSprintBrk` · `scSprintCyc` | bloque en curso · descanso · ciclo |
@@ -468,14 +492,28 @@ Datos a mano: `gh workflow run "Publicar dashboard" -R jordissan/hub-edicion`.
   (`--bg` al 82 %; primero fue `#101012`, pero Safari a veces pinta la franja sólida con el negro de
   `--bg`) y `--top-fx` (`blur(24px)`) → las dos franjas se leen como una sola
   (3-nov-2026). El tema claro conserva el vidrio anterior (62 % de `--bg`).
-- **Snapshot embebido**: refrescarlo por concatenación de texto, nunca con `re.sub` (se come
-  las barras invertidas del JSON y rompe el script).
-- **Privacidad — el repo de la nube es público**: el código no tiene tokens, pero `index.html`
-  lleva embebido `SNAPSHOT_DATA` con datos reales (nombres de parejas, precios, estudio,
-  sesiones), visibles en GitHub aunque el sitio esté detrás de Access. Opciones: repo privado
-  (Actions deja de ser gratis ilimitado: con el aviso cada 15 min serían hasta 96 corridas/día
-  × 2 min ≈ 5 800 min/mes, muy por encima de los ~2 000 del plan Free; habría que quitar el aviso
-  del Mac y dejar el cron cada hora) o un snapshot anonimizado en la copia de la nube.
+- **Snapshot embebido**: renovarlo SOLO con `./snapshot-demo.py` (lo embebe por concatenación
+  de texto; nunca con `re.sub`, que se come las barras invertidas del JSON y rompe el script).
+- **Privacidad — el repo de la nube es público** (resuelto 9-nov-2026): `SNAPSHOT_DATA` son
+  **datos de ejemplo**. `snapshot-demo.py` toma el payload vivo y cambia nombres de parejas
+  (inventados), estudio, precio (15 000 fijo), enlaces e ids de Notion, nombres de escenas y
+  canciones; conserva fechas, duraciones y etapas. Marca el payload con `"demo": true` y
+  `sync-cloud.sh` se niega a copiar a `cloud/` un snapshot sin esa marca. **Ojo:** el historial de
+  git anterior al 9-nov aún contiene el snapshot real de julio; borrarlo exigiría reescribir la
+  historia (force-push) o pasar el repo a privado (Actions dejaría de ser gratis: ~5 800 min/mes
+  con el aviso cada 15 min frente a los ~2 000 del plan Free).
+- **Server local solo en este Mac** (9-nov-2026): escucha en `127.0.0.1` (antes `0.0.0.0`, visible
+  para toda la Wi-Fi con CORS `*`). Pendiente menor: un sitio web abierto en el navegador del Mac
+  aún podría hacer un POST a `localhost:4599` (lo frena la lista blanca de etapas, no el origen).
+- **Escrituras atómicas** (9-nov-2026): `.cache.json`, `.archive.json` y `.sprint-state.json` se
+  escriben a un temporal y se renombran (`_write_json_atomic`). Antes, un apagón a media escritura
+  dejaba el archivo truncado y `load_archive()` lo leía como "sin historia" → se perdía el archivo local.
+- **Registro sin duplicados** (9-nov-2026): `POST /api/session` va bajo `_session_lock`; un
+  reintento del mismo sprint que llega mientras el primero sigue escribiendo en Notion espera y
+  recibe su resultado (antes creaba la sesión otra vez: 3 peticiones simultáneas = 3 sesiones).
+- **Estado del sprint**: `SPRINT_KEYS` debe incluir TODAS las claves que sincroniza el front
+  (`SYNC_KEYS`). Hasta el 9-nov faltaban `scSprintClose` y `scSprintClosed`: el server las
+  descartaba y el reloj del Mac nunca mostraba «Deshacer el cierre» ni el aviso de cierre fallido.
 
 ## 10. Refresco de la nube y rendimiento de carga (nov-2026)
 

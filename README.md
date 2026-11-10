@@ -5,8 +5,10 @@ apagada, detrás de login, **100% gratis**.
 
 - **URL:** https://hub-edicion.pages.dev
 - **Login:** Cloudflare Access — **One-time PIN por correo** (jor.jorwww@gmail.com), sesión 1 mes.
-- **Repo:** `github.com/jordissan/hub-edicion` (**público**). Nunca tokens. ⚠️ `index.html` lleva embebido el
-  snapshot (`SNAPSHOT_DATA`) con datos reales de las bodas — ver "Privacidad" en `docs/arquitectura.md` §9.
+- **Repo:** `github.com/jordissan/hub-edicion` (**público**). Nunca tokens. El snapshot embebido
+  (`SNAPSHOT_DATA`) son **datos de ejemplo** desde el 9-nov-2026 (lo genera `snapshot-demo.py` en la
+  carpeta raíz; `sync-cloud.sh` no copia uno real). El historial de git anterior sí conserva el de julio
+  — ver "Privacidad" en `docs/arquitectura.md` §9.
 
 ## Arquitectura
 
@@ -140,3 +142,14 @@ GOTCHA UI: para crear el proyecto Pages, en Workers&Pages → Create application
   ventanas emergentes. En la nube se comporta igual (no depende de `/api`). La ventana flotante del Mac no cambia.
 - Tras publicar, en el iPhone hay que **matar y reabrir la PWA** para saltar su caché.
 - Detalle en `docs/arquitectura.md` (capa de render y `Sprint`).
+
+## Trazo único de las gráficas de línea + auditoría (9-nov-2026)
+- **Trazo**: Carrera, Historial (Progreso y Carrera de todas) y el salto de Tarifa comparten curva
+  (cúbica monótona, «con ritmo»), grosores (`--ln-1/2/3`), puntos en anillo/lleno (`mark()`) y guías
+  punteadas (`.gd`). Detalle en `docs/arquitectura.md` §4.
+- **Pulidos**: anillos sobre las curvas al pasar el cursor (Carrera), la guía de meta se abre bajo la
+  cifra que la cruza (Horas por día), eje de la Carrera sin rayita suelta ni marca pegada a la
+  pastilla, nombres completos en Progreso en el iPhone.
+- **`server.py`**: escrituras atómicas de la caché y el archivo, registro de sesión sin duplicados
+  (`_session_lock`), `SPRINT_KEYS` con el cierre de escena/etapa, y el server local solo en `127.0.0.1`.
+  Nada de esto cambia lo que publica `publish.py`.
