@@ -113,7 +113,11 @@ Un solo archivo: CSS (tokens Pantone, tema claro/oscuro) + HTML + un `<script>` 
      Montaje HL/SF ⚪️) se daba por entregada. Una boda en curso queda fuera de `refCur`/`refGhost`,
      de la Carrera y de las métricas finales; chip EN CURSO en Proyectos y fila en Hoy.
    - **Carrera**: `refCur`/`refGhost` = las 2 bodas con edición terminada más recientes (incluye
-     archivadas reconstruidas desde `ghost`); compara **solo fases compartidas**.
+     archivadas reconstruidas desde `ghost`); compara **solo fases compartidas**. Si alguna fase
+     queda fuera, `buildRace(null)` calcula además `raceAll`/`heroAll` (todas las fases; `incl:true`,
+     `onlyIn` = qué boda tenía la fase) para el selector **Sin/Con teaser** (`#raceMode`,
+     `renderRaceMode`; `raceOf`/`heroOf` eligen; `localStorage hubRaceIncl`). `curDays/ghostDays`
+     (1 o 2 días) solo si ambas son del tablero (el archivo no guarda escenas).
    - **h/escena** sin teaser; **$/h** con todo (el precio lo incluye).
    - **Heatmap**: sesiones del tablero + `ghost.days` de las archivadas fuera del tablero.
    - **Avance %** = etapas de edición hechas / etapas de edición (Cambios no cuenta): el 100 %
@@ -413,6 +417,7 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
 | Mac | `.cache.json` · `.archive.json` | caché local · archivo histórico local |
 | Mac | `.sprint-state.json` | sprint compartido dashboard ⇄ ventana flotante (`{rev, data}`) |
 | Navegador | `scTheme` | tema claro/oscuro |
+| Navegador | `hubRaceIncl` | selector de la Carrera: `1` = con teaser, `0`/sin clave = sin teaser |
 | Navegador | `scLastData` | última lectura viva (payload completo, ~90 KB) para pintar al abrir |
 | Navegador | `scSprint` · `scSprintBrk` · `scSprintCyc` | bloque en curso · descanso · ciclo |
 | Navegador | `scSprintMode` · `scSprintDest` · `scSprintPend` | esquema · último destino · registro pendiente |
