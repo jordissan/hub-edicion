@@ -222,6 +222,17 @@ svg text{user-select:none}
 .hero .htiles .m .v small.vs{color:var(--dim)}
 @container wrap (max-width:1000px){.hero .htop{grid-template-columns:1fr;gap:20px}}   /* tiles bajo el titular, a todo lo ancho */
 .racecard{margin-top:18px}
+/* selector Sin/Con teaser: mismas pastillas mono que los chips de la tarjeta */
+.racecard .cl{flex-wrap:wrap;align-items:center;row-gap:8px}
+.rmode{display:flex;margin-left:auto;border:1px solid var(--hair2);border-radius:999px;padding:2px;
+  background:color-mix(in srgb,var(--txt) 4%,transparent)}
+.rmode[hidden]{display:none}
+.rmode button{border:0;background:none;color:var(--dim);font-family:var(--f-m);font-weight:700;font-size:9.5px;letter-spacing:.1em;
+  text-transform:uppercase;padding:5px 10px;border-radius:999px;cursor:pointer;white-space:nowrap;
+  transition:background-color .18s ease,color .18s ease,transform .16s var(--ease)}
+.rmode button:active{transform:scale(.95)}
+.rmode button[aria-pressed="true"]{background:color-mix(in srgb,var(--sun) 16%,transparent);color:var(--sun-tx)}
+@media (hover:hover){.rmode button[aria-pressed="false"]:hover{color:var(--txt)}}
 .rchips{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 10px}
 .rchips .c{display:flex;align-items:center;gap:8px;border:1px solid var(--hair2);border-radius:999px;padding:5px 10px;font-size:12px}
 .rchips .c i{width:10px;height:10px;border-radius:50%}
@@ -1315,7 +1326,8 @@ html.mini #focus .fplan,html.mini #focus .fmode button i{display:none}
   </div>
   <!-- la curva a todo lo ancho; se dibuja al tamaño real del contenedor (renderRace) -->
   <div class="card racecard">
-    <div class="cl"><h3>Horas acumuladas</h3><span class="u" id="raceU"></span></div>
+    <div class="cl"><h3>Horas acumuladas</h3><span class="u" id="raceU"></span>
+      <div class="rmode" id="raceMode" role="group" aria-label="Qué fases comparar" hidden></div></div>
     <div class="rchips" id="raceChips" hidden></div>
     <svg id="race" role="img" aria-label="Horas acumuladas por día de proyecto contra el fantasma de la boda anterior"></svg>
     <div class="legend" id="raceLegend"></div>
@@ -1821,14 +1833,27 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
     const boardRef = editComplete.find(w=> !w.archived) || null;
     const currentKey = liveW ? slug(liveW.name) : (boardRef ? slug(boardRef.name) : (measSorted[0]?slug(measSorted[0].name):null));
 
-    let race=null, hero=null;
+    let race=null, hero=null, raceAll=null, heroAll=null;
     if (refCur){
       // comparar solo las fases que AMBAS bodas tienen: un teaser que el fantasma no
-      // tuvo no es "ir más lento", es otro entregable (igual para fases futuras)
-      let P=null, excluded=[];
+      // tuvo no es "ir más lento", es otro entregable (igual para fases futuras).
+      // Si alguna fase queda fuera, se calcula también la comparación CON todo
+      // (raceAll/heroAll) para el selector "Sin teaser / Con teaser" de la carrera.
+      let P=null, excluded=[], onlyIn=[];
       if (refGhost){ const a=phasesOf(refCur), b=phasesOf(refGhost);
         P=new Set([...a].filter(k=>b.has(k)));
-        excluded=PHASE_ORDER.filter(k=>(a.has(k)||b.has(k)) && !P.has(k)); }
+        excluded=PHASE_ORDER.filter(k=>(a.has(k)||b.has(k)) && !P.has(k));
+        onlyIn=excluded.map(k=>(a.has(k)?refCur:refGhost).name.trim()); }
+      [race,hero]=buildRace(P, excluded);
+      if (excluded.length){ [raceAll,heroAll]=buildRace(null, excluded);
+        raceAll.incl=heroAll.incl=true; heroAll.onlyIn=onlyIn; }
+      // boda de 1 o 2 días (solo bodas del tablero: el archivo no guarda las escenas)
+      if (hero && refGhost && !refCur.archived && !refGhost.archived){
+        const dc=daysOf(refCur), dg=daysOf(refGhost);
+        if (dc!==dg) for (const h of [hero,heroAll]) if (h){ h.curDays=dc; h.ghostDays=dg; } }
+    }
+    function buildRace(P, excluded){
+      let race, hero;
       const effC = w => round1(P ? effHp(w,P) : effH(w));
       const cur=cumCurve(refCur,P), gh=refGhost?cumCurve(refGhost,P):null;
       race={ cur:cur||[], ghost:gh||[], curName:(refCur.name||'').trim(), ghostName:refGhost?(refGhost.name||'').trim():null,
@@ -1851,6 +1876,7 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
         const prevKnown = archive.some(a=> a.name && a.name.trim().toLowerCase()!==curK && (a.hours||0)>0);
         hero={ hasGhost:false, prevKnown, curName:race.curName, curEditDay:race.curEditDay, curEff:race.curEff };
       }
+      return [race, hero];
     }
 
     // ---- ADN: anatomía del ahorro (refCur vs refGhost, por etapa) ----
@@ -1912,7 +1938,7 @@ window.SNAPSHOT_DATA = {"generatedAt": "2026-07-18T10:33:47", "today": "2026-07-
       sprints, medMin, over2h,
       dia7,
       projects, projOrder, archOrder, currentKey,
-      race, hero, anat, money,
+      race, hero, raceAll, heroAll, anat, money,
       PHASES, PHASE_ORDER
     };
 
@@ -2034,9 +2060,29 @@ function renderChrome(M){
 }
 
 /* ================= HERO ================= */
+/* selector "Sin teaser / Con teaser" de la carrera: solo aparece cuando una de las dos bodas
+   tiene una fase que la otra no (M.raceAll). Recordado por navegador; por defecto, sin. */
+const RACE_KEY='hubRaceIncl';
+let raceIncl=false; try{ raceIncl=localStorage.getItem(RACE_KEY)==='1'; }catch(e){}
+const raceOf=M=>(raceIncl&&M.raceAll)||M.race, heroOf=M=>(raceIncl&&M.heroAll)||M.hero;
+function renderRaceMode(M){
+  const box=document.getElementById('raceMode'); if(!box) return;
+  const H=M.heroAll; box.hidden=!H;
+  if(!H){ box.innerHTML=''; return; }
+  const ex=H.excluded.join(' y ');
+  box.innerHTML=[[false,'Sin '+ex],[true,'Con '+ex]].map(([v,t])=>
+    `<button type="button" data-v="${v?1:0}" aria-pressed="${raceIncl===v}">${t}</button>`).join('');
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('#raceMode button'); if(!b||!M) return;
+  const v=b.dataset.v==='1'; if(v===raceIncl) return;
+  raceIncl=v; try{ localStorage.setItem(RACE_KEY,v?'1':'0'); }catch(e){}
+  for(const f of [renderRaceMode,renderHero,renderRace,renderSide]) try{ f(M); }catch(err){ console.error('render · '+f.name, err); }
+});
+
 function renderHero(M){
   const h1=document.getElementById('heroH1'), lede=document.getElementById('heroLede'), tiles=document.getElementById('heroStats');
-  const H=M.hero;
+  const H=heroOf(M);
   const tile=(v,l)=>`<div class="m"><div class="v">${v}</div><div class="l">${l}</div></div>`;
   const put=list=>{ tiles.style.setProperty('--n',list.length); tiles.innerHTML=list.join(''); };
   const dias=n=>`${Math.abs(n)} ${Math.abs(n)===1?'día':'días'}`;
@@ -2046,8 +2092,12 @@ function renderHero(M){
     const when = H.dDays>0 ? `tardó ${dias(H.dDays)} más en cerrar la edición que` : H.dDays<0 ? `cerró la edición ${dias(H.dDays)} antes que` : 'cerró la edición el mismo día de proyecto que';
     const hrs  = H.dPct==null||H.dH===0 ? '' : `le dedicó <b>${Math.abs(H.dPct)} % ${H.dH<0?'menos':'más'} horas</b>`;
     const contra = (H.dDays>0&&H.dH<0)||(H.dDays<0&&H.dH>0);
+    const ex=H.excluded||[];
+    const quien=H.onlyIn&&H.onlyIn.length&&H.onlyIn.every(n=>n===H.onlyIn[0])?H.onlyIn[0]:null;
+    const dias2=H.curDays&&H.ghostDays?` Boda de ${H.curDays} ${H.curDays===1?'día':'días'} contra una de ${H.ghostDays}.`:'';
     lede.innerHTML=`<b>${H.curName}</b> ${when} ${H.ghostName}${hrs?(contra?', pero ':' y ')+hrs:''}.`+
-      (H.excluded&&H.excluded.length?` Comparado sin ${H.excluded.join(' ni ')}: solo una de las dos lo tiene.`:'');
+      (!ex.length?'':H.incl?` Incluye ${ex.length===1&&ex[0]==='teaser'?'el teaser':ex.join(' y ')}${quien?`, que solo tuvo ${quien}`:': solo una de las dos lo tiene'}.`
+                           :` Comparado sin ${ex.join(' ni ')}: solo una de las dos lo tiene.`)+dias2;
     put([ tile(signed(H.dH,' h'), `EDICIÓN · ${signed(H.dPct,' %')}`),
           ...(H.dHpe!=null?[tile(signed(H.dHpe,' %'),'H POR ESCENA')]:[]),
           tile(`D${H.curEditDay}<small class="vs">VS D${H.ghostEditDay}</small>`,'EDICIÓN LISTA') ]);
@@ -2077,7 +2127,7 @@ function renderHero(M){
 function renderRace(M){
   const svg=document.getElementById('race'), leg=document.getElementById('raceLegend'), tbl=document.getElementById('raceTbl');
   const chips=document.getElementById('raceChips'), unit=document.getElementById('raceU');
-  const R=M.race;
+  const R=raceOf(M);
   if(!R){ svg.innerHTML=''; leg.innerHTML=''; tbl.innerHTML=''; chips.innerHTML=''; chips.hidden=true; unit.textContent=''; renderRace._build=null; return; }
   const cur=R.cur||[], gh=R.hasGhost?(R.ghost||[]):[];
   const curEnd=R.curEditDay!=null?Math.min(R.curEditDay,cur.length-1):cur.length-1;
@@ -2523,7 +2573,7 @@ function renderTarifa(M){
 function renderAll(model){
   M=model;
   // cada sección aislada: si una falla (dato raro en Notion), las demás se pintan igual
-  for(const f of [renderChrome,renderHero,renderRace,renderHoy,renderDia7,renderRitmo,renderAdn,renderMesa,renderTarifa,renderSide]){
+  for(const f of [renderChrome,renderRaceMode,renderHero,renderRace,renderHoy,renderDia7,renderRitmo,renderAdn,renderMesa,renderTarifa,renderSide]){
     try{ f(M); }catch(e){ console.error('render · '+f.name, e); }
   }
 }
@@ -2536,7 +2586,7 @@ function renderSide(M){
   document.getElementById('sHola').textContent=(h>=6&&h<12?'Buenos días':h>=12&&h<20?'Buenas tardes':'Buenas noches')+', Jordi';
   document.getElementById('sHoy').innerHTML=M.metaTodayH?`Llevas <b>${fmtHM(hoyH)}</b> de ${M.metaTodayH} h hoy`
     :hoyH?`Llevas <b>${fmtHM(hoyH)}</b> · hoy toca descanso`:'Hoy toca descanso';
-  const H=M.hero, mo=M.money||{};
+  const H=heroOf(M), mo=M.money||{};
   const V={carrera:H&&H.hasGhost&&H.dH!=null?signed(H.dH,' h'):'', hoy:fmtHM(hoyH), ritmo:fmt(M.thisWeekH||0)+' h/sem',
     adn:M.medMin?M.medMin+'′ med.':'', mesa:M.projOrder.length?String(M.projOrder.length):'', dinero:mo.perH?'$'+mo.perH+'/h':''};
   document.querySelectorAll('.snav [data-v]').forEach(e=>e.textContent=V[e.dataset.v]||'');
