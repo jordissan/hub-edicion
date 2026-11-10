@@ -11,7 +11,7 @@ apagada, detrás de login, **100% gratis**.
 ## Arquitectura
 
 ```
-GitHub Actions (workflow_dispatch del Mac cada 15 min + cron */30 de respaldo · TZ America/Mexico_City)
+GitHub Actions (workflow_dispatch del Mac tras cada sesión y cada 15 min + cron */30 de respaldo · TZ America/Mexico_City)
   publish.py → server.py extrae Notion → escribe data.json + summary.json en Cloudflare KV (namespace "hub")
   (+ archivo histórico: lee edicion:archive de KV, server.merge_archive lo actualiza con las
    bodas entregadas con horas trackeadas, y lo re-publica — viaja embebido en data.json como "archive")
@@ -124,6 +124,10 @@ GOTCHA UI: para crear el proyecto Pages, en Workers&Pages → Create application
 - La PWA pinta al abrir la **última lectura guardada** en el iPhone (`localStorage scLastData`) en vez del
   snapshot de julio, y si `/api/edicion` trae el mismo `generatedAt` no redibuja (solo enciende EN VIVO).
 - Fuentes desde el propio sitio, sin la hoja de Google que bloqueaba el primer pintado.
+- **(9-nov-2026)** Al volver a primer plano refresca siempre. El sello dice GUARDADO · hora (punto naranja)
+  si lo pintado no es una lectura recién llegada. Si la sesión de Access caducó, la página se recarga sola
+  (antes se quedaba con datos viejos en silencio). El Mac pide una corrida en cuanto registras una sesión
+  (`cloud_ping_soon`). Detalle en `docs/arquitectura.md` (Boot y §10).
 - Medido en el Mac: datos reales en pantalla de ~240 ms a ~90 ms. Detalle en `docs/arquitectura.md` §10.
 
 

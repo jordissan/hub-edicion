@@ -2023,8 +2023,12 @@ function renderChrome(M){
   document.getElementById('hdrDate').textContent='CORTE · '+fmtFechaFull(M.today);
   const st=document.getElementById('stamp'), col=document.getElementById('colofonState');
   st.className='rec'+(M.live?'':' snap');
-  const hora=(M.generatedAt||'').slice(11,16);
+  const ga=M.generatedAt||'', hoyISO=new Date(Date.now()-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,10);
+  // si la lectura no es de hoy se antepone el día ("8 NOV 18:13"): así un dato viejo nunca pasa por actual
+  const hora=ga.slice(11,16)&&(ga.slice(0,10)!==hoyISO?(+ga.slice(8,10))+' '+['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'][+ga.slice(5,7)-1]+' ':'')+ga.slice(11,16);
   if(M.live){ st.innerHTML='<i></i><span class="rl">EN VIVO'+(hora?' · </span>'+hora:'</span>'); col.textContent='En vivo desde Notion'+(hora?' · última lectura '+hora:''); }
+  // datos guardados en este aparato (al abrir, o porque el refresco falló): punto naranja + hora del dato
+  else if(M.saved){ st.innerHTML='<i></i><span class="rl">GUARDADO'+(hora?' · </span>'+hora:'</span>'); col.textContent='Últimos datos guardados'+(hora?' · lectura de las '+hora:'')+(M.failed?' — no se pudo actualizar; toca ↻ para reintentar':' — actualizando…'); }
   else { st.innerHTML='<i></i>SNAPSHOT'; col.textContent='Snapshot local — arranca el servidor para datos frescos'; }
   const ss=document.getElementById('sStamp'); if(ss){ ss.className='rec sst'+(M.live?'':' snap'); ss.innerHTML=st.innerHTML; }
 }
@@ -3168,41 +3172,61 @@ document.addEventListener('toggle',e=>{ const d=e.target;
 // "EN VIVO". Las marcas hub:* sirven para medir con performance.getEntriesByType('mark').
 const LAST_KEY='scLastData';
 let shownAt=null;                      // generatedAt de lo que hay pintado
-function bootRender(payload,isLive){ try{ const model=deriveModel(payload); model.live=isLive;
+function bootRender(payload,isLive,saved){ try{ const model=deriveModel(payload); model.live=isLive; model.saved=!!saved;
   if(MINI){ M=model; Sprint.update(M); } else renderAll(model);
   shownAt=payload.generatedAt||null; performance.mark?.('hub:'+(isLive?'vivo':'inicial')); return true;
   }catch(e){ console.error('derive',e); return false; } }
 function liveArrived(j){
-  if(M && j.generatedAt && j.generatedAt===shownAt){ M.live=true; if(!MINI) try{ renderChrome(M); }catch(e){} performance.mark?.('hub:vivo-igual'); }
+  if(M && j.generatedAt && j.generatedAt===shownAt){ M.live=true; M.failed=false; if(!MINI) try{ renderChrome(M); }catch(e){} performance.mark?.('hub:vivo-igual'); }
   else bootRender(j,true);
   try{ localStorage.setItem(LAST_KEY,JSON.stringify(j)); }catch(e){} }
 // local (server.py) sirve /api/data; la nube (Cloudflare Pages) sirve /api/edicion desde KV.
 // Se prueba primero el del entorno en que corre la página; el otro queda de respaldo.
 const IS_CLOUD=/\.pages\.dev$/.test(location.hostname);
-let lastLoad=0, loading=false;
+let lastLoad=0, lastTry=0, loading=false;
+// La nube está detrás de Cloudflare Access. Si su sesión caduca con la PWA suspendida, /api/edicion
+// responde 302 al login (otro dominio) y el fetch fallaba en silencio: el iPhone se quedaba con los
+// datos viejos hasta matar y reabrir la app. Ahora se detecta (redirect:'manual' → 'opaqueredirect')
+// y se recarga la página, que es justo lo que hace reabrirla: pasa por el acceso y vuelve con datos.
+// Como mucho una recarga cada 2 min (por si el login no se completa).
+const AUTH_KEY='hubAuthReload';
+function reloginIfExpired(){
+  if(!IS_CLOUD || document.hidden) return false;
+  let t=0; try{ t=+sessionStorage.getItem(AUTH_KEY)||0; }catch(e){}
+  if(Date.now()-t<120e3) return false;
+  try{ sessionStorage.setItem(AUTH_KEY,String(Date.now())); }catch(e){}
+  performance.mark?.('hub:reacceso'); location.reload(); return true; }
 async function loadLive(fresh){
-  if(loading) return false; loading=true;
+  if(loading) return false; loading=true; lastTry=Date.now();
   const btn=document.getElementById('refreshBtn'); if(btn)btn.classList.add('spin');
   const local=fresh?'/api/data?fresh=1':'/api/data';
   const endpoints=IS_CLOUD?['/api/edicion',local]:[local,'/api/edicion'];
-  let ok=false;
-  for(const url of endpoints){ try{ const r=await fetch(url,{cache:'no-store'}); if(!r.ok)continue; const j=await r.json(); if(j&&j.error)continue; if(!j||!j.weddings)continue; liveArrived(j); ok=true; break; }catch(e){} }
+  let ok=false, auth=false;
+  for(const url of endpoints){ try{ const r=await fetch(url,{cache:'no-store',redirect:'manual'});
+    if(r.type==='opaqueredirect'||r.status===401||r.status===403){ auth=true; continue; }
+    if(!r.ok)continue; const j=await r.json(); if(j&&j.error)continue; if(!j||!j.weddings)continue; liveArrived(j); ok=true; break; }catch(e){} }
   if(btn)btn.classList.remove('spin');
-  if(ok) lastLoad=Date.now();
   loading=false;
-  return ok;
+  if(ok){ lastLoad=Date.now(); return true; }
+  if(auth && reloginIfExpired()) return false;
+  // sin datos nuevos: lo pintado pasa a "GUARDADO · hora" (punto naranja) en vez de seguir diciendo EN VIVO
+  if(M && !MINI && (M.live||M.saved)){ M.live=false; M.saved=true; M.failed=true; try{ renderChrome(M); }catch(e){} }
+  return false;
 }
 // 1) render instantáneo: últimos datos guardados; si no hay (o fallan), el snapshot embebido
 (()=>{ let last=null; try{ last=JSON.parse(localStorage.getItem(LAST_KEY)||'null'); }catch(e){}
-  if(!(last && last.weddings && bootRender(last,false))) bootRender(window.SNAPSHOT_DATA,false); })();
+  if(!(last && last.weddings && bootRender(last,false,true))) bootRender(window.SNAPSHOT_DATA,false); })();
 // 2) intentar datos vivos
 loadLive(false);
 // 3) botón actualizar (fresh desde Notion)
 document.getElementById('refreshBtn').addEventListener('click',()=>loadLive(true));
-// 4) la PWA puede quedar abierta horas: al volver a ella (o cada 10 min a la vista) refresca
-//    si los datos tienen más de 5 min
-const STALE_MS=5*60e3;
-document.addEventListener('visibilitychange',()=>{ if(!document.hidden && Date.now()-lastLoad>STALE_MS) loadLive(false); });
+// 4) la PWA puede quedar abierta horas: al volver a primer plano refresca siempre (si no lo
+//    intentó en los últimos 30 s; la petición es ligera), y a la vista cada 10 min si los datos
+//    tienen más de 5. pageshow cubre el regreso desde la caché de páginas de Safari.
+const STALE_MS=5*60e3, FG_MS=30e3;
+const onFront=()=>{ if(!document.hidden && Date.now()-lastTry>FG_MS) loadLive(false); };
+document.addEventListener('visibilitychange',onFront);
+window.addEventListener('pageshow',e=>{ if(e.persisted) onFront(); });
 setInterval(()=>{ if(!document.hidden && Date.now()-lastLoad>STALE_MS) loadLive(false); },10*60e3);
 
 </script>

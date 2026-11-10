@@ -214,8 +214,19 @@ Un solo archivo: CSS (tokens Pantone, tema claro/oscuro) + HTML + un `<script>` 
    local `/api/data`; el otro de respaldo. Si llega el **mismo `generatedAt`** que ya está
    pintado, no se redibuja nada: solo se enciende EN VIVO (`renderChrome`). Cada lectura viva
    se guarda en `scLastData`. Marcas para medir: `performance.getEntriesByType('mark')` →
-   `hub:inicial`, `hub:vivo`, `hub:vivo-igual`. Refresca solo al volver a la app o cada 10 min
-   si los datos tienen > 5 min. ↻ = `fresh` (local: extracción síncrona; nube: relee KV).
+   `hub:inicial`, `hub:vivo`, `hub:vivo-igual`, `hub:reacceso`. Refresca **siempre al volver a
+   primer plano** (`visibilitychange` + `pageshow` de la caché de páginas; como mucho uno cada
+   30 s) y, a la vista, cada 10 min si los datos tienen > 5 min. ↻ = `fresh` (local: extracción
+   síncrona; nube: relee KV).
+   **Sello honesto (9-nov-2026):** EN VIVO · hora = la última lectura llegó bien. GUARDADO · hora
+   (punto naranja; en móvil solo punto + hora) = lo pintado son los datos guardados en el aparato:
+   al abrir mientras llega la lectura, o porque el refresco falló (sin red, Access…). Si la
+   lectura no es de hoy se antepone el día (`8 NOV 18:13`). SNAPSHOT = el embebido de julio.
+   **Access caducado:** el fetch va con `redirect:'manual'`; si `/api/edicion` responde con el
+   302 de Cloudflare Access (`opaqueredirect`, o 401/403), la página se recarga sola
+   (`reloginIfExpired`, máx. una vez cada 2 min vía `sessionStorage hubAuthReload`): es lo mismo
+   que matar y reabrir la PWA → pasa por el login y vuelve con datos. Antes ese fallo era
+   silencioso y el iPhone se quedaba con datos viejos diciendo EN VIVO.
    **Fuentes**: el alfabeto latino de Archivo, Inter y JetBrains Mono se sirve desde el propio
    sitio (`/fonts/*-latin-v1.woff2`, mismos archivos de Google Fonts, OFL) con `preload`; los
    demás alfabetos siguen apuntando a fonts.gstatic.com y solo se bajan si aparecen. Caché de un
@@ -428,7 +439,9 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
    (commit + push; Pages despliega en 1-2 min; si cambió `server.py` republica los datos).
 4. `publish.py`, `functions/` y el workflow se editan directamente en `cloud/`.
 5. Actualiza la documentación en la misma pasada si cambió comportamiento o datos.
-6. Para ver la versión nueva en el iPhone: **matar la PWA** desde el app switcher y reabrir.
+6. Para ver la versión nueva **del diseño** en el iPhone: **matar la PWA** desde el app switcher y
+   reabrir (no hay service worker: es la caché de WebKit de la app). Los **datos** no lo necesitan:
+   se refrescan solos al volver a primer plano.
 
 Datos a mano: `gh workflow run "Publicar dashboard" -R jordissan/hub-edicion`.
 `sync-cloud.sh` también copia `fonts/` (las fuentes) a `cloud/fonts/`.
@@ -470,6 +483,14 @@ Un `workflow_dispatch` sí arranca al momento, así que el **server local lo pid
 - solo en el server del puerto 4599 (no en Actions, que no llama a `main()`, ni en copias de
   prueba con otro `DASHBOARD_PORT`); se apaga con `HUB_CLOUD_PING=0`;
 - log en `/tmp/hub-edicion.err` (`[nube] HH:MM · pedida` / `error: …`);
+- se mide con la hora del reloj y se revisa cada minuto (el `sleep` de macOS no cuenta el tiempo
+  dormido: antes, al abrir la tapa podía tardar hasta 15 min más); tras un error, reintento a los 3 min;
+- **aviso inmediato tras cada sesión o cierre** (`cloud_ping_soon`, 9-nov-2026): `POST /api/session`
+  y `/api/close` piden una corrida 20 s después del último evento (agrupa sesión + cierre), sin el
+  filtro de 12 min, con 3 reintentos si no hay red. Si ya hay una en marcha, GitHub deja la nueva en
+  cola (`concurrency: publicar`) y arranca al acabar. Así el iPhone ve la sesión en ~3 min aunque
+  luego se cierre la tapa (log `[nube] … (tras sesión)`). Pueden verse corridas «cancelled»: es
+  GitHub sustituyendo una en cola por otra más nueva, no un error;
 - con el Mac dormido o sin red no pasa nada: el cron de GitHub queda de respaldo.
 
 **Consumo (peor caso: 96 corridas/día) frente a los límites gratuitos:**

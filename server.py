@@ -1118,24 +1118,25 @@ def _gh_path():
     return shutil.which("gh")
 
 
-def cloud_ping_once():
-    """Pide a GitHub una corrida del extractor de la nube si no hubo una reciente.
-    Devuelve un texto corto con lo que hizo (para el log)."""
+def cloud_ping_once(force=False):
+    """Pide a GitHub una corrida del extractor de la nube si no hubo una reciente
+    (force=True: la pide siempre). Devuelve un texto corto con lo que hizo (para el log)."""
     import subprocess
     gh = _gh_path()
     if not gh:
         return "sin gh"
     try:
-        out = subprocess.run(
-            [gh, "run", "list", "-R", CLOUD_REPO, "-w", CLOUD_WORKFLOW, "-L", "1",
-             "--json", "createdAt", "--jq", ".[0].createdAt // \"\""],
-            capture_output=True, text=True, timeout=30)
-        last = (out.stdout or "").strip()
-        if out.returncode == 0 and last:
-            started = datetime.datetime.fromisoformat(last.replace("Z", "+00:00"))
-            age = (datetime.datetime.now(datetime.timezone.utc) - started).total_seconds()
-            if age < CLOUD_PING_MIN_GAP:
-                return "reciente (%d min)" % (age // 60)
+        if not force:
+            out = subprocess.run(
+                [gh, "run", "list", "-R", CLOUD_REPO, "-w", CLOUD_WORKFLOW, "-L", "1",
+                 "--json", "createdAt", "--jq", ".[0].createdAt // \"\""],
+                capture_output=True, text=True, timeout=30)
+            last = (out.stdout or "").strip()
+            if out.returncode == 0 and last:
+                started = datetime.datetime.fromisoformat(last.replace("Z", "+00:00"))
+                age = (datetime.datetime.now(datetime.timezone.utc) - started).total_seconds()
+                if age < CLOUD_PING_MIN_GAP:
+                    return "reciente (%d min)" % (age // 60)
         r = subprocess.run([gh, "workflow", "run", CLOUD_WORKFLOW, "-R", CLOUD_REPO],
                            capture_output=True, text=True, timeout=30)
         return "pedida" if r.returncode == 0 else "error: %s" % (r.stderr or "").strip()[:200]
@@ -1144,12 +1145,56 @@ def cloud_ping_once():
 
 
 def _cloud_ping_loop():
+    # Se mide con la hora del reloj (time.time) y se revisa cada minuto: el sleep de macOS no
+    # cuenta el tiempo con el Mac dormido, así que un sleep(15 min) seguido podía tardar hasta
+    # 15 min de Mac despierto tras abrir la tapa (9-nov: durmió 18:25-19:50 y no pidió nada al
+    # despertar). Tras un error (p. ej. sin red al despertar) reintenta a los 3 min.
     time.sleep(90)                   # deja arrancar el server (y no pide nada en reinicios rápidos)
+    next_at = 0.0
     while True:
-        res = cloud_ping_once()
-        if not res.startswith("reciente"):
-            sys.stderr.write("[nube] %s · %s\n" % (time.strftime("%H:%M"), res))
-        time.sleep(CLOUD_PING_EVERY)
+        if time.time() >= next_at:
+            res = cloud_ping_once()
+            if not res.startswith("reciente"):
+                sys.stderr.write("[nube] %s · %s\n" % (time.strftime("%H:%M"), res))
+            next_at = time.time() + (180 if res.startswith(("error", "sin gh")) else CLOUD_PING_EVERY)
+        time.sleep(60)
+
+
+# Aviso inmediato tras registrar una sesión o cerrar escena/etapa. Sin esto, si Jordi terminaba
+# y cerraba la tapa, la nube (y el iPhone) no veían la sesión hasta el respaldo de GitHub
+# (mediana ~4 h). Agrupa ráfagas (sesión + cierre llegan con segundos de diferencia): espera
+# 20 s desde el ÚLTIMO evento y pide una sola corrida, sin el filtro de 12 min. Si ya hay una
+# en marcha, GitHub deja la nueva en cola (concurrency "publicar") → siempre lee lo recién
+# escrito. Si falla (sin red), reintenta 3 veces cada minuto.
+CLOUD_SOON_WAIT = 20
+_cloud_soon = {"at": 0.0, "busy": False}
+_cloud_soon_lock = threading.Lock()
+
+
+def cloud_ping_soon():
+    if os.environ.get("HUB_CLOUD_PING", "1") == "0" or PORT != 4599:
+        return
+    with _cloud_soon_lock:
+        _cloud_soon["at"] = time.time()
+        if _cloud_soon["busy"]:
+            return                    # ya hay un aviso esperando: solo se alarga la espera
+        _cloud_soon["busy"] = True
+
+    def run():
+        while True:
+            with _cloud_soon_lock:
+                wait = _cloud_soon["at"] + CLOUD_SOON_WAIT - time.time()
+                if wait <= 0:
+                    _cloud_soon["busy"] = False
+                    break
+            time.sleep(min(wait, CLOUD_SOON_WAIT))
+        for _ in range(4):
+            res = cloud_ping_once(force=True)
+            sys.stderr.write("[nube] %s · %s (tras sesión)\n" % (time.strftime("%H:%M"), res))
+            if not res.startswith("error"):
+                break
+            time.sleep(60)
+    threading.Thread(target=run, daemon=True).start()
 
 
 def start_cloud_ping():
@@ -1254,6 +1299,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         out = {"ok": True, "closed": closed}
         _close_done[item["id"]] = out
         _refresh_in_background()
+        cloud_ping_soon()           # y que la nube (iPhone) lo vea en ~3 min
         self._send(200, json.dumps(out))
 
     def do_POST(self):
@@ -1305,6 +1351,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             out["warn"] = res["warn"]
         _session_done[item["id"]] = out
         _refresh_in_background()   # que el tablero la muestre en cuanto termine de reconstruirse
+        cloud_ping_soon()          # y que la nube (iPhone) la vea en ~3 min aunque se cierre la tapa
         self._send(200, json.dumps(out))
 
     def do_GET(self):
