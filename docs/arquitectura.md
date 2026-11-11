@@ -331,6 +331,8 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   (cacheado) → portapapeles con `ClipboardItem` + promesa (Safari exige copiar dentro del clic) → `toast()`
   (`.htoast`). Fallo → `prompt` con el enlace. Para otra tarjeta: botón con `data-embed="<tarjeta>"` +
   soporte en el modo embebido.
+- **Aspecto:** se funde con Notion: `--embbg` (#191919 oscuro / #FFFFFF claro) en html, body y tarjeta;
+  sin borde, radio, sombra, grano ni halo de la dona; `color-scheme` dark/light (evita esquinas opacas).
 - **Sol/luna** (`.cardbtn.embthm`, solo embebida): alterna `data-theme`, guarda `scEmbedTheme`, `applyGlow()` y
   `renderEmbed(M)`. El script del `<head>` lo lee antes de pintar: `scEmbedTheme` > `&tema=` > sistema.
 
