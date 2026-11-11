@@ -349,6 +349,16 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   (`scEmbedThemeAt`) y aplican. Su `</>` (`.embtop`) va junto al botón de tema de la barra superior.
 - **Sol/luna** (`.cardbtn.embthm`, solo embebida; guarda solo el de ESA tarjeta en `scEmbedTheme:<tarjeta>:<boda>`): va pegado al final del título (la esquina superior derecha es de la barra «···» de Notion); alterna `data-theme`, guarda `scEmbedTheme`, `applyGlow()` y
   `renderEmbed(M)`. El script del `<head>` lo lee antes de pintar: `scEmbedTheme` > `&tema=` > sistema.
+- **Sin scroll propio (11-nov):** el navegador solo pasa la rueda / los dos dedos a la página padre (Notion) si
+  nada dentro del iframe puede desplazarse, y `overscroll-behavior:contain` lo corta siempre. Por eso en modo
+  embebido: html/body `overflow:hidden`; `.embtarget` y `#embBox` `overflow:clip` (fallback `hidden`), SIN
+  `overscroll-behavior`; `.heatwrap` `overflow:hidden` (renderHeat sigue fijando `scrollLeft` al final).
+  Lo que no cabe se corta: `embCut()` pone `.embcut` (máscara, 36 px de desvanecido abajo) si
+  `scrollHeight > clientHeight`; se llama en `renderEmbed`, tras `fonts.ready` y al asentarse. Nunca añadir
+  `overflow:auto|scroll` ni listeners de `wheel`/`touchmove` con `preventDefault` en lo que se ve embebido.
+  Probado con una página larga con las 10 tarjetas en iframes de otro origen y rueda real (700×360, 320×220
+  claro, 760×180): la página baja en todas. **Trampa al probar en el panel oculto:** tras `scrollTo` por código
+  el panel no repinta y la rueda cae en el iframe que había antes en ese punto → hacer una captura antes.
 
 ## 5. Sprint de enfoque (registro de sesiones)
 

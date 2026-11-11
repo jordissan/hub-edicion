@@ -1380,9 +1380,17 @@ html.embed body>*:not(.embpath):not(.embtarget):not(#embBox):not(#tip):not(svg),
 html.embed .embpath>*:not(.embpath):not(.embtarget){display:none !important}
 html.embed .embpath{display:contents !important}
 /* llena el recuadro de Notion y se funde con la página: su mismo fondo, sin borde, sin esquinas, sin sombra */
-html.embed .embtarget,html.embed #embBox{position:fixed;inset:0;margin:0;padding:16px 18px 14px;overflow:auto;overscroll-behavior:contain;
-  background:var(--embbg);border:0;border-radius:0;box-shadow:none;scrollbar-width:none}
-html.embed .embtarget::-webkit-scrollbar{display:none}
+html.embed .embtarget,html.embed #embBox{position:fixed;inset:0;margin:0;padding:16px 18px 14px;
+  background:var(--embbg);border:0;border-radius:0;box-shadow:none}
+/* sin scroll propio: con el puntero encima, la rueda/los dos dedos mueven la página de Notion (como sus widgets
+   de reloj y clima). El navegador solo pasa el gesto a la página si nada dentro del recuadro puede desplazarse:
+   por eso clip (ni siquiera es contenedor de scroll) y nada de overscroll-behavior. Si el recuadro es más bajo
+   que la tarjeta, lo que no cabe se corta y el borde de abajo se desvanece (.embcut): se agranda en Notion */
+html.embed .embtarget,html.embed #embBox{overflow:hidden;overflow:clip}
+html.embed .embtarget.embcut{-webkit-mask-image:linear-gradient(#000 calc(100% - 36px),transparent);
+  mask-image:linear-gradient(#000 calc(100% - 36px),transparent)}
+/* Intensidad diaria: la retícula se queda en las semanas más recientes (sin deslizar de lado) */
+html.embed .embtarget .heatwrap{overflow:hidden}
 /* fondo exacto de Notion (oscuro #191919 · claro #FFFFFF). color-scheme igual al de Notion: si no coincide, el
    navegador pinta opaco el lienzo del iframe y asoman esquinas de otro color */
 html.embed{--embbg:#191919;color-scheme:dark}
@@ -1400,7 +1408,7 @@ html.embed #embBox{z-index:3;display:flex;align-items:center;justify-content:cen
 html.embed #embBox[hidden]{display:none !important}
 /* la dona: ancha y baja → dona a la izquierda y resumen a la derecha; estrecha → uno sobre otro */
 html.embed #donutCard.embtarget{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;
-  row-gap:8px;padding:16px 18px 12px;overflow:hidden}
+  row-gap:8px;padding:16px 18px 12px;overflow:hidden;overflow:clip}
 html.embed #donutCard .cl{margin:0;align-items:baseline}
 html.embed #donutCard .cl h3{white-space:nowrap;flex:none}
 html.embed #donutCard .dwrap{min-height:0;padding:0;align-items:center}
@@ -4021,6 +4029,9 @@ function embDecorate(){ for(const [card,sp] of Object.entries(EMB_CARDS)){ if(sp
 // marca la tarjeta (.embtarget) y sus contenedores hasta <body> (.embpath); quita marcas viejas
 function embMark(el){ document.querySelectorAll('.embtarget,.embpath').forEach(x=>{ if(x!==el&&!x.contains(el)) x.classList.remove('embtarget','embpath'); });
   el.classList.add('embtarget'); for(let a=el.parentElement;a&&a!==document.body;a=a.parentElement) a.classList.add('embpath'); }
+// si el recuadro de Notion es más bajo que la tarjeta, lo que no cabe se corta (sin scroll propio: el gesto es
+// de Notion) y el borde de abajo se desvanece para que se note que hay más
+function embCut(){ const el=document.querySelector('.embtarget'); if(el) el.classList.toggle('embcut',el.scrollHeight>el.clientHeight+1); }
 function renderEmbed(model){
   if(!EMB_SPEC) return embedMsg('Tarjeta desconocida');
   const p=EMB_SPEC.boda?model.projects[EMB.boda]:null;
@@ -4034,10 +4045,11 @@ function renderEmbed(model){
   // se pinta otra vez ya colocada: las gráficas miden su ancho al dibujarse (Horas por día, el salto de Tarifa)
   embMark(el); el=paint()||el; embMark(el); embedMsg('');
   try{ EMB_SPEC.after?.(); }catch(e){ console.error('render · embed',e); }
+  embCut(); document.fonts?.ready.then(embCut);
   if(p){ const u=el.querySelector('.embnm'); if(u){ u.textContent=p.nm.toUpperCase(); u.hidden=false; } }
   if(!renderEmbed._in){ renderEmbed._in=true;
     requestAnimationFrame(()=>{ el.classList.add('in'); if(EMB.card==='donut') window.__swirlDonut?.(); });
-    setTimeout(()=>document.querySelector('.embtarget')?.classList.add('settled'),reduced?0:1000); }
+    setTimeout(()=>{ document.querySelector('.embtarget')?.classList.add('settled'); embCut(); },reduced?0:1000); }
   else el.classList.add('in','settled'); }
 // al cambiar el tamaño del recuadro en Notion se vuelve a pintar (las gráficas usan su ancho real)
 if(EMBED){ let rt=0; addEventListener('resize',()=>{ clearTimeout(rt); rt=setTimeout(()=>{ if(M&&M.projects) renderEmbed(M); },150); }); }
