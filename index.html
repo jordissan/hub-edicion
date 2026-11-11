@@ -13,9 +13,9 @@
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <script>// tema: lo elegido manda ('' = oscuro); sin elección, el del sistema. La barra del navegador sigue al tema.
 // modo embebido (/embed o ?embed=donut): una tarjeta sola para pegar en Notion. Su tema va en la URL
-// Tema: el que se eligió con el sol/luna de la propia tarjeta (scEmbedTheme, vale para todas las tarjetas
-// embebidas en ese sitio); si no, &tema=claro|oscuro de la URL; si no, el del sistema. Nunca el del dashboard.
-try{const q=new URLSearchParams(location.search);if(q.has('embed')||/^\/embed(\/|$)/.test(location.pathname)){document.documentElement.classList.add('embed');let t=null;try{t=localStorage.getItem('scEmbedTheme')}catch(e){}const tm=q.get('tema');const light=t?t==='light':tm==='claro'?true:tm==='oscuro'?false:matchMedia('(prefers-color-scheme: light)').matches;if(light)document.documentElement.dataset.theme='light'}}catch(e){}
+// Tema: el del sol/luna de ESA tarjeta (scEmbedTheme:<tarjeta>:<boda>); si no, el general (scEmbedTheme, el que
+// pone el widget «Tema de los widgets»); si no, &tema=claro|oscuro de la URL; si no, el del sistema. Nunca el del dashboard.
+try{const q=new URLSearchParams(location.search);if(q.has('embed')||/^\/embed(\/|$)/.test(location.pathname)){document.documentElement.classList.add('embed');let t=null;try{t=localStorage.getItem('scEmbedTheme:'+(q.get('embed')||q.get('card')||'donut')+':'+(q.get('boda')||'').trim().toLowerCase())||localStorage.getItem('scEmbedTheme')}catch(e){}const tm=q.get('tema');const light=t?t==='light':tm==='claro'?true:tm==='oscuro'?false:matchMedia('(prefers-color-scheme: light)').matches;if(light)document.documentElement.dataset.theme='light'}}catch(e){}
 if(!document.documentElement.classList.contains('embed'))try{const t=localStorage.getItem('scTheme');if(t)document.documentElement.dataset.theme=t;else if(t===null&&matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.dataset.theme='light'}catch(e){}
 try{document.querySelector('meta[name="theme-color"]').content=document.documentElement.dataset.theme==='light'?'#f0eee9':'#050506'}catch(e){}
 // sidebar: el estado guardado manda; si no hay, desplegado solo en pantallas anchas (sin parpadeo al cargar)
@@ -1413,6 +1413,13 @@ html.embed #donutCard .dlg{margin-top:0}
 }
 /* Intensidad diaria: el título respira antes de la retícula, como en las demás tarjetas */
 html.embed #heatCard.embtarget .cl{margin-bottom:18px}
+/* widget «Tema de los widgets»: título y Claro | Oscuro en una línea (o dos si el recuadro es estrecho) */
+html:not(.embed) #temaCard{display:none !important}
+html.embed #temaCard.embtarget{display:flex;align-items:center;flex-wrap:wrap;gap:10px 18px;padding:12px 16px}
+html.embed #temaCard .cl{margin:0}
+html.embed #temaCard .rmode{margin-left:0;height:auto}
+html.embed #temaCard .rmode button{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;height:auto}
+html.embed #temaCard .rmode .ic{width:14px;height:14px}
 /* los recuadros de Tarifa, solos: la cifra al centro del espacio */
 html.embed .dinero>.kpi.embtarget{display:flex;flex-direction:column}
 html.embed .dinero>.kpi.embtarget .v{margin:auto 0;padding:10px 0;font-size:clamp(40px,14vw,72px)}
@@ -1609,6 +1616,7 @@ html.embed .salto.embtarget .cl .cardbtn{position:relative;top:auto;right:auto}
     <svg class="ic i-sol-u"><use href="#i-sol"/></svg>
     <svg class="ic i-luna-u"><use href="#i-luna"/></svg>
   </button>
+  <button class="thm cardbtn embtop" type="button" data-embed="tema" aria-label="Copiar el interruptor de tema para Notion" data-tip="<b>Tema de los widgets</b><br>copia un interruptor claro / oscuro que cambia todas tus tarjetas en Notion · en Notion: /embed y pegar"><svg class="ic i-emb"><use href="#i-embed"/></svg><svg class="ic i-ok"><use href="#i-check"/></svg></button>
 </div></header>
 
 <div class="wrap">
@@ -1828,6 +1836,11 @@ html.embed .salto.embtarget .cl .cardbtn{position:relative;top:auto;right:auto}
 
 </div><!-- /wrap -->
 
+<!-- widget «Tema de los widgets» (solo en Notion, /embed?embed=tema): cambia el tema de TODAS las tarjetas embebidas -->
+<div class="card" id="temaCard"><div class="cl"><h3>Tema de los widgets</h3></div>
+  <div class="rmode" role="group" aria-label="Tema de todas las tarjetas en Notion">
+    <button type="button" data-t="light" aria-pressed="false"><svg class="ic"><use href="#i-sol"/></svg>Claro</button><button type="button" data-t="dark" aria-pressed="false"><svg class="ic"><use href="#i-luna"/></svg>Oscuro</button>
+  </div></div>
 <div id="tip" role="status" aria-hidden="true"></div>
 
 <script>
@@ -3984,6 +3997,8 @@ const EMB_CARDS={
   'tarifa-eficiencia':{sel:'#dineroRow>.card:nth-child(3)',nm:'h / escena',render:[renderTarifa]},
   // renderTarifa rehace los recuadros (nacen sin marcar, ocultos): el salto se redibuja ya colocado
   'tarifa-salto':{sel:'#dineroRow>.card:nth-child(4)',nm:'$ / hora por boda',render:[renderTarifa],after:()=>renderTarifa._build?.()},
+  // interruptor general: sin datos (no pide clave ni lee nada), cambia el tema de todas las tarjetas
+  tema:{sel:'#temaCard',nm:'Tema de los widgets',nodata:true,render:[]},
 };
 const EMB=(()=>{ const q=new URLSearchParams(location.search);
   return { card:q.get('embed')||q.get('card')||'donut', boda:(q.get('boda')||'').trim().toLowerCase(), k:(q.get('k')||'').trim() }; })();
@@ -3997,7 +4012,7 @@ function embedMsg(t){ let b=document.getElementById('embBox');
   if(!b){ if(!t) return; b=document.createElement('div'); b.id='embBox'; b.setAttribute('role','status'); document.body.appendChild(b); }
   b.textContent=t||''; b.hidden=!t; }
 // botones de cabecera en cada tarjeta insertable: </> (dashboard) y sol/luna (embebida); el CSS muestra el que toca
-function embDecorate(){ for(const [card,sp] of Object.entries(EMB_CARDS)){
+function embDecorate(){ for(const [card,sp] of Object.entries(EMB_CARDS)){ if(sp.nodata) continue;
   const el=document.querySelector(sp.sel), cl=el&&el.querySelector('.cl'); if(!cl||cl.querySelector('.embbtn')) continue;
   if(sp.boda&&!sp.nameInHead) cl.querySelector('h3')?.insertAdjacentHTML('afterend','<span class="u embnm" hidden></span>');
   cl.insertAdjacentHTML('beforeend',
@@ -4039,9 +4054,9 @@ function embLink(card,boda){ const k=card+'|'+boda;
     .then(j=>{ if(!j||!j.url) throw (j&&j.error)||'sin enlace'; return card==='donut'?j.url:j.url+'&embed='+card; })
     .catch(e=>{ delete embLinks[k]; throw e; })); }
 document.addEventListener('click',async e=>{ const b=e.target.closest('[data-embed]'); if(!b||EMBED) return;
-  const card=b.dataset.embed, sp=EMB_CARDS[card]; if(!sp||!M) return;
+  const card=b.dataset.embed, sp=EMB_CARDS[card]; if(!sp||(!M&&!sp.nodata)) return;
   const boda=sp.boda?renderMesa._cur:'todo', p=sp.boda?(boda&&M.projects[boda]):null; if(sp.boda&&!p) return;
-  const url=embLink(card,boda);
+  const url=sp.nodata?Promise.resolve((IS_CLOUD?location.origin:'https://hub-edicion.pages.dev')+'/embed?embed='+card):embLink(card,boda);
   try{
     // ClipboardItem con promesa: Safari solo deja copiar dentro del clic, aunque el enlace llegue después
     if(window.ClipboardItem&&navigator.clipboard&&navigator.clipboard.write)
@@ -4054,11 +4069,29 @@ document.addEventListener('click',async e=>{ const b=e.target.closest('[data-emb
     if(u) prompt('Copia este enlace y pégalo en Notion con /embed:',u);
     else toast(err==='acceso'||err===0?'No pude sacar el enlace: vuelve a entrar con el PIN':'No pude sacar el enlace ('+escH(String(err))+')',4200);
   } });
-// ---- tarjeta embebida: el sol/luna cambia su tema y lo recuerda (scEmbedTheme) ----
-if(EMBED) document.addEventListener('click',e=>{ if(!e.target.closest('.embthm')) return; const r=document.documentElement;
-  const light=r.dataset.theme!=='light'; if(light) r.dataset.theme='light'; else delete r.dataset.theme;
-  try{ localStorage.setItem('scEmbedTheme',light?'light':'dark'); }catch(e){}
-  applyGlow(); if(M&&M.projects) renderEmbed(M); });
+// ---- tema en Notion ----
+// · sol/luna de una tarjeta → solo ESA tarjeta (scEmbedTheme:<tarjeta>:<boda>)
+// · widget «Tema de los widgets» → TODAS: guarda el general (scEmbedTheme), borra los de cada tarjeta y avisa
+//   (scEmbedThemeAt). Las tarjetas abiertas lo oyen con el evento storage (mismo sitio dentro de Notion) y cambian al momento.
+const EMB_TKEY='scEmbedTheme:'+EMB.card+':'+EMB.boda;
+function embSetTheme(light){ const r=document.documentElement; if(light===(r.dataset.theme==='light')) return;
+  if(light) r.dataset.theme='light'; else delete r.dataset.theme;
+  applyGlow(); if(M&&M.projects) renderEmbed(M); embTemaPaint(); }
+function embTemaPaint(){ const l=document.documentElement.dataset.theme==='light';
+  document.querySelectorAll('#temaCard [data-t]').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.t==='light')===l))); }
+if(EMBED){
+  document.addEventListener('click',e=>{
+    if(e.target.closest('.embthm')){ const light=document.documentElement.dataset.theme!=='light';
+      try{ localStorage.setItem(EMB_TKEY,light?'light':'dark'); }catch(err){}
+      embSetTheme(light); return; }
+    const t=e.target.closest('#temaCard [data-t]'); if(!t) return;
+    try{ for(let i=localStorage.length-1;i>=0;i--){ const k=localStorage.key(i); if(k&&k.startsWith('scEmbedTheme:')) localStorage.removeItem(k); }
+         localStorage.setItem('scEmbedTheme',t.dataset.t); localStorage.setItem('scEmbedThemeAt',String(Date.now())); }catch(err){}
+    embSetTheme(t.dataset.t==='light'); });
+  addEventListener('storage',e=>{ if(e.key!=='scEmbedThemeAt') return;
+    let t=null; try{ t=localStorage.getItem('scEmbedTheme'); }catch(err){}
+    if(t) embSetTheme(t==='light'); });
+}
 function bootRender(payload,isLive,saved){ try{ const P=EMBED?embedSlice(payload,EMB_SCOPE):payload;
   const model=deriveModel(P); model.live=isLive; model.saved=!!saved;
   if(EMBED){ model.embedFound=P.weddings.length+P.archive.length>0; M=model; renderEmbed(M); }
@@ -4087,6 +4120,7 @@ function reloginIfExpired(){
   try{ sessionStorage.setItem(AUTH_KEY,String(Date.now())); }catch(e){}
   performance.mark?.('hub:reacceso'); location.reload(); return true; }
 async function loadLive(fresh){
+  if(EMBED&&EMB_SPEC&&EMB_SPEC.nodata) return false;          // el interruptor de tema no usa datos
   if(loading) return false; loading=true; lastTry=Date.now();
   const btn=document.getElementById('refreshBtn'); if(btn)btn.classList.add('spin');
   const local=fresh?'/api/data?fresh=1':'/api/data';
@@ -4107,7 +4141,8 @@ async function loadLive(fresh){
   return false;
 }
 // 1) render instantáneo: últimos datos guardados; si no hay (o fallan), el snapshot embebido
-(()=>{ let last=null; const key=EMBED?'scEmbed:'+EMB_SCOPE:LAST_KEY;
+(()=>{ if(EMBED&&EMB_SPEC&&EMB_SPEC.nodata){ embMark(document.querySelector(EMB_SPEC.sel)); embTemaPaint(); return; }   // interruptor de tema: sin datos
+  let last=null; const key=EMBED?'scEmbed:'+EMB_SCOPE:LAST_KEY;
   try{ last=JSON.parse(localStorage.getItem(key)||'null'); }catch(e){}
   if(last && last.weddings && bootRender(last,false,true)) return;
   if(EMBED){ embedMsg(!EMB_SPEC?'Tarjeta desconocida':EMB_SCOPE?'Cargando…':'Falta la boda en el enlace'); return; }   // nunca el snapshot de ejemplo

@@ -344,7 +344,10 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   miraba el primer nivel y la boda se quedaba sin etapas y desaparecía del tablero.
 - **Aspecto:** se funde con Notion: `--embbg` (#191919 oscuro / #FFFFFF claro) en html, body y tarjeta;
   sin borde, radio, sombra, grano ni halo de la dona; `color-scheme` dark/light (evita esquinas opacas).
-- **Sol/luna** (`.cardbtn.embthm`, solo embebida): va pegado al final del título (la esquina superior derecha es de la barra «···» de Notion); alterna `data-theme`, guarda `scEmbedTheme`, `applyGlow()` y
+- **Interruptor general** (`tema`, `#temaCard`, `nodata`: no carga datos ni pide clave): Claro | Oscuro (`.rmode`)
+  → `scEmbedTheme` + borra `scEmbedTheme:*` + `scEmbedThemeAt`; las demás tarjetas escuchan `storage`
+  (`scEmbedThemeAt`) y aplican. Su `</>` (`.embtop`) va junto al botón de tema de la barra superior.
+- **Sol/luna** (`.cardbtn.embthm`, solo embebida; guarda solo el de ESA tarjeta en `scEmbedTheme:<tarjeta>:<boda>`): va pegado al final del título (la esquina superior derecha es de la barra «···» de Notion); alterna `data-theme`, guarda `scEmbedTheme`, `applyGlow()` y
   `renderEmbed(M)`. El script del `<head>` lo lee antes de pintar: `scEmbedTheme` > `&tema=` > sistema.
 
 ## 5. Sprint de enfoque (registro de sesiones)
@@ -567,7 +570,7 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
 | Navegador | `hubRaceIncl` | selector de la Carrera: `1` = con teaser, `0`/sin clave = sin teaser |
 | Navegador | `scLastData` | última lectura viva (payload completo, ~90 KB) para pintar al abrir |
 | Navegador | `scEmbed:<boda>` | modo embebido (`/embed`): última lectura de esa boda (recortada); no toca `scLastData` |
-| Navegador | `scEmbedTheme` | tema elegido con el sol/luna de la tarjeta embebida (`light`/`dark`) |
+| Navegador | `scEmbedTheme` · `scEmbedTheme:<tarjeta>:<boda>` · `scEmbedThemeAt` | tema general de las tarjetas en Notion · el de una tarjeta (manda sobre el general) · aviso de cambio del interruptor |
 | Mac | `.embed-secret` | secreto para los enlaces de Notion (= `EMBED_SECRET` de Pages; 600, fuera de git) |
 | Navegador | `scSprint` · `scSprintBrk` · `scSprintCyc` | bloque en curso · descanso · ciclo |
 | Navegador | `scSprintMode` · `scSprintDest` · `scSprintPend` | esquema · último destino · registros pendientes (lista `[{item,label,net}]`; antes un objeto, aún se lee) |
