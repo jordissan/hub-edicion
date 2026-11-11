@@ -344,7 +344,7 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   miraba el primer nivel y la boda se quedaba sin etapas y desaparecía del tablero.
 - **Aspecto:** se funde con Notion: `--embbg` (#191919 oscuro / #FFFFFF claro) en html, body y tarjeta;
   sin borde, radio, sombra, grano ni halo de la dona; `color-scheme` dark/light (evita esquinas opacas).
-- **Sol/luna** (`.cardbtn.embthm`, solo embebida): va ~58 px separado del borde derecho (la esquina superior derecha es del botón «···» de Notion); alterna `data-theme`, guarda `scEmbedTheme`, `applyGlow()` y
+- **Sol/luna** (`.cardbtn.embthm`, solo embebida): va pegado al final del título (la esquina superior derecha es de la barra «···» de Notion); alterna `data-theme`, guarda `scEmbedTheme`, `applyGlow()` y
   `renderEmbed(M)`. El script del `<head>` lo lee antes de pintar: `scEmbedTheme` > `&tema=` > sistema.
 
 ## 5. Sprint de enfoque (registro de sesiones)
