@@ -1429,6 +1429,10 @@ html:not(.embed) .embthm,html.embed .embbtn{display:none !important}
 /* «$ / hora por boda» lleva la cabecera en columna: el botón va a la esquina */
 .salto .cl{position:relative}
 .salto .cl .cardbtn{position:absolute;top:0;right:0;margin:-6px -8px 0 0}
+/* en Notion, la esquina superior derecha del recuadro es de Notion (su botón «···» aparece ahí al pasar el
+   ratón): el sol/luna se recorre a la izquierda, en la misma línea del título */
+html.embed .embtarget .cl .embthm{margin-right:40px}
+html.embed .salto.embtarget .cl .embthm{right:48px;margin-right:0}
 :root[data-theme="light"] .embthm .i-luna-u{display:none}
 :root:not([data-theme="light"]) .embthm .i-sol-u{display:none}
 /* aviso breve (enlace copiado / error) */
