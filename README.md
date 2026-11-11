@@ -206,6 +206,12 @@ Pegar la dona **Horas y $ por etapa** de una boda en su página de Notion (`/emb
   mismo sitio dentro de Notion) y cambian al momento. El sol/luna de cada tarjeta guarda solo el suyo.
 - Tema de la tarjeta embebida: botón sol/luna dentro de ella → `localStorage scEmbedTheme` (manda sobre
   `&tema=claro|oscuro` de la URL; sin nada, el del sistema).
+- **Scroll (11-nov):** dentro de Notion la rueda / los dos dedos sobre la tarjeta deben mover la página. Antes la
+  tarjeta (`.embtarget`, fija a todo el iframe) era `overflow:auto` + `overscroll-behavior:contain` y se quedaba
+  con el gesto (incluso sin nada que desplazar). Ahora `overflow:clip` (ni es contenedor de scroll), sin
+  `overscroll-behavior`, `.heatwrap` `overflow:hidden` (sigue en la última semana con `scrollLeft`) y, si no
+  cabe, `.embcut` (máscara que desvanece los 36 px de abajo; `embCut()` en `renderEmbed`). Regla: **nada
+  dentro del modo embebido puede ser desplazable** (el navegador solo pasa el gesto a Notion si nada lo es).
 - **Activado (10-nov):** (1) secreto `EMBED_SECRET` en Pages (Settings → Variables and Secrets).
   (2) Zero Trust → Access → Applications → app *self-hosted* `hub-embed`, destinos `hub-edicion.pages.dev`
   con rutas `embed` y `fonts`, política **Bypass · Everyone** (dentro del iframe de Notion el login de
