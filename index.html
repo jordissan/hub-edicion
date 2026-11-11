@@ -1372,12 +1372,21 @@ html.sprint-card-in-view .spr:not(.run):not(.brk) .spr-go{background:transparent
    Para pegarla con /embed en la página de la boda en Notion. Llena el recuadro que le des (ancho y alto) y
    lleva su propio fondo y grano, como los widgets de reloj y clima. Ancho y bajo: dona a la izquierda y
    resumen a la derecha; estrecho: uno sobre otro. */
-html.embed,html.embed body{height:100%;margin:0;overflow:hidden;background:transparent}
+html.embed,html.embed body{height:100%;margin:0;overflow:hidden}
 html.embed body{padding:0 !important}
 html.embed body>*:not(#donutCard):not(#tip):not(svg){display:none !important}
 html.embed #donutCard{position:fixed;inset:0;margin:0;display:grid;grid-template-columns:minmax(0,1fr);
   grid-template-rows:auto minmax(0,1fr) auto;row-gap:8px;padding:16px 18px 12px;overflow:hidden;
-  background-color:var(--bg)}   /* el material de la tarjeta es translúcido: sin esto, sobre la página blanca de Notion se vería gris */
+  /* dentro de Notion la tarjeta se funde con la página: su mismo fondo, sin borde, sin esquinas, sin sombra */
+  background:var(--embbg);border:0;border-radius:0;box-shadow:none}
+/* fondo exacto de Notion (oscuro #191919 · claro #FFFFFF). color-scheme igual al de Notion: si no coincide, el
+   navegador pinta opaco el lienzo del iframe y asoman esquinas de otro color */
+html.embed{--embbg:#191919;color-scheme:dark}
+html.embed[data-theme="light"]{--embbg:#ffffff;color-scheme:light}
+html.embed,html.embed body{background:var(--embbg)}
+/* sin grano ni halos: ni el de la tarjeta ni el brillo de los segmentos de la dona */
+html.embed #donutCard::before{display:none}
+html.embed #donut .dsegs{filter:none !important}
 html.embed #donutCard .cl{margin:0;min-width:0;align-items:baseline}
 html.embed #donutCard .cl h3{white-space:nowrap;flex:none}
 html.embed #donutCard .cl .u{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

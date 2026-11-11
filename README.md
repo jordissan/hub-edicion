@@ -194,6 +194,9 @@ Pegar la dona **Horas y $ por etapa** de una boda en su página de Notion (`/emb
   botón **`</>`** de la tarjeta (dashboard): copia el enlace de la boda abierta (ClipboardItem con promesa
   para Safari; si falla, `prompt` con el enlace). En el Mac lo responde `server.py` (mismo HMAC) leyendo
   `~/HubEdicion/.embed-secret` (permisos 600, fuera de git; MISMO valor que `EMBED_SECRET` de Pages).
+- Dentro de Notion la tarjeta se funde con la página (11-nov): `--embbg` #191919 / #FFFFFF en html, body y
+  tarjeta; sin borde, radio, sombra, grano (`::before`) ni halo (`.dsegs` sin filtro). `color-scheme` igual al
+  de Notion (dark/light): si no coincide, el navegador pinta opaco el lienzo del iframe y asoman esquinas.
 - Tema de la tarjeta embebida: botón sol/luna dentro de ella → `localStorage scEmbedTheme` (manda sobre
   `&tema=claro|oscuro` de la URL; sin nada, el del sistema).
 - **Activado (10-nov):** (1) secreto `EMBED_SECRET` en Pages (Settings → Variables and Secrets).
