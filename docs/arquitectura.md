@@ -20,6 +20,7 @@
      POST /api/session  registra un sprint             ├─ build_data() / build_summary()
      POST /api/close    cierra escena/etapa (🟢)       │  (drain_pending también aplica cierres)
      GET/POST /api/sprint-state (ventana flotante)     │
+     GET /api/outbox · POST /api/outbox/flush (cola sin internet, .outbox.json)
      GET  /api/health                                  └─ escribe Cloudflare KV
      caché .cache.json + .archive.json             Cloudflare Pages (detrás de Access)
                                                      index.html
@@ -27,6 +28,7 @@
                                                      functions/api/summary  → KV edicion:summary
                                                      functions/api/session  → Notion o cola KV
                                                      functions/api/close    → Notion o cola KV
+                                                     functions/embed (+/data) → tarjeta para Notion (fuera de Access, clave k)
           └────────────────────────┬────────────────────────┘
                      index.html (el MISMO archivo en ambos)
                      últimos datos guardados (o snapshot) → loadLive() → deriveModel() → render*
@@ -309,13 +311,29 @@ horas · $ · % al pasar por un segmento. Presión sutil (`:active`) en botones,
 
 Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
 
+### 4.x Modo embebido — tarjeta para Notion (`/embed`, prototipo 10-nov-2026)
+- **Activación:** ruta `/embed` o parámetro `?embed=<tarjeta>` → clase `html.embed` (script del `<head>`,
+  que también fija el tema por `&tema=claro|auto`; por defecto oscuro, sin leer `scTheme`). Solo existe
+  la tarjeta `donut` (`#donutCard`), que se mueve al `<body>` y llena el iframe (CSS al final de la hoja).
+- **JS:** `EMBED` junto a `MINI`. `Sprint` es un stub (`{update(){}}`): ni sincronía, ni `/api/session`,
+  ni `/api/close`. Se saltan el sprint compacto, el sidebar, la navegación y el *reveal*.
+  `bootRender` recorta el payload con `embedSlice(P, boda)` (misma lógica que `functions/embed/data.js`;
+  `embSlug` = `slug` de `deriveModel`) y llama `renderEmbed` → `renderMesa` + `_select(boda)`.
+  Mensajes en la tarjeta (`.embmsg`): Cargando… · No encuentro esta boda · aún sin horas medidas ·
+  Enlace no válido (403) · Sin conexión.
+- **Datos:** en la nube solo `/embed/data?boda&k` (nunca `/api/edicion`, que está tras Access, ni el
+  re-login); en el Mac `/api/data`. Refresco igual que el dashboard (al volver a primer plano, c/10 min).
+- **Clave:** `k = HMAC-SHA256(EMBED_SECRET, "embed:"+boda)` en hex, 20 caracteres; `/api/embed-link` la da.
+
 ## 5. Sprint de enfoque (registro de sesiones)
 
 - **Front (`Sprint`)**: destino (etapa · escena · tipo), esquemas (Mediana, Pomodoro 25/5 con
   largo de 15 cada 4, 52/17, 90/20, Libre, Propio), ciclos foco → descanso. Solo los bloques de
   **foco** se registran. Reloj con hora real de inicio; duración **redondeada al minuto**
-  (≥ 30 s sube), Fin = Inicio + duración; < 30 s no se registra. Fallo de red/servidor → queda
-  pendiente en el dispositivo (reintentar/descartar), nunca se pierde.
+  (≥ 30 s sube), Fin = Inicio + duración; < 30 s no se registra. Rechazo de Notion o server.py
+  sin responder → queda pendiente en el dispositivo (`scSprintPend`, **lista**; reintentar /
+  descartar), nunca se pierde; lo que falló por no llegar al server (`net:true`) se reenvía solo
+  en cuanto `pull()` vuelve a contestar. **Sin internet, en el Mac, ni eso: ver §5.2.**
 - **Petición** `POST /api/session`: `{id, db, stageId, escena, inicio, fin, tipo, ronda}` con
   fechas ISO **con zona horaria**.
 - **Validación** (`validate_session` + `target_error`, igual en `session.js`): 1 min–8 h, tipo
@@ -339,6 +357,45 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   o deja `edicion:pending-close:<id>` (lo aplica `drain_pending`). Hasta que el tablero se
   reconstruye, los ids cerrados (`scSprintClosed`, 30 min) se marcan terminados en el selector y
   el destino salta a la siguiente escena abierta o a la siguiente etapa de esa boda (por `orden`).
+
+### 5.2 Cola sin internet (`server.py`, nov-2026)
+- **Todo envío pasa por la cola**: `POST /api/session` y `/api/close` validan y comprueban la lista
+  blanca como siempre, y `_via_outbox` lo apunta en `.outbox.json` (`outbox_add`, escritura atómica
+  con fsync) ANTES de tocar Notion; luego `outbox_flush(until=id)` sube la cola en orden hasta él.
+  Respuestas: subido → igual que antes (`{ok,url,moved}` / `{ok,closed}`); sin red → `{ok, queued,
+  local, pending}` (la tarjeta: *✓ Guardada en el Mac…*); rechazo 4xx al primer intento → sale de la
+  cola y 502 como antes (Reintentar/Descartar, porque no es la red). Mismo `id` en cola → `queued`.
+- **Entrada**: `{kind: session|close, id, item, label, at, tries, err, perm, next, step}`. `label` lo
+  manda la página (campo extra del POST, se quita antes de validar). Sale de la cola solo tras la
+  respuesta OK de Notion; entonces queda en `_session_done`/`_close_done` (dedup por id).
+- **Orden y reintento**: FIFO. Un fallo pasajero (`is_transient`: sin red, timeout, 429, 5xx, sin
+  token) corta la ronda (lo de detrás esperaría igual, y una sesión debe llegar antes que el cierre
+  de su escena: si no, `set_in_progress` la devolvería a 🔵). Un rechazo (4xx) marca `perm`, se
+  aparta (reintento cada 15 min, nunca se borra solo) y la ronda sigue. Hilo `_outbox_loop`: cada
+  30 s si hay algo (backoff por entrada 30 s × intentos, máx. 120 s); `POST /api/outbox/flush`
+  (`outbox_poke`) lo despierta y fuerza. Lo llama la app del reloj: **NWPathMonitor** al pasar la red
+  a `.satisfied` (+2 s), `NSWorkspace.didWakeNotification` (+8 s) y *Subir ahora*.
+- **Modo cola en `notion()`** (`_notion_opts.fast`, solo el hilo que sube): timeout 8 s y un solo
+  reintento de red (sin internet falla en ~1 s, antes ~30 s de backoff); el `POST /pages` que crea
+  la sesión no se reintenta ante red/5xx (pudo crearse igual).
+- **Idempotencia (`step`)**: `create_session(item, step, save_step)` guarda `posting` antes del POST
+  y `page` después; si un envío quedó en `posting` sin `page` (corte justo al crear), el siguiente
+  busca en la DB una sesión con el mismo Inicio y Fin (`find_session_page`, ±1 min) antes de crear.
+  Con `page`, solo rehace los estados (`status`/`moved`). `close_targets` guarda `did`/`closed`
+  (`set_done` ya es idempotente). Sin `step` (`publish.py`) funcionan como antes.
+- **Aviso**: `outbox_summary()` = `{n, items:[{kind,label,mins,cerrar,at,err,perm}], sent:{at,n}}`
+  (`sent` = última subida diferida; agrupa las de 10 min). Va en `GET /api/outbox` y dentro de
+  `/api/sprint-state` (`outbox`). Tarjeta: línea en `#fPend` (*↑ Guardado en el Mac: N sesiones (X
+  min) y M cierres…* / *✓ Subido a Notion a las HH:MM*, 1 h). Reloj: en reposo icono
+  `icloud.and.arrow.up` + número; menú: «Guardado en el Mac: …», «Subir ahora», «⚠︎ Notion
+  rechazó…», «✓ Subido a Notion a las HH:MM» (12 h).
+- **Probar sin Notion ni el sprint real** (lo que se hizo): copia de `server.py`+`index.html`+
+  `.cache.json` en el scratchpad y un arrancador que parchea `urllib.request.urlopen` (Notion
+  simulado; un archivo `offline` lanza `URLError`, `cut_post` corta tras crear, `reject` da 400),
+  `get_token`, `_refresh_in_background`, en el puerto 4611. App: build `-D DUMP_MENU` en un bundle
+  `com.jordi.hub-sprint.prueba` (ejecutable `SprintTest`, `hkOff`/`loginSetup`/`panelVisible` en sus
+  defaults) con `HUB_BASE=http://localhost:4611 HUB_PICK="wait:8,red"` (`red` = como si volviera la
+  red; el dump imprime el icono y el título de la barra).
 
 ### 5.1 Ventana flotante del Mac (`mac/SprintFlotante/`)
 - **Por qué nativa:** la web app del Mac es de Safari, que no tiene *Document Picture-in-Picture*
@@ -482,12 +539,14 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
 | KV | `edicion:pending-close:<id>` · `edicion:closed:<id>` | cierre de escena/etapa en cola · ya aplicado (dedup, 24 h) |
 | Mac | `.cache.json` · `.archive.json` | caché local · archivo histórico local |
 | Mac | `.sprint-state.json` | sprint compartido dashboard ⇄ ventana flotante (`{rev, data}`) |
+| Mac | `.outbox.json` | cola de envíos a Notion guardados sin internet (`{items, sent}`, §5.2); se vacía sola |
 | Navegador | `scTheme` | tema claro/oscuro |
 | Navegador | `hubHistMet` · `hubRitmoHist` | dato elegido en Progreso del Historial · Tu ritmo en *Historial* (`1`) o *Tablero* |
 | Navegador | `hubRaceIncl` | selector de la Carrera: `1` = con teaser, `0`/sin clave = sin teaser |
 | Navegador | `scLastData` | última lectura viva (payload completo, ~90 KB) para pintar al abrir |
+| Navegador | `scEmbed:<boda>` | modo embebido (`/embed`): última lectura de esa boda (recortada); no toca `scLastData` |
 | Navegador | `scSprint` · `scSprintBrk` · `scSprintCyc` | bloque en curso · descanso · ciclo |
-| Navegador | `scSprintMode` · `scSprintDest` · `scSprintPend` | esquema · último destino · registro pendiente |
+| Navegador | `scSprintMode` · `scSprintDest` · `scSprintPend` | esquema · último destino · registros pendientes (lista `[{item,label,net}]`; antes un objeto, aún se lee) |
 | Navegador | `scSprintClose` · `scSprintClosed` | cierre en espera (8 s para deshacer) · ids cerrados aún no reflejados en el tablero |
 | Navegador | `scSprintRev` · `scSprintChimed` | versión del sprint para la sincronía · último bloque que ya sonó (por cliente) |
 
@@ -554,6 +613,10 @@ Datos a mano: `gh workflow run "Publicar dashboard" -R jordissan/hub-edicion`.
 - **Registro sin duplicados** (9-nov-2026): `POST /api/session` va bajo `_session_lock`; un
   reintento del mismo sprint que llega mientras el primero sigue escribiendo en Notion espera y
   recibe su resultado (antes creaba la sesión otra vez: 3 peticiones simultáneas = 3 sesiones).
+- **Sin internet = cola, no error** (10-nov-2026): antes `notion()` reintentaba ~30 s, devolvía 502
+  y la tarjeta pedía Reintentar/Descartar; y un segundo fallo **pisaba** el primero (`scSprintPend`
+  era un solo objeto → se perdía una sesión). Ahora §5.2. Trampa al probar en la página: no adelantar
+  `Date.now` (las `rev` quedan en el futuro y la sincronía repone datos viejos); atrasar el inicio.
 - **Estado del sprint**: `SPRINT_KEYS` debe incluir TODAS las claves que sincroniza el front
   (`SYNC_KEYS`). Hasta el 9-nov faltaban `scSprintClose` y `scSprintClosed`: el server las
   descartaba y el reloj del Mac nunca mostraba «Deshacer el cierre» ni el aviso de cierre fallido.

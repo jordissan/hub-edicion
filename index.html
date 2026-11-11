@@ -12,7 +12,10 @@
 <link rel="apple-touch-icon" href="/icon-180.png">
 <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
 <script>// tema: lo elegido manda ('' = oscuro); sin elección, el del sistema. La barra del navegador sigue al tema.
-try{const t=localStorage.getItem('scTheme');if(t)document.documentElement.dataset.theme=t;else if(t===null&&matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.dataset.theme='light'}catch(e){}
+// modo embebido (/embed o ?embed=donut): una tarjeta sola para pegar en Notion. Su tema va en la URL
+// (&tema=claro|auto; por defecto oscuro OLED, como los widgets), nunca el guardado del dashboard.
+try{const q=new URLSearchParams(location.search);if(q.has('embed')||/^\/embed(\/|$)/.test(location.pathname)){document.documentElement.classList.add('embed');const tm=q.get('tema');if(tm==='claro'||(tm==='auto'&&matchMedia('(prefers-color-scheme: light)').matches))document.documentElement.dataset.theme='light'}}catch(e){}
+if(!document.documentElement.classList.contains('embed'))try{const t=localStorage.getItem('scTheme');if(t)document.documentElement.dataset.theme=t;else if(t===null&&matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.dataset.theme='light'}catch(e){}
 try{document.querySelector('meta[name="theme-color"]').content=document.documentElement.dataset.theme==='light'?'#f0eee9':'#050506'}catch(e){}
 // sidebar: el estado guardado manda; si no hay, desplegado solo en pantallas anchas (sin parpadeo al cargar)
 try{const s=localStorage.getItem('scSide');if(s==='0'||(s===null&&innerWidth<1280))document.documentElement.classList.add('side-closed')}catch(e){}
@@ -246,22 +249,24 @@ svg text{user-select:none}
 @container wrap (max-width:1000px){.hero .htop{grid-template-columns:1fr;gap:20px}}   /* tiles bajo el titular, a todo lo ancho */
 .racecard{margin-top:18px}
 /* selector Sin/Con teaser: mismas pastillas mono que los chips de la tarjeta */
-.racecard .cl{flex-wrap:wrap;align-items:center;row-gap:8px}
-.rmode{display:flex;margin-left:auto;border:1px solid var(--hair2);border-radius:var(--r-pill);padding:2px;
+.racecard .cl{flex-wrap:wrap;align-items:center;row-gap:4px}
+.racecard .rchips{margin-top:16px}   /* aire entre encabezado y leyenda: el doble del espacio entre pastillas */
+.rmode{display:flex;flex:none;align-self:center;margin-left:auto;border:1px solid var(--hair2);border-radius:var(--r-pill);padding:2px;
   background:color-mix(in srgb,var(--txt) 4%,transparent)}
 .rmode[hidden]{display:none}
 .rmode button{border:0;background:none;color:var(--dim);font-family:var(--f-m);font-weight:700;font-size:var(--fs-micro);letter-spacing:var(--tr-label);
-  text-transform:uppercase;padding:5px 10px;border-radius:var(--r-pill);cursor:pointer;white-space:nowrap;
+  text-transform:uppercase;height:22px;padding:0 10px;display:inline-flex;align-items:center;justify-content:center;
+  border-radius:var(--r-pill);cursor:pointer;white-space:nowrap;
   transition:background-color .18s ease,color .18s ease,transform .16s var(--ease)}
 .rmode button:active{transform:scale(.95)}
 .rmode button[aria-pressed="true"]{background:color-mix(in srgb,var(--sun) 16%,transparent);color:var(--sun-tx)}
 @media (hover:hover){.rmode button[aria-pressed="false"]:hover{color:var(--txt)}}
-.tc-head .rmode{margin-left:4px}
-#adn .card .cl{flex-wrap:wrap;align-items:center;row-gap:8px}
+.tc-head .rmode{margin-left:2px}
+#adn .card .cl{flex-wrap:wrap;align-items:center;row-gap:4px}
 
 /* ============ historial ============ */
 .hist{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
-.hist .card .cl{flex-wrap:wrap;align-items:center;row-gap:8px}
+.hist .card .cl{flex-wrap:wrap;align-items:center;row-gap:4px}
 /* la tabla se desliza de lado en pantallas angostas (la 1.ª columna se queda fija) */
 .htwrap{overflow-x:auto;margin:6px -22px 0;padding:0 22px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .htwrap::-webkit-scrollbar{display:none}
@@ -306,7 +311,7 @@ svg text{user-select:none}
 .htab tfoot td{border-bottom:0;padding-top:12px}
 .htab tfoot .hn b{font-family:var(--f-m);font-size:var(--fs-micro);letter-spacing:var(--tr-wide);color:var(--mut)}
 .htab tfoot .v{color:var(--mut)}
-.hmet{margin:10px 0 2px;max-width:100%;overflow-x:auto;scrollbar-width:none;width:max-content}
+.hmet{margin:10px 0 2px;max-width:100%;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;width:max-content}
 .hmet::-webkit-scrollbar{display:none}
 #prog,#raceAll{display:block;width:100%;overflow:visible;margin-top:8px}
 #prog .pv{font-family:var(--f-m);font-size:var(--fs-micro);font-weight:700;fill:var(--mut)}
@@ -1286,8 +1291,7 @@ html.mini #focus .fplan,html.mini #focus .fmode button i{display:none}
 @media (pointer:coarse),(max-width:640px){
   .rmode button,.sx-chip,.refreshbtn,.thm,.fpop,.hleg .k{position:relative}
   .rmode button::after,.sx-chip::after,.refreshbtn::after,.thm::after,.fpop::after,.hleg .k::after{content:"";position:absolute;inset:-6px 0}
-  .rmode button{min-height:36px;padding:0 12px;display:inline-flex;align-items:center}
-  .rmode button::after{inset:-4px 0}
+  .rmode button::after{inset:-11px -2px}   /* píldora de 28 px a la vista; el área táctil llega a 44 (selectores, 10-nov) */
   .tbl{margin-top:0}
   .tbl summary{padding-block:14px}
   .sx-chip{min-height:32px}
@@ -1334,6 +1338,62 @@ html.sprint-card-in-view .spr:not(.run):not(.brk) .spr-go{background:transparent
   .spr-go{grid-area:go;margin-top:8px}
 }
 @media(prefers-reduced-motion:reduce){ .spr-go{transition:none} }
+
+/* ================================================================================================
+   SELECTORES SEGMENTADOS (.rmode, 10-nov-2026) — un solo sistema para Tablero/Historial (Tu ritmo,
+   Duración), Sin/Con teaser (Horas acumuladas, Boda con boda) y Progreso:
+   · 28 px de alto en todos los tamaños; en pantallas táctiles el área llega a 44 px con el ::after
+     invisible de la capa táctil (lo visible no crece).
+   · Siempre en el renglón del título, a la derecha. Si el encabezado es angosto (iPhone, columna de
+     tableta) se abrevia en vez de bajar: HISTORIAL → HIST., «SIN TEASER · CON TEASER» → TEASER [SIN|CON],
+     «Duración de sesiones» → «Duración», y «6 TERMINADAS» baja bajo el título. Se decide por el ancho
+     del encabezado (container query), no por el de la pantalla. Textos: .rf (completo) / .rs (corto) /
+     .rk (la fase, solo en corto).
+   ================================================================================================ */
+.rmode .rk,.rmode .rs{display:none}
+.rmode .rk{align-items:center;padding:0 4px 0 8px;font-family:var(--f-m);font-size:var(--fs-micro);letter-spacing:var(--tr-label);
+  text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.card .cl:has(>.rmode){container:rcard/inline-size;flex-wrap:wrap}
+.tc-head:has(>.rmode){container:rsec/inline-size}
+@container rcard (max-width:419px){ .cl>.u{order:11;flex-basis:100%} }
+@container rcard (max-width:339px){
+  .cl .rf{display:none} .cl .rs{display:inline} .rmode .rk{display:inline-flex}
+  .rmode button{padding:0 7px;min-width:38px}
+  .rmode button::after{inset:-11px -3px}
+}
+@container rsec (max-width:359px){
+  .rmode .rf{display:none} .rmode .rs{display:inline}
+  .rmode button{padding:0 8px;min-width:40px}
+}
+/* Progreso (#progMet) desliza en horizontal: el área táctil no puede salir de la píldora (si sale, también desliza en vertical) */
+@media (pointer:coarse),(max-width:640px){ .hmet button::after{inset:0} }
+/* ============ modo embebido (/embed?boda=… o ?embed=donut&boda=…): la tarjeta sola dentro de un iframe ============
+   Para pegarla con /embed en la página de la boda en Notion. Llena el recuadro que le des (ancho y alto) y
+   lleva su propio fondo y grano, como los widgets de reloj y clima. Ancho y bajo: dona a la izquierda y
+   resumen a la derecha; estrecho: uno sobre otro. */
+html.embed,html.embed body{height:100%;margin:0;overflow:hidden;background:transparent}
+html.embed body{padding:0 !important}
+html.embed body>*:not(#donutCard):not(#tip):not(svg){display:none !important}
+html.embed #donutCard{position:fixed;inset:0;margin:0;display:grid;grid-template-columns:minmax(0,1fr);
+  grid-template-rows:auto minmax(0,1fr) auto;row-gap:8px;padding:16px 18px 12px;overflow:hidden;
+  background-color:var(--bg)}   /* el material de la tarjeta es translúcido: sin esto, sobre la página blanca de Notion se vería gris */
+html.embed #donutCard .cl{margin:0;min-width:0;align-items:baseline}
+html.embed #donutCard .cl h3{white-space:nowrap;flex:none}
+html.embed #donutCard .cl .u{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html.embed #donutCard .dwrap{min-height:0;padding:0;align-items:center}
+html.embed #donutCard .dwrap svg{width:auto;height:100%;max-width:100%;max-height:100%;aspect-ratio:1}
+html.embed #donutCard .dlg{margin-top:0}
+html.embed #donutCard .embmsg{grid-row:2;align-self:center;justify-self:center;text-align:center;color:var(--dim);
+  font-family:var(--f-m);font-size:var(--fs-micro);letter-spacing:var(--tr-wide);text-transform:uppercase;max-width:30ch}
+html.embed #donutCard.nodata :is(.dwrap,.dlg){display:none}
+@media (min-width:520px) and (min-aspect-ratio:6/5){
+  html.embed #donutCard{grid-template-columns:minmax(0,1.1fr) minmax(230px,1fr);grid-template-rows:auto minmax(0,1fr);column-gap:28px}
+  html.embed #donutCard .cl{grid-column:1/-1}
+  html.embed #donutCard .dlg{align-self:center}
+  html.embed #donutCard .embmsg{grid-column:1/-1}
+}
+/* muy bajo y estrecho: solo la dona (el resumen sigue al tocar cada color, en el centro) */
+@media (max-height:340px) and (not ((min-width:520px) and (min-aspect-ratio:6/5))){ html.embed #donutCard .dlg{display:none} }
 </style>
 </head>
 <body>
@@ -1621,7 +1681,7 @@ html.sprint-card-in-view .spr:not(.run):not(.brk) .spr-go{background:transparent
   <p class="sub">La forma de tus sesiones, y en qué etapas le ganaste tiempo a tu boda anterior.</p>
   <div class="adn">
     <div class="card">
-      <div class="cl"><h3>Duración de sesiones</h3>
+      <div class="cl"><h3>Duración<span class="rf"> de sesiones</span></h3>
         <div class="rmode" data-rg="ritmo" role="group" aria-label="Qué sesiones mostrar"></div></div>
       <svg id="sprints" role="img" aria-label="Histograma de duración de sesiones"></svg>
       <p class="note" id="sprintNote">—</p>
@@ -2357,8 +2417,9 @@ const RACE_KEY='hubRaceIncl';
 let raceIncl=false; try{ raceIncl=localStorage.getItem(RACE_KEY)==='1'; }catch(e){}
 const raceOf=M=>(raceIncl&&M.raceAll)||M.race, heroOf=M=>(raceIncl&&M.heroAll)||M.hero;
 function renderRaceMode(M){
-  const seg=ex=>[[false,'Sin '+ex],[true,'Con '+ex]].map(([v,t])=>
-    `<button type="button" data-v="${v?1:0}" aria-pressed="${raceIncl===v}">${t}</button>`).join('');
+  // en encabezados angostos se ve «TEASER [SIN|CON]»: la fase una sola vez, fuera de los botones (CSS «SELECTORES SEGMENTADOS»)
+  const seg=ex=>`<span class="rk" aria-hidden="true">${ex}</span>`+[[false,'Sin'],[true,'Con']].map(([v,t])=>
+    `<button type="button" data-v="${v?1:0}" aria-pressed="${raceIncl===v}" aria-label="${t} ${ex}">${t}<span class="rf">&nbsp;${ex}</span></button>`).join('');
   const box=document.getElementById('raceMode');
   if(box){ const H=M.heroAll; box.hidden=!H; box.innerHTML=H?seg(H.excluded.join(' y ')):''; }
   // Historial: el mismo selector, si alguna boda tiene teaser
@@ -2744,7 +2805,7 @@ document.addEventListener('pointerout',e=>{ const tr=e.target.closest&&e.target.
 let ritmoHist=false; try{ ritmoHist=localStorage.getItem('hubRitmoHist')==='1'; }catch(e){}
 const rv=M=>(ritmoHist&&M.ritmoAll)?Object.assign({},M,M.ritmoAll):M;
 function renderRitmoMode(){ document.querySelectorAll('.rmode[data-rg="ritmo"]').forEach(box=>{
-  box.innerHTML=[[false,'Tablero'],[true,'Historial']].map(([v,t])=>`<button type="button" data-v="${v?1:0}" aria-pressed="${ritmoHist===v}">${t}</button>`).join(''); }); }
+  box.innerHTML=[[false,'Tablero',''],[true,'Historial','Hist.']].map(([v,t,s])=>`<button type="button" data-v="${v?1:0}" aria-pressed="${ritmoHist===v}" aria-label="${t}">${s?`<span class="rf">${t}</span><span class="rs">${s}</span>`:t}</button>`).join(''); }); }
 function renderRitmoV(M){ renderRitmoMode(); renderRitmo(rv(M)); }
 function renderAdnV(M){ renderAdn(rv(M)); }
 document.addEventListener('click',e=>{ const b=e.target.closest('.rmode[data-rg="ritmo"] button'); if(!b||!M) return;
@@ -3195,12 +3256,18 @@ function renderSide(M){
    - Cada bloque de FOCO se registra en Notion al terminarlo (hora real, duración redondeada al
      minuto); luego corre el DESCANSO (no se registra) y se ofrece el siguiente bloque.
    - Todo vive en localStorage con horas reales: sobrevive a bloquear el iPhone o cerrar la PWA.
-   - POST /api/session: server.py en local, Pages Function en la nube. Si falla, el registro
-     queda pendiente en el dispositivo (reintentar / descartar); nunca se pierde. */
+   - POST /api/session: server.py en local, Pages Function en la nube. En el Mac, server.py lo
+     guarda PRIMERO en su cola en disco (.outbox.json): sin internet contesta ok+local y lo sube
+     solo al volver la red (la tarjeta muestra lo que espera y cuándo se subió: st.outbox).
+     Si aun así falla (Notion lo rechaza o el server no responde), el registro queda pendiente
+     en el dispositivo (reintentar / descartar), en lista: nunca se pierde ni se pisa. */
 // modo mini (?mini=1): la ventana flotante del Mac carga esta misma página y solo muestra la tarjeta
 const MINI=document.documentElement.classList.contains('mini');
 if(MINI) document.body.appendChild(document.getElementById('focus'));
-const Sprint=(function(){
+// modo embebido: solo la tarjeta pedida, sin sprint (ni sincronía, ni registros, ni cierres)
+const EMBED=document.documentElement.classList.contains('embed');
+if(EMBED) document.body.appendChild(document.getElementById('donutCard'));
+const Sprint=EMBED?{update(){}}:(function(){
   const $=id=>document.getElementById(id);
   const card=$('focus'), btn=$('focusBtn'), drop=$('fDrop'), code=$('tcode'), why=$('focusWhy'), adj=$('fAdj'),
         pick=$('fPick'), selT=$('fTarget'), selE=$('fScene'), seg=$('fTipo'), lbl=$('fLbl'), state=$('fState'),
@@ -3229,6 +3296,8 @@ const Sprint=(function(){
     try{ const r=await fetch(SYNC_URL(),{cache:'no-store'}); if(r.ok) apply(await r.json(),false); }catch(e){} }
   function apply(st,fromPush){ if(!st||typeof st.rev!=='number') return;
     setFloating(!!st.miniOpen);
+    const ob=JSON.stringify(st.outbox||null); if(ob!==obxJ){ obxJ=ob; obx=st.outbox||null; paint(); }
+    if(!busy&&pendList().some(p=>p.net)) retryPend();   // el server volvió: lo que no pudo ni llegarle, se manda solo
     const mine=localRev();
     if(st.rev>mine && !pushT){ SYNC_KEYS.forEach(k=>put(k,(st.data||{})[k]??null)); setRev(st.rev); reload(); }
     else if(st.rev<mine && !fromPush) push();          // el server va atrás (recién arrancado): sube lo de aquí
@@ -3247,7 +3316,20 @@ const Sprint=(function(){
   const BASE_TITLE=document.title;
 
   if(!localRev() && SYNC_KEYS.some(k=>load(k)!=null)) setRev(1);
-  let baseTargets=[], clsT=null, closing=false, clsMsg='';
+  let baseTargets=[], clsT=null, closing=false, clsMsg='', obx=null, obxJ='null', retrying=false;
+  // registros pendientes en ESTE dispositivo (server.py no respondió o Notion los rechazó): lista, nunca se pisan
+  const pendList=()=>{ const v=load(LSP); return Array.isArray(v)?v:(v&&v.item?[v]:[]); };
+  const setPend=l=>save(LSP,l.length?l:null);
+  // lo que espera en la cola del Mac (server.py) y la última subida diferida → una línea discreta
+  function outboxLine(){ if(!obx) return '';
+    if(obx.n){ const ss=obx.items.filter(i=>i.kind==='session'), nc=obx.items.length-ss.length, perm=obx.items.filter(i=>i.perm);
+      const mins=ss.reduce((a,i)=>a+(i.mins||0),0), parts=[];
+      if(ss.length) parts.push(`<b>${ss.length} ${ss.length===1?'sesión':'sesiones'}</b> (${mins} min)`);
+      if(nc) parts.push(`<b>${nc} ${nc===1?'cierre':'cierres'}</b>`);
+      return `↑ Guardado en el Mac: ${parts.join(' y ')}. Se sube solo a Notion al volver internet.`
+        +(perm.length?` Notion rechazó ${perm.length===1?'uno':perm.length} (${esc(perm[0].err||'')}): se reintenta cada 15 min.`:''); }
+    const t=obx.sent; if(t&&Date.now()-t.at<3600e3) return `✓ ${t.n===1?'Subido':'Subidos'} a Notion a las ${hhmm(t.at)} (${t.n} ${t.n===1?'envío':'envíos'} guardados sin internet).`;
+    return ''; }
   let targets=[], med=26, tipo='Edición', run=load(LS), tick=null, busy=false, note='', editing=false;
   let mode=load(LSM)||{k:'med', custom:{focus:30, brk:5}};
   let cyc=load(LSC)||{n:1, at:0};
@@ -3327,14 +3409,17 @@ const Sprint=(function(){
 
   // ---- pintar ----
   function paint(){
-    const pend=load(LSP), brk=load(LSB), x=sch();
+    const brk=load(LSB), x=sch();
     card.classList.toggle('run',!!run); card.classList.toggle('brk',!run&&!!brk);
     paintPlan(x);
     modeBox.hidden=!!(run||brk); adj.hidden=!!(run||brk||editing); edit.hidden=!editing||!!run||!!brk;
     const blockTag=x.every?` · BLOQUE ${((cyc.n-1)%x.every)+1} DE ${x.every}`:(cyc.n>1?` · BLOQUE ${cyc.n}`:'');
-    if(pend){ const m=Math.round((Date.parse(pend.item.fin)-Date.parse(pend.item.inicio))/60000);
-      pendBox.innerHTML=`Sin registrar: <b>${m} min</b> en ${esc(pend.label)}. <button type="button" class="flink" data-a="retry">Reintentar</button> · <button type="button" class="flink" data-a="drop">Descartar</button>`; }
-    pendBox.hidden=!pend||busy;
+    { const pl=pendList(), lines=[];
+      if(pl.length){ const p=pl[0], m=Math.round((Date.parse(p.item.fin)-Date.parse(p.item.inicio))/60000);
+        lines.push(`Sin registrar: <b>${m} min</b> en ${esc(p.label)}${pl.length>1?` y ${pl.length-1} más`:''}. <button type="button" class="flink" data-a="retry">Reintentar</button> · <button type="button" class="flink" data-a="drop">Descartar</button>`); }
+      const ol=outboxLine(); if(ol) lines.push(ol);
+      const h=lines.join('<br>'); if(pendBox.innerHTML!==h) pendBox.innerHTML=h;
+      pendBox.hidden=!h||busy; }
     if(run){
       const el=(Date.now()-run.start)/1000, left=run.target-el;
       code.textContent=run.target?(left<0?'+':'')+mmss(left):mmss(el);
@@ -3394,23 +3479,28 @@ const Sprint=(function(){
     busy=true; paint(); btn.innerHTML='REGISTRANDO…'; btn.disabled=true;
     let msg='';
     try{
-      const r=await fetch('/api/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(item)});
+      const r=await fetch('/api/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...item,label})});
       const j=await r.json().catch(()=>({}));
       if(!r.ok||!j.ok) throw new Error(j.error||('HTTP '+r.status));   // nunca se pierde: queda pendiente
-      save(LSP,null);
+      setPend(pendList().filter(p=>p.item.id!==item.id));
       const mins=Math.round((Date.parse(item.fin)-Date.parse(item.inicio))/60000);
       const cap=t=>t.replace(/^./,c=>c.toUpperCase());
       const moved=(j.moved||[]).map(k=>k==='etapa'?'la etapa':'la escena');
       const willMove=[prevEst.etapa==='wait'&&'la etapa', prevEst.escena==='wait'&&'la escena'].filter(Boolean);
-      msg=j.queued?`✓ Guardada: <b>${mins} min</b> en ${esc(label)}. Llega a Notion en la próxima actualización (≤30 min)${willMove.length?` y ${willMove.join(' y ')} pasará a En proceso`:''}.`
+      msg=j.local?`✓ Guardada en el Mac: <b>${mins} min</b> en ${esc(label)}. Sin internet: se sube sola a Notion en cuanto vuelva.`
+         :j.queued?`✓ Guardada: <b>${mins} min</b> en ${esc(label)}. Llega a Notion en la próxima actualización (≤30 min)${willMove.length?` y ${willMove.join(' y ')} pasará a En proceso`:''}.`
                   :`✓ Registrada: <b>${mins} min</b> en ${esc(label)}.${moved.length?` ${cap(moved.join(' y '))} pasó a En proceso.`:''}${j.url?` <a href="${j.url}" target="_blank" rel="noopener">Ver</a>`:''}`;
       setTimeout(()=>{ if(typeof loadLive==='function') loadLive(false); },90000);   // el tablero la muestra al reconstruirse
     }catch(e){
-      save(LSP,{item,label});
+      // TypeError = ni siquiera respondió server.py (se reintenta solo cuando vuelva); el resto, rechazo
+      const l=pendList(), p={item,label,net:e instanceof TypeError}, i=l.findIndex(x=>x.item.id===item.id);
+      if(i<0) l.push(p); else l[i]=p; setPend(l);
       msg=`No se pudo registrar (${esc(e.message||'sin conexión')}).`;
     }
     busy=false; note=msg; paint();
   }
+  async function retryPend(){ if(retrying||busy) return; retrying=true;
+    try{ for(const p of pendList()) await send(p.item,p.label); } finally{ retrying=false; } }
 
   function finish(){
     const r=run; run=null; save(LS,null);
@@ -3461,11 +3551,12 @@ const Sprint=(function(){
     if(Date.now()<x.due){ schedClose(); return; }
     closing=true; paintCls();
     try{
-      const r=await fetch('/api/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(x.item)});
+      const r=await fetch('/api/close',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...x.item,label:x.label})});
       const j=await r.json().catch(()=>({}));
       if(!r.ok||!j.ok) throw new Error(j.error||('HTTP '+r.status));
       save(LSX,null);
-      clsMsg=j.queued?`✓ <b>${esc(x.label)}</b> se cerrará en Notion en la próxima actualización.`:`✓ <b>${esc(x.label)}</b> cerrada en Notion.`;
+      clsMsg=j.local?`✓ Cierre de <b>${esc(x.label)}</b> guardado en el Mac: llega a Notion en cuanto vuelva internet.`
+            :j.queued?`✓ <b>${esc(x.label)}</b> se cerrará en Notion en la próxima actualización.`:`✓ <b>${esc(x.label)}</b> cerrada en Notion.`;
       setTimeout(()=>{ if(typeof loadLive==='function') loadLive(false); },60000);
     }catch(e){ x.err=e.message||'sin conexión'; save(LSX,x); }
     closing=false; paintCls();
@@ -3515,8 +3606,8 @@ const Sprint=(function(){
     if(!x) return;
     if(b.dataset.a==='cretry'){ delete x.err; x.due=Date.now(); x.by=CLIENT; save(LSX,x); sendClose(); }
     else if(b.dataset.a==='cdrop'){ forgetClose(x); save(LSX,null); clsMsg='Cierre descartado: no se tocó Notion.'; refreshTargets(); paint(); } });
-  pendBox.addEventListener('click',e=>{ const b=e.target.closest('[data-a]'); if(!b||busy) return; const p=load(LSP); if(!p) return;
-    if(b.dataset.a==='retry') send(p.item,p.label); else { save(LSP,null); note='Registro pendiente descartado.'; paint(); } });
+  pendBox.addEventListener('click',e=>{ const b=e.target.closest('[data-a]'); if(!b||busy) return; const l=pendList(); if(!l.length) return;
+    if(b.dataset.a==='retry') retryPend(); else { setPend(l.slice(1)); note='Registro pendiente descartado.'; paint(); } });
   modeBox.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b) return;
     if(b.dataset.k==='custom'){ mode.k='custom'; save(LSM,mode); paintModes(); openEdit(); } else { editing=false; setMode(b.dataset.k); } });
   code.addEventListener('click',openEdit); adj.addEventListener('click',openEdit);
@@ -3602,7 +3693,7 @@ const Sprint=(function(){
    dentro de tres ventanas emergentes. Solo en el dashboard: con ?mini=1 no se toca nada. */
 (function(){
   const $=id=>document.getElementById(id);
-  const card=$('focus'); if(!card||MINI) return {on(){},off(){}};
+  const card=$('focus'); if(!card||MINI||EMBED) return {on(){},off(){}};
   const d1=card.children[0], d2=card.children[1], fact=card.querySelector('.fact'), cl=d1.querySelector('.cl'), fbtns=cl.querySelector('.fbtns');
   const ftime=d2.querySelector('.ftime');
   const pick=$('fPick'), lbl=$('fLbl'), modeBox=$('fMode'), plan=$('fPlan'), why=$('focusWhy'), pend=$('fPend'),
@@ -3671,7 +3762,7 @@ const Sprint=(function(){
 /* ================= sprint en el sidebar y en el botón móvil: espejo de la tarjeta de Hoy =================
    No duplica lógica: lee lo que pinta la tarjeta (reloj, botón, etapa) y su botón principal hace clic en
    el real (registro en Notion incluido). El anillo se calcula con el bloque guardado (scSprint). */
-(function(){ if(MINI) return;
+(function(){ if(MINI||EMBED) return;
   const $=id=>document.getElementById(id);
   const card=$('focus'), code=$('tcode'), btn=$('focusBtn'), selT=$('fTarget'), lbl=$('fLbl'), state=$('fState'), modeBox=$('fMode');
   const spr=$('sSpr'), sT=$('sSprT'), sW=$('sSprW'), sGo=$('sSprGo'), chip=$('sSprChip');
@@ -3732,7 +3823,7 @@ function placeInd(now){ const ind=document.getElementById('sInd'), on=document.q
   if(now) ind.style.transition='none';
   ind.style.transform=`translateY(${on.offsetTop}px)`; ind.style.setProperty('--acc',on.style.getPropertyValue('--acc'));
   if(now){ void ind.offsetWidth; ind.style.transition=''; } }
-(function(){ if(MINI) return;
+(function(){ if(MINI||EMBED) return;
   const html=document.documentElement, tg=document.getElementById('sideTg'), links=[...document.querySelectorAll('nav a')];
   const crumb=document.querySelector('.crumb'), crI=document.getElementById('crumbI'), crG=document.getElementById('crumbG'), crT=document.getElementById('crumbT');
   let cur=null;
@@ -3771,7 +3862,7 @@ document.getElementById('thmBtn').addEventListener('click',()=>{ const r=documen
   if(M)renderAll(M); applyGlow(); });
 
 /* ================= reveal: entra al aparecer, se rearma al salir ================= */
-(function(){
+(function(){ if(EMBED) return;
   // unidades: cada pieza que se lee sola (titular, subtítulo, tarjeta, tile)
   const GRIDS='.htop,.hoy,.ritmo,.adn,.mesa2,.dinero,.tiles,.hist';
   const units=[];
@@ -3820,14 +3911,39 @@ document.addEventListener('toggle',e=>{ const d=e.target;
 // "EN VIVO". Las marcas hub:* sirven para medir con performance.getEntriesByType('mark').
 const LAST_KEY='scLastData';
 let shownAt=null;                      // generatedAt de lo que hay pintado
-function bootRender(payload,isLive,saved){ try{ const model=deriveModel(payload); model.live=isLive; model.saved=!!saved;
-  if(MINI){ M=model; Sprint.update(M); } else renderAll(model);
+// ---- modo embebido: una boda, sus datos y nada más ----
+// Los datos se recortan a ESA boda (en la nube ya llegan recortados de /embed/data, que pide la clave k);
+// se guarda la última lectura de la tarjeta aparte (scEmbed:<boda>) para pintar al instante la próxima vez.
+const EMB=(()=>{ const q=new URLSearchParams(location.search);
+  return { card:q.get('embed')||q.get('card')||'donut', boda:(q.get('boda')||'').trim().toLowerCase(), k:(q.get('k')||'').trim() }; })();
+const embSlug=s=>(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+function embedSlice(P,key){ return { generatedAt:P.generatedAt, today:P.today, live:P.live, degraded:P.degraded, embed:true,
+  weddings:(P.weddings||[]).filter(w=>embSlug(w.name)===key), archive:(P.archive||[]).filter(a=>embSlug(a.name)===key) }; }
+function embedMsg(t){ const card=document.getElementById('donutCard'); let m=card.querySelector('.embmsg');
+  if(!t){ if(m) m.remove(); card.classList.remove('nodata'); return; }
+  if(!m){ m=document.createElement('p'); m.className='embmsg'; card.appendChild(m); }
+  m.textContent=t; card.classList.add('nodata'); }
+function renderEmbed(model){ const card=document.getElementById('donutCard');
+  const p=model.projects[EMB.boda];
+  if(!p){ embedMsg(model.embedFound?'Esta boda aún no tiene horas medidas':'No encuentro esta boda en los datos'); return; }
+  embedMsg('');
+  let u=document.getElementById('donutU');
+  if(!u){ u=document.createElement('span'); u.className='u'; u.id='donutU'; card.querySelector('.cl').appendChild(u); }
+  u.textContent=p.nm.toUpperCase();
+  try{ renderMesa(model); }catch(e){ console.error('render · embed',e); }
+  renderMesa._select(EMB.boda);
+  if(!renderEmbed._in){ renderEmbed._in=true; card.classList.add('in'); window.__swirlDonut?.(); setTimeout(()=>card.classList.add('settled'),reduced?0:1000); } }
+function bootRender(payload,isLive,saved){ try{ const P=EMBED?embedSlice(payload,EMB.boda):payload;
+  const model=deriveModel(P); model.live=isLive; model.saved=!!saved;
+  if(EMBED){ model.embedFound=P.weddings.length+P.archive.length>0; M=model; renderEmbed(M); }
+  else if(MINI){ M=model; Sprint.update(M); } else renderAll(model);
   shownAt=payload.generatedAt||null; performance.mark?.('hub:'+(isLive?'vivo':'inicial')); return true;
   }catch(e){ console.error('derive',e); return false; } }
 function liveArrived(j){
-  if(M && j.generatedAt && j.generatedAt===shownAt){ M.live=true; M.failed=false; if(!MINI) try{ renderChrome(M); }catch(e){} performance.mark?.('hub:vivo-igual'); }
+  if(M && j.generatedAt && j.generatedAt===shownAt){ M.live=true; M.failed=false; if(!MINI&&!EMBED) try{ renderChrome(M); }catch(e){} performance.mark?.('hub:vivo-igual'); }
   else bootRender(j,true);
-  try{ localStorage.setItem(LAST_KEY,JSON.stringify(j)); }catch(e){} }
+  try{ if(EMBED){ const sl=embedSlice(j,EMB.boda); if(sl.weddings.length+sl.archive.length) localStorage.setItem('scEmbed:'+EMB.boda,JSON.stringify(sl)); }
+       else localStorage.setItem(LAST_KEY,JSON.stringify(j)); }catch(e){} }
 // local (server.py) sirve /api/data; la nube (Cloudflare Pages) sirve /api/edicion desde KV.
 // Se prueba primero el del entorno en que corre la página; el otro queda de respaldo.
 const IS_CLOUD=/\.pages\.dev$/.test(location.hostname);
@@ -3848,7 +3964,9 @@ async function loadLive(fresh){
   if(loading) return false; loading=true; lastTry=Date.now();
   const btn=document.getElementById('refreshBtn'); if(btn)btn.classList.add('spin');
   const local=fresh?'/api/data?fresh=1':'/api/data';
-  const endpoints=IS_CLOUD?['/api/edicion',local]:[local,'/api/edicion'];
+  // embebido en la nube: solo /embed/data (fuera de Access; pide la clave de la boda). En el Mac, /api/data.
+  const endpoints=EMBED?(IS_CLOUD?['/embed/data?boda='+encodeURIComponent(EMB.boda)+'&k='+encodeURIComponent(EMB.k)]:[local])
+                       :IS_CLOUD?['/api/edicion',local]:[local,'/api/edicion'];
   let ok=false, auth=false;
   for(const url of endpoints){ try{ const r=await fetch(url,{cache:'no-store',redirect:'manual'});
     if(r.type==='opaqueredirect'||r.status===401||r.status===403){ auth=true; continue; }
@@ -3856,14 +3974,18 @@ async function loadLive(fresh){
   if(btn)btn.classList.remove('spin');
   loading=false;
   if(ok){ lastLoad=Date.now(); return true; }
+  if(EMBED){ if(!M) embedMsg(auth?'Enlace no válido':'Sin conexión con los datos'); return false; }
   if(auth && reloginIfExpired()) return false;
   // sin datos nuevos: lo pintado pasa a "GUARDADO · hora" (punto naranja) en vez de seguir diciendo EN VIVO
   if(M && !MINI && (M.live||M.saved)){ M.live=false; M.saved=true; M.failed=true; try{ renderChrome(M); }catch(e){} }
   return false;
 }
 // 1) render instantáneo: últimos datos guardados; si no hay (o fallan), el snapshot embebido
-(()=>{ let last=null; try{ last=JSON.parse(localStorage.getItem(LAST_KEY)||'null'); }catch(e){}
-  if(!(last && last.weddings && bootRender(last,false,true))) bootRender(window.SNAPSHOT_DATA,false); })();
+(()=>{ let last=null; const key=EMBED?'scEmbed:'+EMB.boda:LAST_KEY;
+  try{ last=JSON.parse(localStorage.getItem(key)||'null'); }catch(e){}
+  if(last && last.weddings && bootRender(last,false,true)) return;
+  if(EMBED){ embedMsg(EMB.boda?'Cargando…':'Falta la boda en el enlace'); return; }   // nunca el snapshot de ejemplo
+  bootRender(window.SNAPSHOT_DATA,false); })();
 // 2) intentar datos vivos
 loadLive(false);
 // 3) botón actualizar (fresh desde Notion)

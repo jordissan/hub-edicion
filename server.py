@@ -10,6 +10,8 @@ importa este mismo archivo; cloud/server.py es una copia idéntica).
 - POST /api/close    → al terminar un sprint, cierra su escena (y su etapa) en Notion: 🟢 + fecha de fin
 - GET/POST /api/sprint-state → estado compartido del sprint entre el dashboard y la
   ventana flotante del Mac (mac/SprintFlotante); solo local, en .sprint-state.json
+- GET  /api/outbox   → cola local de envíos a Notion (lo guardado sin internet; .outbox.json)
+- POST /api/outbox/flush → sube la cola ya (la app del reloj: volvió la red / despertó el Mac)
 - GET  /api/health   → {ok, hasToken}
 - El token de Notion NUNCA vive en el HTML: se lee de la variable de entorno
   NOTION_TOKEN o del archivo ~/.notion-dashboard-token
@@ -80,7 +82,22 @@ def _throttle():
         _last_req[0] = time.time()
 
 
+class NotionError(RuntimeError):
+    """Respuesta de error de Notion (HTTP). code: 429/5xx = temporal; el resto, rechazo."""
+    def __init__(self, code, msg):
+        RuntimeError.__init__(self, msg)
+        self.code = code
+
+
+# Modo "cola" (solo en el hilo que sube la cola local): sin internet falla en ~1-2 s en vez de
+# ~30 s de reintentos, y el POST que CREA una página no se reintenta solo (si la respuesta se
+# perdió, Notion ya la creó: la cola lo comprueba antes de volver a crearla).
+_notion_opts = threading.local()
+
+
 def notion(method, path, body=None):
+    fast = getattr(_notion_opts, "fast", False)
+    creates = method == "POST" and path == "/pages"
     token = get_token()
     if not token:
         raise RuntimeError("NO_TOKEN")
@@ -96,12 +113,13 @@ def notion(method, path, body=None):
         last = attempt == NOTION_TRIES - 1
         _throttle()
         try:
-            with urllib.request.urlopen(req, timeout=30) as r:
+            with urllib.request.urlopen(req, timeout=8 if fast else 30) as r:
                 return json.load(r)
         except urllib.error.HTTPError as e:
             # 429 = rate limit · 5xx = fallo temporal de Notion. Ambos se reintentan
             # respetando Retry-After y subiendo la espera (2, 4, 8… hasta 30 s).
-            if e.code in (429, 500, 502, 503, 504) and not last:
+            # (Un 5xx al CREAR en modo cola no: pudo crearse igual; la cola lo comprueba.)
+            if e.code in (429, 500, 502, 503, 504) and not last and not (fast and creates and e.code != 429):
                 try:
                     hinted = float(e.headers.get("Retry-After", "") or 0)
                 except ValueError:
@@ -109,8 +127,10 @@ def notion(method, path, body=None):
                 time.sleep(min(max(hinted, 2.0 * (2 ** attempt)), 30.0))
                 continue
             detail = e.read().decode("utf-8", "ignore")
-            raise RuntimeError("Notion %s: %s" % (e.code, detail[:300]))
+            raise NotionError(e.code, "Notion %s: %s" % (e.code, detail[:300]))
         except Exception:
+            if fast and (creates or attempt >= 1):
+                raise                # sin red: que la cola lo guarde y reintente después
             if not last:
                 time.sleep(min(1.0 * (2 ** attempt), 15.0))
                 continue
@@ -472,16 +492,56 @@ def validate_session(item):
     return None
 
 
-def create_session(item):
+def _same_instant(notion_iso, dt):
+    """¿La fecha de Notion (puede venir en UTC o con milisegundos) es el mismo minuto que dt?"""
+    try:
+        a = datetime.datetime.fromisoformat((notion_iso or "").replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    if a.tzinfo is None or dt is None:
+        return False
+    return abs((a - dt).total_seconds()) < 60
+
+
+def find_session_page(db, schema, item):
+    """¿Ya hay en esa DB una sesión con este mismo Inicio y Fin? Pasa cuando un envío se cortó
+    justo después de que Notion la creara (la respuesta no llegó): así no se duplica."""
+    ini = next((k for k, v in schema.items() if v.get("type") == "date" and _sinacento(k) == "inicio"), None)
+    fin = next((k for k, v in schema.items() if v.get("type") == "date" and _sinacento(k) == "fin"), None)
+    a, b = _iso_ok(item.get("inicio")), _iso_ok(item.get("fin"))
+    if not ini or not fin or not a or not b:
+        return None
+    since = (a - datetime.timedelta(days=1)).isoformat()
+    for r in query_db(db, {"property": ini, "date": {"on_or_after": since}}):
+        p = r.get("properties", {})
+        if _same_instant(((p.get(ini) or {}).get("date") or {}).get("start"), a) and \
+           _same_instant(((p.get(fin) or {}).get("date") or {}).get("start"), b):
+            return r
+    return None
+
+
+def create_session(item, step=None, save_step=None):
     """Crea una fila en la DB "Sesiones" de una etapa IGUAL que el registro manual:
     título "Sesión", Inicio, Fin, Tipo, Escena (relación) y Total (relación a la fila
     de "Tiempo total" de la etapa que corresponde a su Tipo: Edición / Gestión).
-    Solo llena las propiedades que existen en esa DB (las plantillas varían)."""
+    Solo llena las propiedades que existen en esa DB (las plantillas varían).
+    step/save_step (cola local): lo ya hecho de un envío anterior que se cortó (página
+    creada, estados movidos), para retomarlo sin duplicar. save_step() lo guarda en disco."""
+    step = step if step is not None else {}
+    save_step = save_step or (lambda: None)
     db = item["db"]; tipo = item.get("tipo") or "Edición"
+    if step.get("page"):
+        return _session_status(item, step, save_step)
     schema = notion("GET", "/databases/%s" % db).get("properties", {})
     dates = {_sinacento(k) for k, v in schema.items() if v.get("type") == "date"}
     if not {"inicio", "fin"} <= dates:      # salvaguarda: nunca escribir en "Tiempo total" u otra DB
         raise RuntimeError("Esa DB no es un registro de Sesiones (sin Inicio/Fin)")
+    if step.get("posting"):                 # el envío anterior se cortó al crearla: ¿llegó a Notion?
+        dup = find_session_page(db, schema, item)
+        if dup:
+            step["page"] = {"id": dup.get("id"), "url": dup.get("url")}
+            step.pop("posting", None); save_step()
+            return _session_status(item, step, save_step)
     props = {}
     for name, p in schema.items():
         t, n = p.get("type"), _sinacento(name)
@@ -505,17 +565,30 @@ def create_session(item):
                     if _sinacento(title_any(r.get("properties", {}))) == _sinacento(tipo):
                         props[name] = {"relation": [{"id": r["id"]}]}
                         break
+    step["posting"] = True; save_step()     # a partir de aquí, un corte puede dejarla creada
     page = notion("POST", "/pages", {"parent": {"database_id": db}, "properties": props})
-    out = {"id": page.get("id"), "url": page.get("url"), "moved": []}
-    # la sesión ya existe: si el estado no se puede actualizar, se avisa pero no se pierde
+    step["page"] = {"id": page.get("id"), "url": page.get("url")}
+    step.pop("posting", None); save_step()
+    return _session_status(item, step, save_step)
+
+
+def _session_status(item, step, save_step):
+    """La sesión ya existe: etapa/escena ⚪️ → 🔵. Si es un fallo de red en modo cola, se
+    reintenta luego (la sesión no se vuelve a crear); si Notion lo rechaza, se avisa y listo."""
+    out = {"id": step["page"]["id"], "url": step["page"]["url"], "moved": list(step.get("moved", []))}
+    done = step.setdefault("status", [])
     for kind, pid in (("etapa", item.get("stageId")), ("escena", item.get("escena"))):
-        if not pid:
+        if not pid or kind in done:
             continue
         try:
             if set_in_progress(pid, item["inicio"], kind):
                 out["moved"].append(kind)
+                step["moved"] = out["moved"]
         except Exception as e:
+            if getattr(_notion_opts, "fast", False) and is_transient(e):
+                raise
             out.setdefault("warn", []).append("%s: %s" % (kind, str(e)[:120]))
+        done.append(kind); save_step()
     return out
 
 
@@ -609,17 +682,24 @@ def validate_close(item):
     return None
 
 
-def close_targets(item):
+def close_targets(item, step=None, save_step=None):
     """Cierra la escena (y la etapa si cerrar="etapa") al terminar un sprint.
-    Devuelve las que pasaron a 🟢: ["escena", "etapa"]."""
-    done = []
+    Devuelve las que pasaron a 🟢: ["escena", "etapa"]. step/save_step: como en create_session
+    (cerrar es idempotente; solo evita repetir peticiones y conserva lo que pasó a 🟢)."""
+    step = step if step is not None else {}
+    save_step = save_step or (lambda: None)
+    done = step.setdefault("closed", [])
+    hecho = step.setdefault("did", [])
     order = [("escena", item.get("escena"))]
     if item.get("cerrar") == "etapa":
         order.append(("etapa", item.get("stageId")))
     for kind, pid in order:
-        if pid and set_done(pid, item["fin"], kind):
+        if not pid or kind in hecho:
+            continue
+        if set_done(pid, item["fin"], kind):
             done.append(kind)
-    return done
+        hecho.append(kind); save_step()
+    return list(done)
 
 
 def session_targets(data):
@@ -1240,6 +1320,195 @@ _session_lock = threading.Lock()   # un registro a la vez: si llega un reintento
 _close_done = {}     # id del cierre -> resultado (ídem)
 
 
+# ── Cola local de envíos a Notion (sesiones y cierres del sprint) ───────────
+# Todo lo que el sprint manda a Notion se apunta PRIMERO aquí, en disco (.outbox.json):
+# sobrevive a cerrar la app, a matar el server y a reiniciar el Mac. Luego se sube en
+# orden de llegada (una sesión antes que el cierre de su escena). Cada entrada sale de la
+# cola solo cuando Notion confirma. Sin internet se queda y se reintenta sola: cada
+# 30-120 s, y al instante cuando la app del reloj avisa que volvió la red o que el Mac
+# despertó (POST /api/outbox/flush). Un fallo de red corta la ronda (respeta el orden);
+# un rechazo de Notion (4xx) deja esa entrada aparte, reintentándose cada 15 min, y sigue.
+# "step" guarda lo ya hecho de cada envío → reanudar un envío cortado no duplica nada.
+OUTBOX_FILE = os.environ.get("HUB_OUTBOX_FILE") or os.path.join(HERE, ".outbox.json")
+OUTBOX_PERM_RETRY = 15 * 60
+_ob = {"items": [], "sent": None}      # sent = {"at": ms, "n": cuántas en la última subida}
+_ob_lock = threading.RLock()           # datos de la cola + su archivo
+_ob_send_lock = threading.Lock()       # una subida a la vez (y en orden)
+_ob_wake = threading.Event()
+
+
+def is_transient(e):
+    """¿Fallo pasajero (sin red, Notion caído, límite de ritmo, sin token) o rechazo de Notion?"""
+    if isinstance(e, NotionError):
+        return e.code == 429 or e.code >= 500
+    if isinstance(e, RuntimeError):
+        return str(e) == "NO_TOKEN"
+    return True                          # URLError, timeout, conexión cortada…
+
+
+def outbox_load():
+    try:
+        with open(OUTBOX_FILE, "r") as f:
+            d = json.load(f)
+        if isinstance(d, dict) and isinstance(d.get("items"), list):
+            with _ob_lock:
+                _ob["items"] = [e for e in d["items"] if isinstance(e, dict) and e.get("id")]
+                _ob["sent"] = d.get("sent")
+    except FileNotFoundError:
+        pass
+    except Exception as e:
+        sys.stderr.write("[cola] no se pudo leer %s: %s\n" % (OUTBOX_FILE, e))
+
+
+def _ob_save():
+    with _ob_lock:
+        for attempt in range(3):           # (si el hilo de subida tocaba un "step" justo ahora, otra vez)
+            try:
+                _write_json_atomic(OUTBOX_FILE, _ob)
+                return
+            except RuntimeError:
+                time.sleep(0.05)
+            except Exception as e:
+                sys.stderr.write("[cola] no se pudo guardar: %s\n" % e)
+                return
+
+
+def _now_ms():
+    return int(time.time() * 1000)
+
+
+def outbox_add(kind, item, label=None):
+    """Apunta un envío en la cola (en disco). Si ya estaba (mismo id), no lo repite."""
+    with _ob_lock:
+        for e in _ob["items"]:
+            if e["id"] == item["id"]:
+                return e
+        e = {"kind": kind, "id": item["id"], "item": item, "label": (label or "")[:120],
+             "at": _now_ms(), "tries": 0, "err": None, "perm": False, "next": 0, "step": {}}
+        _ob["items"].append(e)
+        _ob_save()
+        return e
+
+
+def outbox_has(item_id):
+    with _ob_lock:
+        return any(e["id"] == item_id for e in _ob["items"])
+
+
+def outbox_drop(item_id):
+    with _ob_lock:
+        _ob["items"] = [e for e in _ob["items"] if e["id"] != item_id]
+        _ob_save()
+
+
+def outbox_summary():
+    """Lo que ven la ventana y el reloj: qué espera subir y cuándo fue la última subida."""
+    with _ob_lock:
+        items = []
+        for e in _ob["items"]:
+            it = e.get("item") or {}
+            mins = None
+            if e["kind"] == "session":
+                a, b = _iso_ok(it.get("inicio")), _iso_ok(it.get("fin"))
+                mins = round((b - a).total_seconds() / 60) if a and b else None
+            items.append({"kind": e["kind"], "label": e.get("label") or "", "mins": mins,
+                          "cerrar": it.get("cerrar"), "at": e.get("at"), "err": e.get("err"),
+                          "perm": bool(e.get("perm"))})
+        return {"n": len(items), "items": items, "sent": _ob["sent"]}
+
+
+def _ob_send_one(e):
+    def save_step():
+        _ob_save()
+    if e["kind"] == "session":
+        res = create_session(e["item"], e["step"], save_step)
+        out = {"ok": True, "url": res.get("url"), "moved": res.get("moved", [])}
+        if res.get("warn"):
+            out["warn"] = res["warn"]
+        return out
+    return {"ok": True, "closed": close_targets(e["item"], e["step"], save_step)}
+
+
+def outbox_flush(force=False, until=None):
+    """Sube la cola en orden. Devuelve (estado, resultado) del envío `until` si se intentó:
+    ("ok", out) · ("perm", error) · ("wait", error) · (None, None) si no llegó a intentarse."""
+    result = (None, None)
+    sent = 0
+    with _ob_send_lock:
+        _notion_opts.fast = True
+        try:
+            with _ob_lock:
+                todo = list(_ob["items"])
+            for e in todo:
+                now = time.time()
+                if e.get("perm") and not force and e["id"] != until and now < e.get("next", 0):
+                    continue                          # rechazada por Notion: aparte, cada 15 min
+                if not e.get("perm") and not force and not until and now < e.get("next", 0):
+                    break                             # sin red hace poco: espera su turno (en orden)
+                try:
+                    out = _ob_send_one(e)
+                except Exception as ex:
+                    transient = is_transient(ex)
+                    with _ob_lock:
+                        e["tries"] = e.get("tries", 0) + 1
+                        e["err"] = str(ex)[:200] or ex.__class__.__name__
+                        e["perm"] = not transient
+                        e["next"] = time.time() + (min(30 * e["tries"], 120) if transient else OUTBOX_PERM_RETRY)
+                        _ob_save()
+                    if e["id"] == until:
+                        result = ("wait" if transient else "perm", e["err"])
+                    if e["tries"] == 1 or e["tries"] % 20 == 0:
+                        sys.stderr.write("[cola] %s · %s %s: %s\n" % (
+                            time.strftime("%H:%M"), e["kind"], e["id"][:8], e["err"]))
+                    if transient:
+                        break                         # sin red: lo demás esperaría igual (y en orden)
+                    continue
+                (_session_done if e["kind"] == "session" else _close_done)[e["id"]] = out
+                deferred = bool(e.get("tries")) or e["id"] != until   # no es el envío en vivo que acaba de llegar
+                with _ob_lock:
+                    _ob["items"] = [x for x in _ob["items"] if x["id"] != e["id"]]
+                    if deferred:                      # subida diferida (la avisa la ventana y el reloj)
+                        prev = _ob["sent"] or {}
+                        recent = _now_ms() - (prev.get("at") or 0) < 10 * 60 * 1000
+                        _ob["sent"] = {"at": _now_ms(), "n": (prev.get("n", 0) if recent else 0) + 1}
+                    _ob_save()
+                if deferred:
+                    sys.stderr.write("[cola] %s · subida: %s %s\n" % (time.strftime("%H:%M"), e["kind"], e["id"][:8]))
+                sent += 1
+                if e["id"] == until:
+                    result = ("ok", out)
+        finally:
+            _notion_opts.fast = False
+    if sent:
+        _refresh_in_background()   # que el tablero lo muestre en cuanto se reconstruya
+        cloud_ping_soon()          # y la nube (iPhone) en ~3 min
+    return result
+
+
+def outbox_poke():
+    """Volvió la red / despertó el Mac / "Subir ahora": que el hilo de la cola lo intente ya."""
+    _ob_wake.set()
+
+
+def _outbox_loop():
+    forced = False
+    while True:
+        with _ob_lock:
+            pending = bool(_ob["items"])
+        if pending:
+            try:
+                outbox_flush(force=forced)
+            except Exception as e:
+                sys.stderr.write("[cola] error inesperado: %s\n" % e)
+        forced = _ob_wake.wait(timeout=30)
+        _ob_wake.clear()
+
+
+def start_outbox():
+    outbox_load()
+    threading.Thread(target=_outbox_loop, daemon=True).start()
+
+
 # ── Estado compartido del sprint (dashboard ⇄ ventana flotante del Mac) ─────
 # Cada cliente guarda su sprint en localStorage; aquí vive la copia común. Gana la
 # versión con "rev" (ms) más reciente. La ventana flotante pregunta con ?from=mini y
@@ -1275,7 +1544,8 @@ def sprint_state(from_mini=False, incoming=None):
                 except Exception as e:
                     sys.stderr.write("[sprint] no se pudo guardar: %s\n" % e)
         return {"rev": _sprint["rev"], "data": _sprint["data"],
-                "miniOpen": time.time() - _mini_seen[0] < 6}
+                "miniOpen": time.time() - _mini_seen[0] < 6,
+                "outbox": outbox_summary()}     # cola local de envíos a Notion (ventana y reloj)
 
 
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -1313,6 +1583,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except Exception:
             self._send(400, json.dumps({"ok": False, "error": "JSON inválido"}))
             return
+        label = item.pop("label", None) if isinstance(item, dict) else None
         err = validate_close(item)
         if err:
             self._send(400, json.dumps({"ok": False, "error": err}, ensure_ascii=False))
@@ -1320,21 +1591,35 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if item["id"] in _close_done:
             self._send(200, json.dumps(_close_done[item["id"]]))
             return
+        if outbox_has(item["id"]):
+            self._queued()
+            return
         targets = session_targets(_cache.get("data"))      # misma lista blanca que /api/session
         terr = target_error(item, targets)
         if terr:
             self._send(400, json.dumps({"ok": False, "error": terr}, ensure_ascii=False))
             return
-        try:
-            closed = close_targets(item)
-        except Exception as e:
-            self._send(502, json.dumps({"ok": False, "error": str(e)[:300]}, ensure_ascii=False))
-            return
-        out = {"ok": True, "closed": closed}
-        _close_done[item["id"]] = out
-        _refresh_in_background()
-        cloud_ping_soon()           # y que la nube (iPhone) lo vea en ~3 min
-        self._send(200, json.dumps(out))
+        self._via_outbox("close", item, label)
+
+    def _queued(self):
+        """Guardado en la cola del Mac: se sube solo a Notion cuando se pueda."""
+        self._send(200, json.dumps({"ok": True, "queued": True, "local": True,
+                                    "pending": outbox_summary()["n"]}))
+
+    def _via_outbox(self, kind, item, label):
+        """Apunta el envío en la cola (en disco) y sube la cola hasta él. Con internet: igual
+        que antes (registrado en Notion). Sin internet: queda guardado → ok + queued/local.
+        Si Notion lo RECHAZA (4xx) al primer intento, sale de la cola y la página lo muestra
+        como siempre (Reintentar / Descartar), porque no es cosa de la red."""
+        outbox_add(kind, item, label)
+        st, res = outbox_flush(until=item["id"])
+        if st == "ok":
+            self._send(200, json.dumps(res))
+        elif st == "perm":
+            outbox_drop(item["id"])
+            self._send(502, json.dumps({"ok": False, "error": res}, ensure_ascii=False))
+        else:
+            self._queued()
 
     def do_POST(self):
         path = self.path.split("?")[0]
@@ -1350,6 +1635,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == "/api/close":
             self._close()
             return
+        if path == "/api/outbox/flush":       # la app del reloj: volvió la red, despertó el Mac o "Subir ahora"
+            outbox_poke()
+            self._send(200, json.dumps(outbox_summary(), ensure_ascii=False))
+            return
         if path != "/api/session":
             self._send(404, json.dumps({"ok": False, "error": "No existe"}))
             return
@@ -1359,6 +1648,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         except Exception:
             self._send(400, json.dumps({"ok": False, "error": "JSON inválido"}))
             return
+        label = item.pop("label", None) if isinstance(item, dict) else None
         err = validate_session(item)
         if err:
             self._send(400, json.dumps({"ok": False, "error": err}, ensure_ascii=False))
@@ -1366,6 +1656,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
         with _session_lock:
             if item["id"] in _session_done:
                 self._send(200, json.dumps(_session_done[item["id"]]))
+                return
+            if outbox_has(item["id"]):        # ya está guardada en el Mac (reintento de la página)
+                self._queued()
                 return
             # solo DBs de Sesiones / etapas / escenas del tablero (no escribe donde le pidan)
             targets = session_targets(_cache.get("data"))
@@ -1376,18 +1669,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             if terr:
                 self._send(400, json.dumps({"ok": False, "error": terr}, ensure_ascii=False))
                 return
-            try:
-                res = create_session(item)
-            except Exception as e:
-                self._send(502, json.dumps({"ok": False, "error": str(e)[:300]}, ensure_ascii=False))
-                return
-            out = {"ok": True, "url": res.get("url"), "moved": res.get("moved", [])}
-            if res.get("warn"):
-                out["warn"] = res["warn"]
-            _session_done[item["id"]] = out
-        _refresh_in_background()   # que el tablero la muestre en cuanto termine de reconstruirse
-        cloud_ping_soon()          # y que la nube (iPhone) la vea en ~3 min aunque se cierre la tapa
-        self._send(200, json.dumps(out))
+            # cola local: con internet se registra ya (y el tablero/la nube se refrescan al subir);
+            # sin internet queda guardada en el Mac y se sube sola al volver la red
+            self._via_outbox("session", item, label)
 
     def do_GET(self):
         path = self.path.split("?")[0]
@@ -1403,6 +1687,9 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         if path == "/api/sprint-state":
             self._send(200, json.dumps(sprint_state("from=mini" in self.path), ensure_ascii=False))
+            return
+        if path == "/api/outbox":
+            self._send(200, json.dumps(outbox_summary(), ensure_ascii=False))
             return
         fresh = "fresh=1" in self.path
         if path == "/api/data":
@@ -1474,6 +1761,7 @@ def main():
     if get_token():                          # precalienta en 2º plano para la 1ª carga
         _refresh_in_background()
     start_cloud_ping()                       # la nube se refresca cada 15 min mientras el Mac esté encendido
+    start_outbox()                           # lo que quedó guardado sin internet se sube solo
     # solo este Mac (antes 0.0.0.0: cualquiera en la misma Wi-Fi podía leer los datos o registrar sesiones)
     ThreadingServer(("127.0.0.1", PORT), Handler).serve_forever()
 

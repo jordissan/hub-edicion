@@ -47,6 +47,9 @@ con su `server.py` + launchd en el puerto 4599 — es **backup/dev** para probar
   (valida contra la lista blanca de `edicion:data`; directo con `NOTION_TOKEN`, si no cola `edicion:pending:<id>`).
 - `functions/api/close.js` — `POST /api/close`: cierra la escena (y la etapa) del sprint que terminó
   (misma lista blanca; directo con `NOTION_TOKEN`, si no cola `edicion:pending-close:<id>`).
+- `functions/embed/index.js` · `functions/embed/data.js` · `functions/api/embed-link.js` — tarjeta para
+  Notion (`/embed`): la página (= `index.html` en modo embebido), los datos de UNA boda recortados de
+  `edicion:data` (exige la clave `k`) y la lista de enlaces (detrás de Access). Ver «Tarjeta para Notion».
 - `docs/arquitectura.md` — referencia técnica completa (la copia `sync-cloud.sh`).
 - `.github/workflows/publish.yml` — cron + `workflow_dispatch`. Secretos: `NOTION_TOKEN`, `CF_API_TOKEN`,
   `CF_ACCOUNT_ID`, `CF_KV_NAMESPACE_ID`. Lleva `env: TZ: America/Mexico_City` (el runner es UTC).
@@ -85,6 +88,8 @@ GitHub: la verificación es visual (en el iPhone, matar la PWA y reabrir).
 - **Cloudflare Pages** (Settings → Variables and Secrets): `NOTION_TOKEN` **opcional** — con él, el sprint
   registra al instante desde la nube; sin él, queda en cola KV y `publish.py` lo crea en la siguiente corrida.
   Binding KV: `HUB_KV`.
+- **Cloudflare Pages**: `EMBED_SECRET` (texto largo al azar) — firma las claves de la tarjeta para Notion.
+  Sin ella `/embed/data` responde 503. Cambiarla invalida todos los enlaces pegados.
 - **Widgets**: Service Token de Cloudflare Access (Client ID + Secret) pegado en el script de Scriptable.
 
 ## Ajustes visuales rápidos
@@ -121,6 +126,13 @@ GOTCHA UI: para crear el proyecto Pages, en Workers&Pages → Create application
   (Edición/Gestión) y **Esquema ▸** para elegir destino, tipo y esquema del próximo bloque. En la nube no cambia nada (no hay sincronía del sprint en
   `pages.dev`); el `index.html` solo gana las órdenes `etapa:`/`escena:`/`tipo:`/`modo:`/`tipo-toggle` (atajo ⌃⌥B, Edición ↔ Gestión) de `SprintCmd` (modo mini) y
   respeta «Sin escena» elegida a propósito. Detalle en `docs/arquitectura.md` (Barra de menús).
+
+## Sprint sin internet (10-nov-2026, solo Mac)
+- `server.py` local guarda cada sesión y cierre en `.outbox.json` antes de escribir en Notion y lo sube
+  solo y en orden al volver la red (la app del reloj avisa con NWPathMonitor; si no, reintento ≤ 2 min).
+  Nuevas rutas locales `GET /api/outbox` y `POST /api/outbox/flush`; `/api/sprint-state` lleva `outbox`.
+  `create_session`/`close_targets` aceptan un `step` opcional (reanudar sin duplicar); sin él
+  (`publish.py`) funcionan igual. `functions/` y el payload no cambian. Detalle: `docs/arquitectura.md` §5.2.
 
 ## Carga rápida (nov-2026)
 - La PWA pinta al abrir la **última lectura guardada** en el iPhone (`localStorage scLastData`) en vez del
@@ -161,3 +173,31 @@ GOTCHA UI: para crear el proyecto Pages, en Workers&Pages → Create application
   de etapas en Proyectos, áreas táctiles de 44 px y cabecera fija en móvil. Detalle en
   `docs/arquitectura.md` §4 («Auditoría de diseño»).
 - Tras publicar, en el iPhone hay que **matar y reabrir la PWA** para saltar su caché.
+
+## Selectores segmentados (10-nov-2026)
+- Solo presentación (CSS «SELECTORES SEGMENTADOS» + `renderRitmoMode` y `seg()` en `renderRaceMode`).
+- `.rmode`: píldora de 28 px, área táctil de 44 px por `::after` (salvo `#progMet`, que desliza y la
+  recorta), siempre en el renglón del título. Con container queries (`rcard` <340 px, `rsec` <360 px)
+  se abrevia: `.rf` texto completo, `.rs` corto (HIST.), `.rk` la fase una vez (TEASER [SIN|CON]);
+  «Duración de sesiones» → «Duración»; `.u` de Boda con boda baja bajo el título (<420 px).
+
+## Tarjeta para Notion (/embed) — PROTOTIPO 10-nov-2026, sin publicar
+Pegar la dona **Horas y $ por etapa** de una boda en su página de Notion (`/embed`), viva.
+- `GET /embed?boda=<boda>&k=<clave>[&tema=claro|auto]` → `functions/embed/index.js` sirve el mismo
+  `index.html`; la página ve la ruta `/embed` y entra en **modo embebido** (`html.embed`): solo
+  `#donutCard`, a tamaño completo del iframe, fondo sólido `--bg` (el material de la tarjeta es
+  translúcido), sin sprint, sin `scLastData` (guarda `scEmbed:<boda>`), nunca el snapshot de ejemplo.
+- `GET /embed/data?boda=&k=` → `functions/embed/data.js`: valida `k = HMAC-SHA256(EMBED_SECRET,
+  "embed:"+boda)` (20 hex) y devuelve `edicion:data` recortado a esa boda (tablero + archivo, ~45 KB).
+  403 clave mala · 404 boda no encontrada · 503 sin `EMBED_SECRET`. **No hay almacenamiento por boda.**
+- `GET /api/embed-link[?boda=]` → enlaces listos para copiar (detrás de Access, como todo `/api`).
+- **Activar (una vez, pendiente):** (1) Pages → Settings → Variables and Secrets → secreto `EMBED_SECRET`.
+  (2) Zero Trust → Access → Applications → nueva app *self-hosted* «Hub · embed» con destinos
+  `hub-edicion.pages.dev/embed` y `hub-edicion.pages.dev/fonts`, política **Bypass · Everyone**
+  (dentro del iframe de Notion el login de Access no funciona: la cookie es de terceros). (3) Publicar.
+  (4) Abrir `/api/embed-link`, copiar el enlace de la boda y pegarlo con `/embed` en Notion.
+- `/manifest.json` e `/icon-*.png` siguen tras Access: dentro de Notion fallan en silencio (no se usan).
+- Probado (10-nov): local en `:4599/?embed=donut&boda=ale-lorenzo` con datos reales; camino nube
+  simulado (copia con `IS_CLOUD=true`, boda del archivo); funciones con un arnés de Node (claves buenas,
+  malas, de otra boda, sin secreto). **No** probado aún dentro de Notion real.
+

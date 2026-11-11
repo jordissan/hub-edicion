@@ -5,3 +5,4 @@
 __pycache__/
 index.*.bak.html
 .sprint-state.json
+.outbox.json
