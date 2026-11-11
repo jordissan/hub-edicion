@@ -331,6 +331,9 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   (cacheado) → portapapeles con `ClipboardItem` + promesa (Safari exige copiar dentro del clic) → `toast()`
   (`.htoast`). Fallo → `prompt` con el enlace. Para otra tarjeta: botón con `data-embed="<tarjeta>"` +
   soporte en el modo embebido.
+- **En Notion, la tarjeta al lado de la tabla:** Notion mete «Tracking de Edición» dentro de columnas. Desde
+  el 11-nov `server.py` busca esa tabla con `iter_child_databases` (entra en columnas, toggles…); antes solo
+  miraba el primer nivel y la boda se quedaba sin etapas y desaparecía del tablero.
 - **Aspecto:** se funde con Notion: `--embbg` (#191919 oscuro / #FFFFFF claro) en html, body y tarjeta;
   sin borde, radio, sombra, grano ni halo de la dona; `color-scheme` dark/light (evita esquinas opacas).
 - **Sol/luna** (`.cardbtn.embthm`, solo embebida): alterna `data-theme`, guarda `scEmbedTheme`, `applyGlow()` y

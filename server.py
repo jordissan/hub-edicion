@@ -405,8 +405,10 @@ def build_wedding(page):
         "projectStart": ps, "projectEnd": pe,
         "stages": [],
     }
-    # Encontrar la sub-DB "Tracking de Edición" dentro de la página de la boda
-    blocks = children(page["id"])
+    # Encontrar la sub-DB "Tracking de Edición" dentro de la página de la boda. Puede estar
+    # dentro de columnas (p. ej. con la tarjeta /embed al lado, 11-nov): antes solo se miraba
+    # el primer nivel y la boda se quedaba sin etapas y desaparecía del tablero.
+    blocks = iter_child_databases(page["id"])
     tracking_db = None
     for blk in blocks:
         if blk.get("type") == "child_database":
