@@ -1,6 +1,7 @@
 // Pages Function: GET /api/embed-link  → los enlaces para pegar en Notion, uno por boda.
 //   /api/embed-link              → lista de todas las bodas (tablero + archivo) con su enlace
 //   /api/embed-link?boda=<boda>  → solo esa
+//   /api/embed-link?boda=todo    → el de las tarjetas generales (todo el tablero)
 // Detrás de Cloudflare Access (como todo /api): solo Jordi puede sacar enlaces. Los enlaces
 // apuntan a /embed, que sí va fuera de Access y valida la clave (ver functions/embed/data.js).
 const enc = new TextEncoder();
@@ -22,6 +23,8 @@ export async function onRequest({ request, env }) {
   const url = new URL(request.url), want = (url.searchParams.get("boda") || "").trim().toLowerCase();
   const raw = await env.HUB_KV.get("edicion:data");
   if (!raw) return json(503, { error: "Sin datos aún." });
+  if (want === "todo")
+    return json(200, { boda: "Todo el tablero", url: `${url.origin}/embed?boda=todo&k=${await embedKey(env.EMBED_SECRET, "todo")}` });
   const P = JSON.parse(raw), seen = new Set(), out = [];
   for (const w of [...(P.weddings || []), ...(P.archive || [])]) {
     const b = slug(w.name); if (!b || seen.has(b) || (want && b !== want)) continue; seen.add(b);

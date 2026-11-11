@@ -314,8 +314,16 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
 
 ### 4.x Modo embebido — tarjeta para Notion (`/embed`, publicado 10-nov-2026)
 - **Activación:** ruta `/embed` o parámetro `?embed=<tarjeta>` → clase `html.embed` (script del `<head>`,
-  que también fija el tema por `&tema=claro|auto`; por defecto oscuro, sin leer `scTheme`). Solo existe
-  la tarjeta `donut` (`#donutCard`), que se mueve al `<body>` y llena el iframe (CSS al final de la hoja).
+  que también fija el tema). **Tarjetas** (`EMB_CARDS`: selector, si es de una boda, nombre, render):
+  `donut` (por defecto), `etapas` (`#etapasCard`), `cinta` (`#cintaCard`) → de una boda, datos recortados;
+  `dia7` (`#dia7Card`), `intensidad` (`#heatCard`), `tarifa-hora|escena|eficiencia|salto`
+  (`#dineroRow>.card:nth-child(1..4)`) → del tablero entero (`EMB_SCOPE='todo'`, `boda=todo` en el enlace).
+- **Cómo se aísla:** la tarjeta NO se mueve: `embMark()` le pone `.embtarget` y `.embpath` a sus contenedores
+  (CSS: `display:contents` en el camino, `display:none` a todo lo demás). `renderEmbed` pinta con el render de
+  la tarjeta, la marca y la vuelve a pintar ya visible (las gráficas miden su ancho); `after` (salto de Tarifa:
+  `renderTarifa._build`) redibuja lo que se rehace oculto. Repinta al cambiar el tamaño del recuadro.
+- **Botones:** `embDecorate()` (al final de `renderAll` y en `renderEmbed`) añade `</>` + sol/luna a la
+  cabecera `.cl` de cada tarjeta de `EMB_CARDS` (y un `.u.embnm` con la boda en las de boda).
 - **JS:** `EMBED` junto a `MINI`. `Sprint` es un stub (`{update(){}}`): ni sincronía, ni `/api/session`,
   ni `/api/close`. Se saltan el sprint compacto, el sidebar, la navegación y el *reveal*.
   `bootRender` recorta el payload con `embedSlice(P, boda)` (misma lógica que `functions/embed/data.js`;
@@ -324,7 +332,7 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   Enlace no válido (403) · Sin conexión.
 - **Datos:** en la nube solo `/embed/data?boda&k` (nunca `/api/edicion`, que está tras Access, ni el
   re-login); en el Mac `/api/data`. Refresco igual que el dashboard (al volver a primer plano, c/10 min).
-- **Clave:** `k = HMAC-SHA256(EMBED_SECRET, "embed:"+boda)` en hex, 20 caracteres; `/api/embed-link` la da
+- **Clave:** `k = HMAC-SHA256(EMBED_SECRET, "embed:"+boda)` en hex, 20 caracteres (`boda=todo` para las tarjetas del tablero); `/api/embed-link` la da
   (nube: `functions/api/embed-link.js`; Mac: `server.py` `embed_link()` con `.embed-secret` o la variable
   `EMBED_SECRET`; mismo valor en los dos lados o los enlaces del Mac no abrirán).
 - **Botón `</>`** (`.cardbtn.embbtn[data-embed="donut"]`, solo dashboard): clic delegado → `embLink(card, boda)`
