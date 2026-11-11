@@ -21,6 +21,7 @@
      POST /api/close    cierra escena/etapa (🟢)       │  (drain_pending también aplica cierres)
      GET/POST /api/sprint-state (ventana flotante)     │
      GET /api/outbox · POST /api/outbox/flush (cola sin internet, .outbox.json)
+     GET /api/embed-link?boda= (enlace para Notion, .embed-secret)
      GET  /api/health                                  └─ escribe Cloudflare KV
      caché .cache.json + .archive.json             Cloudflare Pages (detrás de Access)
                                                      index.html
@@ -311,7 +312,7 @@ horas · $ · % al pasar por un segmento. Presión sutil (`:active`) en botones,
 
 Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
 
-### 4.x Modo embebido — tarjeta para Notion (`/embed`, prototipo 10-nov-2026)
+### 4.x Modo embebido — tarjeta para Notion (`/embed`, publicado 10-nov-2026)
 - **Activación:** ruta `/embed` o parámetro `?embed=<tarjeta>` → clase `html.embed` (script del `<head>`,
   que también fija el tema por `&tema=claro|auto`; por defecto oscuro, sin leer `scTheme`). Solo existe
   la tarjeta `donut` (`#donutCard`), que se mueve al `<body>` y llena el iframe (CSS al final de la hoja).
@@ -323,7 +324,15 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   Enlace no válido (403) · Sin conexión.
 - **Datos:** en la nube solo `/embed/data?boda&k` (nunca `/api/edicion`, que está tras Access, ni el
   re-login); en el Mac `/api/data`. Refresco igual que el dashboard (al volver a primer plano, c/10 min).
-- **Clave:** `k = HMAC-SHA256(EMBED_SECRET, "embed:"+boda)` en hex, 20 caracteres; `/api/embed-link` la da.
+- **Clave:** `k = HMAC-SHA256(EMBED_SECRET, "embed:"+boda)` en hex, 20 caracteres; `/api/embed-link` la da
+  (nube: `functions/api/embed-link.js`; Mac: `server.py` `embed_link()` con `.embed-secret` o la variable
+  `EMBED_SECRET`; mismo valor en los dos lados o los enlaces del Mac no abrirán).
+- **Botón `</>`** (`.cardbtn.embbtn[data-embed="donut"]`, solo dashboard): clic delegado → `embLink(card, boda)`
+  (cacheado) → portapapeles con `ClipboardItem` + promesa (Safari exige copiar dentro del clic) → `toast()`
+  (`.htoast`). Fallo → `prompt` con el enlace. Para otra tarjeta: botón con `data-embed="<tarjeta>"` +
+  soporte en el modo embebido.
+- **Sol/luna** (`.cardbtn.embthm`, solo embebida): alterna `data-theme`, guarda `scEmbedTheme`, `applyGlow()` y
+  `renderEmbed(M)`. El script del `<head>` lo lee antes de pintar: `scEmbedTheme` > `&tema=` > sistema.
 
 ## 5. Sprint de enfoque (registro de sesiones)
 
@@ -545,6 +554,8 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
 | Navegador | `hubRaceIncl` | selector de la Carrera: `1` = con teaser, `0`/sin clave = sin teaser |
 | Navegador | `scLastData` | última lectura viva (payload completo, ~90 KB) para pintar al abrir |
 | Navegador | `scEmbed:<boda>` | modo embebido (`/embed`): última lectura de esa boda (recortada); no toca `scLastData` |
+| Navegador | `scEmbedTheme` | tema elegido con el sol/luna de la tarjeta embebida (`light`/`dark`) |
+| Mac | `.embed-secret` | secreto para los enlaces de Notion (= `EMBED_SECRET` de Pages; 600, fuera de git) |
 | Navegador | `scSprint` · `scSprintBrk` · `scSprintCyc` | bloque en curso · descanso · ciclo |
 | Navegador | `scSprintMode` · `scSprintDest` · `scSprintPend` | esquema · último destino · registros pendientes (lista `[{item,label,net}]`; antes un objeto, aún se lee) |
 | Navegador | `scSprintClose` · `scSprintClosed` | cierre en espera (8 s para deshacer) · ids cerrados aún no reflejados en el tablero |
