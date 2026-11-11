@@ -1374,34 +1374,46 @@ html.sprint-card-in-view .spr:not(.run):not(.brk) .spr-go{background:transparent
    resumen a la derecha; estrecho: uno sobre otro. */
 html.embed,html.embed body{height:100%;margin:0;overflow:hidden}
 html.embed body{padding:0 !important}
-html.embed body>*:not(#donutCard):not(#tip):not(svg){display:none !important}
-html.embed #donutCard{position:fixed;inset:0;margin:0;display:grid;grid-template-columns:minmax(0,1fr);
-  grid-template-rows:auto minmax(0,1fr) auto;row-gap:8px;padding:16px 18px 12px;overflow:hidden;
-  /* dentro de Notion la tarjeta se funde con la página: su mismo fondo, sin borde, sin esquinas, sin sombra */
-  background:var(--embbg);border:0;border-radius:0;box-shadow:none}
+/* solo la tarjeta pedida (.embtarget): sus contenedores (.embpath) dejan de ocupar sitio (display:contents)
+   y todo lo demás se oculta. Así la tarjeta se queda en su sitio del DOM (sus estilos y su render no cambian) */
+html.embed body>*:not(.embpath):not(.embtarget):not(#embBox):not(#tip):not(svg),
+html.embed .embpath>*:not(.embpath):not(.embtarget){display:none !important}
+html.embed .embpath{display:contents !important}
+/* llena el recuadro de Notion y se funde con la página: su mismo fondo, sin borde, sin esquinas, sin sombra */
+html.embed .embtarget,html.embed #embBox{position:fixed;inset:0;margin:0;padding:16px 18px 14px;overflow:auto;overscroll-behavior:contain;
+  background:var(--embbg);border:0;border-radius:0;box-shadow:none;scrollbar-width:none}
+html.embed .embtarget::-webkit-scrollbar{display:none}
 /* fondo exacto de Notion (oscuro #191919 · claro #FFFFFF). color-scheme igual al de Notion: si no coincide, el
    navegador pinta opaco el lienzo del iframe y asoman esquinas de otro color */
 html.embed{--embbg:#191919;color-scheme:dark}
 html.embed[data-theme="light"]{--embbg:#ffffff;color-scheme:light}
 html.embed,html.embed body{background:var(--embbg)}
-/* sin grano ni halos: ni el de la tarjeta ni el brillo de los segmentos de la dona */
-html.embed #donutCard::before{display:none}
-html.embed #donut .dsegs{filter:none !important}
-html.embed #donutCard .cl{margin:0;min-width:0;align-items:baseline}
+/* sin grano ni halos de luz */
+html.embed .embtarget::before{display:none}
+html.embed .embtarget :is(svg,svg *){filter:none !important}
+html.embed .embtarget,html.embed .embtarget *{text-shadow:none !important}
+html.embed .embtarget .cl{min-width:0}
+html.embed .embtarget .cl .u{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* avisos (cargando, enlace no válido…) */
+html.embed #embBox{z-index:3;display:flex;align-items:center;justify-content:center;text-align:center;color:var(--dim);
+  font-family:var(--f-m);font-size:var(--fs-micro);letter-spacing:var(--tr-wide);text-transform:uppercase}
+html.embed #embBox[hidden]{display:none !important}
+/* la dona: ancha y baja → dona a la izquierda y resumen a la derecha; estrecha → uno sobre otro */
+html.embed #donutCard.embtarget{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;
+  row-gap:8px;padding:16px 18px 12px;overflow:hidden}
+html.embed #donutCard .cl{margin:0;align-items:baseline}
 html.embed #donutCard .cl h3{white-space:nowrap;flex:none}
-html.embed #donutCard .cl .u{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 html.embed #donutCard .dwrap{min-height:0;padding:0;align-items:center}
 html.embed #donutCard .dwrap svg{width:auto;height:100%;max-width:100%;max-height:100%;aspect-ratio:1}
 html.embed #donutCard .dlg{margin-top:0}
-html.embed #donutCard .embmsg{grid-row:2;align-self:center;justify-self:center;text-align:center;color:var(--dim);
-  font-family:var(--f-m);font-size:var(--fs-micro);letter-spacing:var(--tr-wide);text-transform:uppercase;max-width:30ch}
-html.embed #donutCard.nodata :is(.dwrap,.dlg){display:none}
 @media (min-width:520px) and (min-aspect-ratio:6/5){
-  html.embed #donutCard{grid-template-columns:minmax(0,1.1fr) minmax(230px,1fr);grid-template-rows:auto minmax(0,1fr);column-gap:28px}
+  html.embed #donutCard.embtarget{grid-template-columns:minmax(0,1.1fr) minmax(230px,1fr);grid-template-rows:auto minmax(0,1fr);column-gap:28px}
   html.embed #donutCard .cl{grid-column:1/-1}
   html.embed #donutCard .dlg{align-self:center}
-  html.embed #donutCard .embmsg{grid-column:1/-1}
 }
+/* los recuadros de Tarifa, solos: la cifra al centro del espacio */
+html.embed .dinero>.kpi.embtarget{display:flex;flex-direction:column}
+html.embed .dinero>.kpi.embtarget .v{margin:auto 0;padding:10px 0;font-size:clamp(40px,14vw,72px)}
 /* botones de cabecera de tarjeta: </> copia el enlace para Notion (dashboard) · sol/luna cambia el tema (embebida) */
 .card .cl .cardbtn{display:inline-flex;align-items:center;justify-content:center;flex:none;align-self:center;position:relative;
   width:28px;height:28px;margin:-6px -8px -6px auto;padding:0;border-radius:8px;border:1px solid transparent;background:none;
@@ -1414,6 +1426,9 @@ html.embed #donutCard.nodata :is(.dwrap,.dlg){display:none}
 .cardbtn .i-ok{display:none}
 .cardbtn.ok{color:var(--sun-tx)} .cardbtn.ok .i-ok{display:block} .cardbtn.ok .i-emb{display:none}
 html:not(.embed) .embthm,html.embed .embbtn{display:none !important}
+/* «$ / hora por boda» lleva la cabecera en columna: el botón va a la esquina */
+.salto .cl{position:relative}
+.salto .cl .cardbtn{position:absolute;top:0;right:0;margin:-6px -8px 0 0}
 :root[data-theme="light"] .embthm .i-luna-u{display:none}
 :root:not([data-theme="light"]) .embthm .i-sol-u{display:none}
 /* aviso breve (enlace copiado / error) */
@@ -1664,7 +1679,7 @@ html:not(.embed) .embthm,html.embed .embbtn{display:none !important}
     </div>
     <!-- las seis cifras del día y la semana, en 3×2 junto al sprint (reacomodo 7-nov) -->
     <div class="cifras"><div class="tiles" id="tilesRow"></div><div class="mini" id="miniRow"></div></div>
-    <div class="card dia7card">
+    <div class="card dia7card" id="dia7Card">
       <div class="cl"><h3>Horas por día</h3><span class="u">ÚLTIMOS 7 · META 5 H L–V · 2 H SÁB</span></div>
       <svg id="dia7" viewBox="0 0 940 250" role="img" aria-label="Horas editadas por día en los últimos siete días frente a tu meta diaria"></svg>
       <div class="legend">
@@ -1694,7 +1709,7 @@ html:not(.embed) .embthm,html.embed .embbtn{display:none !important}
       <div class="cl"><h3>Horas × día de la semana</h3></div>
       <svg id="week" role="img" aria-label="Horas editadas por día de la semana"></svg>
     </div>
-    <div class="card full">
+    <div class="card full" id="heatCard">
       <div class="cl"><h3>Intensidad diaria</h3></div>
       <div class="heatwrap" id="heatwrap">
         <div class="heatrow">
@@ -1750,13 +1765,11 @@ html:not(.embed) .embthm,html.embed .embbtn{display:none !important}
   </div>
   <div class="mesa2">
     <div class="card" id="donutCard">
-      <div class="cl"><h3>Horas y $ por etapa</h3><span class="u" id="donutU" hidden></span>
-        <button class="cardbtn embbtn" type="button" data-embed="donut" aria-label="Copiar enlace para pegar esta tarjeta en Notion" data-tip="<b>Insertar en Notion</b><br>copia el enlace de esta boda · en Notion: /embed y pegar"><svg class="ic i-emb"><use href="#i-embed"/></svg><svg class="ic i-ok"><use href="#i-check"/></svg></button>
-        <button class="cardbtn embthm" type="button" aria-label="Cambiar tema claro u oscuro"><svg class="ic i-sol-u"><use href="#i-sol"/></svg><svg class="ic i-luna-u"><use href="#i-luna"/></svg></button></div>
+      <div class="cl"><h3>Horas y $ por etapa</h3></div>
       <div class="dwrap"><svg id="donut" viewBox="0 0 360 360" role="img" aria-label="Distribución de horas por etapa; el centro muestra el tiempo exacto invertido"></svg></div>
       <div class="dlg" id="dlg"></div>
     </div>
-    <div class="card">
+    <div class="card" id="etapasCard">
       <div class="cl"><h3>Etapas</h3><span class="u" id="etapasU"></span></div>
       <div id="etapas"></div>
     </div>
@@ -3261,6 +3274,7 @@ function renderAll(model){
   for(const f of [renderChrome,renderRaceMode,renderHero,renderRace,renderHoy,renderDia7,renderRitmoV,renderAdnV,renderMesa,renderTarifa,renderHist,renderSide]){
     try{ f(M); }catch(e){ console.error('render · '+f.name, e); }
   }
+  embDecorate();
 }
 
 /* ================= SIDEBAR: saludo, valor vivo por sección y "En la mesa" ================= */
@@ -3303,7 +3317,6 @@ const MINI=document.documentElement.classList.contains('mini');
 if(MINI) document.body.appendChild(document.getElementById('focus'));
 // modo embebido: solo la tarjeta pedida, sin sprint (ni sincronía, ni registros, ni cierres)
 const EMBED=document.documentElement.classList.contains('embed');
-if(EMBED) document.body.appendChild(document.getElementById('donutCard'));
 const Sprint=EMBED?{update(){}}:(function(){
   const $=id=>document.getElementById(id);
   const card=$('focus'), btn=$('focusBtn'), drop=$('fDrop'), code=$('tcode'), why=$('focusWhy'), adj=$('fAdj'),
@@ -3948,26 +3961,63 @@ document.addEventListener('toggle',e=>{ const d=e.target;
 // "EN VIVO". Las marcas hub:* sirven para medir con performance.getEntriesByType('mark').
 const LAST_KEY='scLastData';
 let shownAt=null;                      // generatedAt de lo que hay pintado
-// ---- modo embebido: una boda, sus datos y nada más ----
-// Los datos se recortan a ESA boda (en la nube ya llegan recortados de /embed/data, que pide la clave k);
-// se guarda la última lectura de la tarjeta aparte (scEmbed:<boda>) para pintar al instante la próxima vez.
+// ---- modo embebido: una tarjeta del dashboard, sola, para pegar en Notion ----
+// EMB_CARDS = las tarjetas insertables: dónde están, si son de UNA boda (boda:true → datos recortados a esa
+// boda, enlace por boda) o del tablero entero (enlace único "todo") y con qué se pintan.
+// Se guarda la última lectura de la tarjeta aparte (scEmbed:<boda|todo>) para pintar al instante la próxima vez.
+const EMB_CARDS={
+  donut:{sel:'#donutCard',boda:true,nm:'Horas y $ por etapa',render:[renderMesa]},
+  etapas:{sel:'#etapasCard',boda:true,nm:'Etapas',render:[renderMesa],nameInHead:true},
+  cinta:{sel:'#cintaCard',boda:true,nm:'La cinta',render:[renderMesa]},
+  dia7:{sel:'#dia7Card',nm:'Horas por día',render:[renderDia7]},
+  intensidad:{sel:'#heatCard',nm:'Intensidad diaria',render:[renderRitmoV]},
+  'tarifa-hora':{sel:'#dineroRow>.card:nth-child(1)',nm:'$ / hora',render:[renderTarifa]},
+  'tarifa-escena':{sel:'#dineroRow>.card:nth-child(2)',nm:'$ / escena',render:[renderTarifa]},
+  'tarifa-eficiencia':{sel:'#dineroRow>.card:nth-child(3)',nm:'h / escena',render:[renderTarifa]},
+  // renderTarifa rehace los recuadros (nacen sin marcar, ocultos): el salto se redibuja ya colocado
+  'tarifa-salto':{sel:'#dineroRow>.card:nth-child(4)',nm:'$ / hora por boda',render:[renderTarifa],after:()=>renderTarifa._build?.()},
+};
 const EMB=(()=>{ const q=new URLSearchParams(location.search);
   return { card:q.get('embed')||q.get('card')||'donut', boda:(q.get('boda')||'').trim().toLowerCase(), k:(q.get('k')||'').trim() }; })();
-const embSlug=s=>(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
-function embedSlice(P,key){ return { generatedAt:P.generatedAt, today:P.today, live:P.live, degraded:P.degraded, embed:true,
+const EMB_SPEC=EMB_CARDS[EMB.card]||null;
+const EMB_SCOPE=EMB_SPEC&&EMB_SPEC.boda?EMB.boda:'todo';      // de qué datos vive la tarjeta (y su clave)
+const embSlug=s=>(s||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+function embedSlice(P,key){ if(key==='todo') return P;
+  return { generatedAt:P.generatedAt, today:P.today, live:P.live, degraded:P.degraded, embed:true,
   weddings:(P.weddings||[]).filter(w=>embSlug(w.name)===key), archive:(P.archive||[]).filter(a=>embSlug(a.name)===key) }; }
-function embedMsg(t){ const card=document.getElementById('donutCard'); let m=card.querySelector('.embmsg');
-  if(!t){ if(m) m.remove(); card.classList.remove('nodata'); return; }
-  if(!m){ m=document.createElement('p'); m.className='embmsg'; card.appendChild(m); }
-  m.textContent=t; card.classList.add('nodata'); }
-function renderEmbed(model){ const card=document.getElementById('donutCard');
-  const p=model.projects[EMB.boda];
-  if(!p){ embedMsg(model.embedFound?'Esta boda aún no tiene horas medidas':'No encuentro esta boda en los datos'); return; }
-  embedMsg('');
-  const u=document.getElementById('donutU'); u.textContent=p.nm.toUpperCase(); u.hidden=false;
-  try{ renderMesa(model); }catch(e){ console.error('render · embed',e); }
-  renderMesa._select(EMB.boda);
-  if(!renderEmbed._in){ renderEmbed._in=true; card.classList.add('in'); window.__swirlDonut?.(); setTimeout(()=>card.classList.add('settled'),reduced?0:1000); } }
+function embedMsg(t){ let b=document.getElementById('embBox');
+  if(!b){ if(!t) return; b=document.createElement('div'); b.id='embBox'; b.setAttribute('role','status'); document.body.appendChild(b); }
+  b.textContent=t||''; b.hidden=!t; }
+// botones de cabecera en cada tarjeta insertable: </> (dashboard) y sol/luna (embebida); el CSS muestra el que toca
+function embDecorate(){ for(const [card,sp] of Object.entries(EMB_CARDS)){
+  const el=document.querySelector(sp.sel), cl=el&&el.querySelector('.cl'); if(!cl||cl.querySelector('.embbtn')) continue;
+  if(sp.boda&&!sp.nameInHead) cl.querySelector('h3')?.insertAdjacentHTML('afterend','<span class="u embnm" hidden></span>');
+  cl.insertAdjacentHTML('beforeend',
+    `<button class="cardbtn embbtn" type="button" data-embed="${card}" aria-label="Copiar enlace para pegar esta tarjeta en Notion" data-tip="<b>Insertar en Notion</b><br>copia el enlace de ${sp.boda?'esta tarjeta para la boda abierta':'esta tarjeta'} · en Notion: /embed y pegar"><svg class="ic i-emb"><use href="#i-embed"/></svg><svg class="ic i-ok"><use href="#i-check"/></svg></button>`+
+    `<button class="cardbtn embthm" type="button" aria-label="Cambiar tema claro u oscuro"><svg class="ic i-sol-u"><use href="#i-sol"/></svg><svg class="ic i-luna-u"><use href="#i-luna"/></svg></button>`); } }
+// marca la tarjeta (.embtarget) y sus contenedores hasta <body> (.embpath); quita marcas viejas
+function embMark(el){ document.querySelectorAll('.embtarget,.embpath').forEach(x=>{ if(x!==el&&!x.contains(el)) x.classList.remove('embtarget','embpath'); });
+  el.classList.add('embtarget'); for(let a=el.parentElement;a&&a!==document.body;a=a.parentElement) a.classList.add('embpath'); }
+function renderEmbed(model){
+  if(!EMB_SPEC) return embedMsg('Tarjeta desconocida');
+  const p=EMB_SPEC.boda?model.projects[EMB.boda]:null;
+  if(EMB_SPEC.boda&&!p) return embedMsg(model.embedFound?'Esta boda aún no tiene horas medidas':'No encuentro esta boda en los datos');
+  M=model;
+  const paint=()=>{ for(const f of EMB_SPEC.render){ try{ f(model); }catch(e){ console.error('render · embed',e); } }
+    if(EMB_SPEC.boda) renderMesa._select(EMB.boda);
+    embDecorate(); return document.querySelector(EMB_SPEC.sel); };
+  let el=paint();
+  if(!el) return embedMsg(EMB.card.startsWith('tarifa')?'Aún no hay una boda entregada con horas para calcular la tarifa':'Sin datos para esta tarjeta');
+  // se pinta otra vez ya colocada: las gráficas miden su ancho al dibujarse (Horas por día, el salto de Tarifa)
+  embMark(el); el=paint()||el; embMark(el); embedMsg('');
+  try{ EMB_SPEC.after?.(); }catch(e){ console.error('render · embed',e); }
+  if(p){ const u=el.querySelector('.embnm'); if(u){ u.textContent=p.nm.toUpperCase(); u.hidden=false; } }
+  if(!renderEmbed._in){ renderEmbed._in=true;
+    requestAnimationFrame(()=>{ el.classList.add('in'); if(EMB.card==='donut') window.__swirlDonut?.(); });
+    setTimeout(()=>document.querySelector('.embtarget')?.classList.add('settled'),reduced?0:1000); }
+  else el.classList.add('in','settled'); }
+// al cambiar el tamaño del recuadro en Notion se vuelve a pintar (las gráficas usan su ancho real)
+if(EMBED){ let rt=0; addEventListener('resize',()=>{ clearTimeout(rt); rt=setTimeout(()=>{ if(M&&M.projects) renderEmbed(M); },150); }); }
 // ---- insertar en Notion: </> copia el enlace de la tarjeta para la boda abierta ----
 // El enlace lleva la clave de la boda: lo da /api/embed-link (en la nube, tras Access; en el Mac, server.py
 // con .embed-secret). Se guarda en memoria para que el segundo clic copie al instante.
@@ -3981,26 +4031,27 @@ function embLink(card,boda){ const k=card+'|'+boda;
     .then(j=>{ if(!j||!j.url) throw (j&&j.error)||'sin enlace'; return card==='donut'?j.url:j.url+'&embed='+card; })
     .catch(e=>{ delete embLinks[k]; throw e; })); }
 document.addEventListener('click',async e=>{ const b=e.target.closest('[data-embed]'); if(!b||EMBED) return;
-  const boda=renderMesa._cur, p=boda&&M&&M.projects[boda]; if(!p) return;
-  const url=embLink(b.dataset.embed,boda);
+  const card=b.dataset.embed, sp=EMB_CARDS[card]; if(!sp||!M) return;
+  const boda=sp.boda?renderMesa._cur:'todo', p=sp.boda?(boda&&M.projects[boda]):null; if(sp.boda&&!p) return;
+  const url=embLink(card,boda);
   try{
     // ClipboardItem con promesa: Safari solo deja copiar dentro del clic, aunque el enlace llegue después
     if(window.ClipboardItem&&navigator.clipboard&&navigator.clipboard.write)
       await navigator.clipboard.write([new ClipboardItem({'text/plain':url.then(u=>new Blob([u],{type:'text/plain'}))})]);
     else await navigator.clipboard.writeText(await url);
     b.classList.add('ok'); clearTimeout(b._t); b._t=setTimeout(()=>b.classList.remove('ok'),1800);
-    toast(`Enlace de <b>${escH(p.nm)}</b> copiado · en Notion escribe /embed y pégalo`);
+    toast(`<b>${escH(sp.nm)}</b>${p?' · '+escH(p.nm):''} copiado · en Notion escribe /embed y pégalo`);
   }catch(err){
     let u=null; try{ u=await url; }catch(e2){}
     if(u) prompt('Copia este enlace y pégalo en Notion con /embed:',u);
     else toast(err==='acceso'||err===0?'No pude sacar el enlace: vuelve a entrar con el PIN':'No pude sacar el enlace ('+escH(String(err))+')',4200);
   } });
 // ---- tarjeta embebida: el sol/luna cambia su tema y lo recuerda (scEmbedTheme) ----
-if(EMBED) document.querySelector('#donutCard .embthm').addEventListener('click',()=>{ const r=document.documentElement;
+if(EMBED) document.addEventListener('click',e=>{ if(!e.target.closest('.embthm')) return; const r=document.documentElement;
   const light=r.dataset.theme!=='light'; if(light) r.dataset.theme='light'; else delete r.dataset.theme;
   try{ localStorage.setItem('scEmbedTheme',light?'light':'dark'); }catch(e){}
   applyGlow(); if(M&&M.projects) renderEmbed(M); });
-function bootRender(payload,isLive,saved){ try{ const P=EMBED?embedSlice(payload,EMB.boda):payload;
+function bootRender(payload,isLive,saved){ try{ const P=EMBED?embedSlice(payload,EMB_SCOPE):payload;
   const model=deriveModel(P); model.live=isLive; model.saved=!!saved;
   if(EMBED){ model.embedFound=P.weddings.length+P.archive.length>0; M=model; renderEmbed(M); }
   else if(MINI){ M=model; Sprint.update(M); } else renderAll(model);
@@ -4009,7 +4060,7 @@ function bootRender(payload,isLive,saved){ try{ const P=EMBED?embedSlice(payload
 function liveArrived(j){
   if(M && j.generatedAt && j.generatedAt===shownAt){ M.live=true; M.failed=false; if(!MINI&&!EMBED) try{ renderChrome(M); }catch(e){} performance.mark?.('hub:vivo-igual'); }
   else bootRender(j,true);
-  try{ if(EMBED){ const sl=embedSlice(j,EMB.boda); if(sl.weddings.length+sl.archive.length) localStorage.setItem('scEmbed:'+EMB.boda,JSON.stringify(sl)); }
+  try{ if(EMBED){ const sl=embedSlice(j,EMB_SCOPE); if(sl.weddings.length+sl.archive.length) localStorage.setItem('scEmbed:'+EMB_SCOPE,JSON.stringify(sl)); }
        else localStorage.setItem(LAST_KEY,JSON.stringify(j)); }catch(e){} }
 // local (server.py) sirve /api/data; la nube (Cloudflare Pages) sirve /api/edicion desde KV.
 // Se prueba primero el del entorno en que corre la página; el otro queda de respaldo.
@@ -4032,7 +4083,7 @@ async function loadLive(fresh){
   const btn=document.getElementById('refreshBtn'); if(btn)btn.classList.add('spin');
   const local=fresh?'/api/data?fresh=1':'/api/data';
   // embebido en la nube: solo /embed/data (fuera de Access; pide la clave de la boda). En el Mac, /api/data.
-  const endpoints=EMBED?(IS_CLOUD?['/embed/data?boda='+encodeURIComponent(EMB.boda)+'&k='+encodeURIComponent(EMB.k)]:[local])
+  const endpoints=EMBED?(IS_CLOUD?['/embed/data?boda='+encodeURIComponent(EMB_SCOPE)+'&k='+encodeURIComponent(EMB.k)]:[local])
                        :IS_CLOUD?['/api/edicion',local]:[local,'/api/edicion'];
   let ok=false, auth=false;
   for(const url of endpoints){ try{ const r=await fetch(url,{cache:'no-store',redirect:'manual'});
@@ -4048,10 +4099,10 @@ async function loadLive(fresh){
   return false;
 }
 // 1) render instantáneo: últimos datos guardados; si no hay (o fallan), el snapshot embebido
-(()=>{ let last=null; const key=EMBED?'scEmbed:'+EMB.boda:LAST_KEY;
+(()=>{ let last=null; const key=EMBED?'scEmbed:'+EMB_SCOPE:LAST_KEY;
   try{ last=JSON.parse(localStorage.getItem(key)||'null'); }catch(e){}
   if(last && last.weddings && bootRender(last,false,true)) return;
-  if(EMBED){ embedMsg(EMB.boda?'Cargando…':'Falta la boda en el enlace'); return; }   // nunca el snapshot de ejemplo
+  if(EMBED){ embedMsg(!EMB_SPEC?'Tarjeta desconocida':EMB_SCOPE?'Cargando…':'Falta la boda en el enlace'); return; }   // nunca el snapshot de ejemplo
   bootRender(window.SNAPSHOT_DATA,false); })();
 // 2) intentar datos vivos
 loadLive(false);

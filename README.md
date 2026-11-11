@@ -181,7 +181,11 @@ GOTCHA UI: para crear el proyecto Pages, en Workers&Pages → Create application
   se abrevia: `.rf` texto completo, `.rs` corto (HIST.), `.rk` la fase una vez (TEASER [SIN|CON]);
   «Duración de sesiones» → «Duración»; `.u` de Boda con boda baja bajo el título (<420 px).
 
-## Tarjeta para Notion (/embed) — publicada 10-nov-2026 (7f6bb7d)
+## Tarjetas para Notion (/embed) — publicada 10-nov-2026 (7f6bb7d); 9 tarjetas desde el 11-nov
+- Tarjetas (`EMB_CARDS` en index.html, `&embed=<tarjeta>`): de una boda `donut` (por defecto), `etapas`,
+  `cinta`; del tablero entero `dia7`, `intensidad`, `tarifa-hora`, `tarifa-escena`, `tarifa-eficiencia`,
+  `tarifa-salto`. Las del tablero usan `boda=todo` (clave propia; `/embed/data?boda=todo` devuelve el
+  payload completo).
 Pegar la dona **Horas y $ por etapa** de una boda en su página de Notion (`/embed`), viva.
 - `GET /embed?boda=<boda>&k=<clave>[&tema=claro|auto]` → `functions/embed/index.js` sirve el mismo
   `index.html`; la página ve la ruta `/embed` y entra en **modo embebido** (`html.embed`): solo

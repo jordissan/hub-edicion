@@ -1,5 +1,6 @@
 // Pages Function: GET /embed/data?boda=<boda>&k=<clave>  → los datos de UNA boda, recortados de
 // edicion:data (el mismo KV que lee el dashboard; no se guarda nada aparte por boda).
+// boda=todo → el tablero entero, para las tarjetas generales (Horas por día, Intensidad, Tarifa).
 //
 // Va fuera de Cloudflare Access (ver functions/embed/index.js), así que se protege con la clave:
 // k = HMAC-SHA256(EMBED_SECRET, "embed:" + boda), 20 caracteres hex. Cada boda tiene la suya: si
@@ -35,6 +36,7 @@ export async function onRequest({ request, env }) {
   const raw = await env.HUB_KV.get("edicion:data");
   if (!raw) return json(503, { error: "Sin datos aún." });
   const P = JSON.parse(raw);
+  if (boda === "todo") return json(200, { ...P, embed: true });
   // mismo recorte que embedSlice() en index.html
   const out = {
     generatedAt: P.generatedAt, today: P.today, live: P.live, degraded: P.degraded, embed: true,
