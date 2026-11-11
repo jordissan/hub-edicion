@@ -58,6 +58,35 @@ def get_token():
     return None
 
 
+# ── Enlaces para Notion (/embed) ─────────────────────────────────────────────
+# El botón </> del dashboard pide aquí el enlace de una tarjeta. La clave es la misma que valida
+# la nube (functions/embed/data.js): HMAC-SHA256(EMBED_SECRET, "embed:" + boda), 20 hex. El secreto
+# sale de la variable EMBED_SECRET o del archivo .embed-secret junto a este script (solo en el Mac;
+# no va a git). Debe ser el MISMO valor que el secreto EMBED_SECRET de Cloudflare Pages.
+EMBED_ORIGIN = os.environ.get("HUB_EMBED_ORIGIN", "https://hub-edicion.pages.dev")
+
+
+def get_embed_secret():
+    s = os.environ.get("EMBED_SECRET", "").strip()
+    if s:
+        return s
+    path = os.path.join(HERE, ".embed-secret")
+    if os.path.isfile(path):
+        with open(path, "r") as f:
+            return f.read().strip() or None
+    return None
+
+
+def embed_link(boda):
+    """{boda, url} para pegar en Notion, o None sin secreto. boda = slug ("ale-lorenzo")."""
+    import hmac, hashlib
+    secret = get_embed_secret()
+    if not secret:
+        return None
+    k = hmac.new(secret.encode(), ("embed:" + boda).encode(), hashlib.sha256).hexdigest()[:20]
+    return {"boda": boda, "url": "%s/embed?boda=%s&k=%s" % (EMBED_ORIGIN, boda, k)}
+
+
 # ── Cliente Notion ───────────────────────────────────────────────────────────
 # Notion limita a ~3 peticiones/segundo de media. Una extracción completa son
 # ~200 peticiones (una por sub-DB de escenas/sesiones de cada etapa de cada boda),
@@ -1690,6 +1719,18 @@ class Handler(http.server.BaseHTTPRequestHandler):
             return
         if path == "/api/outbox":
             self._send(200, json.dumps(outbox_summary(), ensure_ascii=False))
+            return
+        if path == "/api/embed-link":
+            from urllib.parse import urlparse, parse_qs
+            boda = (parse_qs(urlparse(self.path).query).get("boda") or [""])[0].strip().lower()
+            if not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*", boda):
+                self._send(400, json.dumps({"error": "Falta la boda."}, ensure_ascii=False))
+                return
+            link = embed_link(boda)
+            if not link:
+                self._send(503, json.dumps({"error": "Falta .embed-secret en el Mac."}, ensure_ascii=False))
+                return
+            self._send(200, json.dumps(link, ensure_ascii=False))
             return
         fresh = "fresh=1" in self.path
         if path == "/api/data":

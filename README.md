@@ -181,7 +181,7 @@ GOTCHA UI: para crear el proyecto Pages, en Workers&Pages → Create application
   se abrevia: `.rf` texto completo, `.rs` corto (HIST.), `.rk` la fase una vez (TEASER [SIN|CON]);
   «Duración de sesiones» → «Duración»; `.u` de Boda con boda baja bajo el título (<420 px).
 
-## Tarjeta para Notion (/embed) — PROTOTIPO 10-nov-2026, sin publicar
+## Tarjeta para Notion (/embed) — publicada 10-nov-2026 (7f6bb7d)
 Pegar la dona **Horas y $ por etapa** de una boda en su página de Notion (`/embed`), viva.
 - `GET /embed?boda=<boda>&k=<clave>[&tema=claro|auto]` → `functions/embed/index.js` sirve el mismo
   `index.html`; la página ve la ruta `/embed` y entra en **modo embebido** (`html.embed`): solo
@@ -190,14 +190,22 @@ Pegar la dona **Horas y $ por etapa** de una boda en su página de Notion (`/emb
 - `GET /embed/data?boda=&k=` → `functions/embed/data.js`: valida `k = HMAC-SHA256(EMBED_SECRET,
   "embed:"+boda)` (20 hex) y devuelve `edicion:data` recortado a esa boda (tablero + archivo, ~45 KB).
   403 clave mala · 404 boda no encontrada · 503 sin `EMBED_SECRET`. **No hay almacenamiento por boda.**
-- `GET /api/embed-link[?boda=]` → enlaces listos para copiar (detrás de Access, como todo `/api`).
-- **Activar (una vez, pendiente):** (1) Pages → Settings → Variables and Secrets → secreto `EMBED_SECRET`.
-  (2) Zero Trust → Access → Applications → nueva app *self-hosted* «Hub · embed» con destinos
-  `hub-edicion.pages.dev/embed` y `hub-edicion.pages.dev/fonts`, política **Bypass · Everyone**
-  (dentro del iframe de Notion el login de Access no funciona: la cookie es de terceros). (3) Publicar.
-  (4) Abrir `/api/embed-link`, copiar el enlace de la boda y pegarlo con `/embed` en Notion.
+- `GET /api/embed-link[?boda=]` → enlaces listos para copiar (detrás de Access, como todo `/api`). Lo usa el
+  botón **`</>`** de la tarjeta (dashboard): copia el enlace de la boda abierta (ClipboardItem con promesa
+  para Safari; si falla, `prompt` con el enlace). En el Mac lo responde `server.py` (mismo HMAC) leyendo
+  `~/HubEdicion/.embed-secret` (permisos 600, fuera de git; MISMO valor que `EMBED_SECRET` de Pages).
+- Tema de la tarjeta embebida: botón sol/luna dentro de ella → `localStorage scEmbedTheme` (manda sobre
+  `&tema=claro|oscuro` de la URL; sin nada, el del sistema).
+- **Activado (10-nov):** (1) secreto `EMBED_SECRET` en Pages (Settings → Variables and Secrets).
+  (2) Zero Trust → Access → Applications → app *self-hosted* `hub-embed`, destinos `hub-edicion.pages.dev`
+  con rutas `embed` y `fonts`, política **Bypass · Everyone** (dentro del iframe de Notion el login de
+  Access no funciona: la cookie es de terceros). **Trampa:** el desplegable Domain ya trae
+  `hub-edicion.pages.dev`; el campo Subdomain va VACÍO (si no, queda `hub-edicion.hub-edicion.pages.dev`).
+  Comprobar: `curl -s -o /dev/null -w '%{http_code}' https://hub-edicion.pages.dev/fonts/inter-latin-v1.woff2` → 200
+  (y `/` → 302). (3) Enlaces: abrir `/api/embed-link` (con el PIN) y pegar el de la boda con `/embed` en Notion.
 - `/manifest.json` e `/icon-*.png` siguen tras Access: dentro de Notion fallan en silencio (no se usan).
 - Probado (10-nov): local en `:4599/?embed=donut&boda=ale-lorenzo` con datos reales; camino nube
   simulado (copia con `IS_CLOUD=true`, boda del archivo); funciones con un arnés de Node (claves buenas,
-  malas, de otra boda, sin secreto). **No** probado aún dentro de Notion real.
+  malas, de otra boda, sin secreto). En la nube real (10-nov): `/embed` de Ale + Lorenzo pinta 83 h con
+  fuentes y datos; clave falsa → 403. Falta verlo dentro de Notion (Mac e iPhone).
 
