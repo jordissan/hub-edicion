@@ -671,6 +671,20 @@ html.mini #focus .fdrop{padding:2px 8px}
 .erow.wait .dot{background:transparent!important;box-shadow:inset 0 0 0 1.5px var(--c)}
 .mesa2{display:grid;grid-template-columns:1.05fr 1fr;gap:14px;margin-top:14px;align-items:start}   /* ninguna tarjeta se estira (D2) */
 .cintarow{margin-top:14px}
+/* otros proyectos (no bodas): misma rejilla que la lista de bodas; barra = edición (lima) + gestión (violeta) */
+.otros{margin-top:14px}
+.orow{display:grid;grid-template-columns:190px 1fr auto;gap:16px;align-items:center;padding:12px 10px;border-radius:var(--r-md)}
+.orow+.orow{margin-top:2px;border-top:1px solid var(--hair)}
+.orow .pnm{font-family:var(--f-d);font-weight:700;font-size:var(--fs-sm);min-width:0;display:flex;flex-direction:column;gap:3px}
+.orow .pnm span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.orow .pnm small{font-family:var(--f-m);font-weight:400;font-size:var(--fs-micro);letter-spacing:var(--tr-label);color:var(--dim)}
+.otrack{position:relative;height:10px;border-radius:6px;overflow:hidden;display:flex;gap:2px;background:var(--hair)}
+.otrack i{height:100%;width:0;transition:width .6s var(--ease);transition-delay:calc(var(--i,0)*70ms)}
+.otrack i.ed{background:var(--sun-data);border-radius:6px 0 0 6px}
+.otrack i.ge{background:var(--violeta);border-radius:0 6px 6px 0}
+.otrack i:only-child{border-radius:6px}
+.in .otrack i{width:var(--w)}
+.otrack.vacio{background:repeating-linear-gradient(45deg,transparent 0 5px,var(--hair2) 5px 7px)}
 .erow{display:flex;align-items:center;gap:10px;padding:7.5px 0;border-bottom:1px solid var(--hair);font-size:var(--fs-sm);break-inside:avoid}
 .erow:last-child{border-bottom:none}
 .erow .dot{width:8px;height:8px;border-radius:var(--r-xs);flex:none}
@@ -806,7 +820,7 @@ button.ephase[aria-expanded="false"] .sx-chev{transform:rotate(-90deg)}
   .mesa2{grid-template-columns:1fr}
   .dinero{grid-template-columns:1fr 1fr}
   .salto{grid-template-columns:1fr}
-  .prow{grid-template-columns:140px 1fr auto;gap:10px}
+  .prow,.orow{grid-template-columns:140px 1fr auto;gap:10px}
 }
 @media(max-width:640px){
   .wrap{padding:0 16px}
@@ -834,7 +848,7 @@ button.ephase[aria-expanded="false"] .sx-chev{transform:rotate(-90deg)}
   .clip .cn{display:none}
   .tape{height:44px}.clip{border-radius:var(--r-xs)}.playhead{top:-7px;bottom:-7px}   /* cinta al 60 % del alto en móvil (1-nov) */
   .sec{margin-top:48px}
-  .prow{grid-template-columns:1fr;gap:8px;padding:14px 10px}
+  .prow,.orow{grid-template-columns:1fr;gap:8px;padding:14px 10px}
   .pmeta{justify-content:flex-start;flex-wrap:wrap}
   .salto svg{max-width:100%}
   .dlg{grid-template-columns:1fr}
@@ -1815,6 +1829,15 @@ html.embed .salto.embtarget .cl .cardbtn{position:relative;top:auto;right:auto}
     <div class="tape" id="tape"></div>
     <div class="legend" id="cintaLeg" style="margin-top:18px"></div>
   </div>
+  <div class="card otros" id="otrosCard" hidden>
+    <div class="cl"><h3>Otros proyectos</h3><span class="u">FUERA DE LAS BODAS</span></div>
+    <div id="otros"></div>
+    <div class="legend" style="margin-top:14px">
+      <span class="k"><i class="sw" style="background:var(--sun-data)"></i>edición</span>
+      <span class="k"><i class="sw" style="background:var(--violeta)"></i>gestión</span>
+    </div>
+    <p class="note">Sus horas cuentan en <b>Hoy</b> y <b>Tu ritmo</b>; no entran en la carrera, el Historial ni la Tarifa de bodas.</p>
+  </div>
 </section>
 
 <!-- ============ DINERO ============ -->
@@ -2001,6 +2024,13 @@ window.SNAPSHOT_DATA = {"generatedAt":"2026-11-09T22:13:42","today":"2026-11-09"
           sess.push({ date, min:x.min||0, hour:+x.inicio.slice(11,13), corr });
         }
       }
+    // otros proyectos (no bodas, P.projects): su tiempo es trabajo real → cuenta en Hoy y Tu
+    // ritmo (Jordi, 12-nov). NADA más los ve: carrera, historial, tarifa y Proyectos son de bodas.
+    const others = P.projects || [];
+    for (const pj of others) for (const x of (pj.sessionLog||[])){
+      if (!x.inicio) continue;
+      sess.push({ date:x.inicio.slice(0,10), min:x.min||0, hour:+x.inicio.slice(11,13), corr:false });
+    }
     const NSES = sess.length;
 
     // ---- cronotipo: reloj de energía (hora del día) ----
@@ -2284,8 +2314,33 @@ window.SNAPSHOT_DATA = {"generatedAt":"2026-11-09T22:13:42","today":"2026-11-09"
         scenes:(s.scenes||[]).filter(sc=>sc.id&&(sc.escena||'').trim()).map(sc=>({id:sc.id, nm:(sc.escena||'').trim(), estado:sc.estado||'wait'})),
         lastScene:(last&&last.escena)||null, lastAt:(last&&last.inicio)||'' });
     }
+    // otros proyectos: el nombre va como "etapa" y el cliente como "boda" ("Mi proyecto · Freelance");
+    // sin stageId ni escenas → el sprint no ofrece cerrar escena/etapa, solo registra la sesión
+    for (const pj of others){
+      if (!pj.sessionDb || DONE_RE.test(pj.status||'')) continue;
+      const log=(pj.sessionLog||[]).slice().sort((a,b)=>(a.inicio||'').localeCompare(b.inicio||''));
+      const last=log[log.length-1]||null;
+      sprintTargets.push({ db:pj.sessionDb, stageId:null, otro:true, orden:0,
+        estado: (log.length || /progreso|curso/i.test(pj.status||'')) ? 'live' : 'wait',
+        wed:(pj.client||'Proyecto').trim(), etapa:(pj.name||'').trim(), corr:false, ronda:null,
+        scenes:[], lastScene:null, lastAt:(last&&last.inicio)||'' });
+    }
     sprintTargets.sort((a,b)=> (a.estado==='live'?0:1)-(b.estado==='live'?0:1)
       || (a.estado==='live' ? b.lastAt.localeCompare(a.lastAt) : (a.orden-b.orden)));
+
+    // ---- OTROS PROYECTOS: tarjeta propia en Proyectos (horas, Edición vs Gestión, días, $/h) ----
+    const otros = others.map(pj=>{
+      let ed=0, ge=0, first=null, last=null; const days=new Set();
+      for (const x of (pj.sessionLog||[])){ if(!x.inicio) continue; const m=x.min||0, d=x.inicio.slice(0,10);
+        if (x.tipo==='Gestión') ge+=m; else ed+=m;
+        days.add(d); if(!first||d<first)first=d; if(!last||d>last)last=d; }
+      const h=(ed+ge)/60, price=pj.price||null, st=pj.status||'';
+      const chip = DONE_RE.test(st) ? ['done','ENTREGADO'] : /correc/i.test(st) ? ['now','EN ESPERA DE CAMBIOS']
+                 : (ed+ge) ? ['now','EN CURSO'] : ['wait','POR EMPEZAR'];
+      return { key:'otro-'+slug(pj.name), nm:(pj.name||'').trim(), client:(pj.client||'').trim(), url:pj.url||'',
+        edMin:ed, geMin:ge, h:round1(h), nSes:(pj.sessionLog||[]).length, days:days.size, first, last,
+        price, perH: price&&h ? Math.round(price/h) : null, chip, done:DONE_RE.test(st) };
+    }).sort((a,b)=> (a.done?1:0)-(b.done?1:0) || (b.last||'').localeCompare(a.last||''));
 
     // ---- HISTORIAL: todas las bodas medidas (tablero + archivo), boda con boda ----
     // Dos modos, como la Carrera: sin teaser (todas comparan lo mismo: largo + HL/SF) y con
@@ -2355,7 +2410,7 @@ window.SNAPSHOT_DATA = {"generatedAt":"2026-11-09T22:13:42","today":"2026-11-09"
       sprints, medMin, over2h,
       dia7,
       projects, projOrder, archOrder, currentKey,
-      race, hero, raceAll, heroAll, anat, money, hist, ritmoAll,
+      race, hero, raceAll, heroAll, anat, money, hist, ritmoAll, otros,
       PHASES, PHASE_ORDER
     };
 
@@ -2364,6 +2419,8 @@ window.SNAPSHOT_DATA = {"generatedAt":"2026-11-09T22:13:42","today":"2026-11-09"
   }
 
   // helpers
+  // estados de Notion que cuentan como terminado (mismo conjunto que DONE_STATUSES de server.py)
+  const DONE_RE = /^(hecho|finalizadas?|complete|completado|done)$/i;
   function slug(s){ return (s||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); }
   // decimal con coma, igual que fmt() de la capa de render (antes salía "57.6 h" en Proyectos)
   const fmt1 = n => (Math.round(n*10)/10).toLocaleString('es-MX',{minimumFractionDigits:0,maximumFractionDigits:1}).replace('.',',');
@@ -3270,6 +3327,22 @@ function renderMesa(M){
   if(openKey) select(openKey);
 }
 
+/* ================= OTROS PROYECTOS (no bodas) ================= */
+function renderOtros(M){
+  const card=document.getElementById('otrosCard'), box=document.getElementById('otros'), L=M.otros||[];
+  card.hidden=!L.length; if(!L.length){ box.innerHTML=''; return; }
+  const hm=m=>fmtHM(m/60);
+  box.innerHTML=L.map((o,i)=>{ const tot=o.edMin+o.geMin;
+    const tip=`<b>${escH(o.nm)}</b>${o.client?' · '+escH(o.client):''}<br>edición ${hm(o.edMin)} · gestión ${hm(o.geMin)}`
+      +(o.perH?`<br>${fmtMXN(o.price)} / ${fmt(o.h)} h = ${fmtMXN(o.perH)}/h`:o.price?'':'<br>sin precio en Notion (Total)');
+    const bar=tot?[['ed',o.edMin],['ge',o.geMin]].filter(x=>x[1]>0).map(([c,m])=>`<i class="${c}" style="--w:${(m/tot*100).toFixed(1)}%;--i:${i}"></i>`).join(''):'';
+    return `<div class="orow" tabindex="0" data-tip="${tip.replace(/"/g,'&quot;')}">`
+      +`<div class="pnm"><span>${escH(o.nm)}</span><small>${o.nSes} ${o.nSes===1?'SESIÓN':'SESIONES'} · ${o.days} ${o.days===1?'DÍA':'DÍAS'}</small></div>`
+      +`<div class="otrack${tot?'':' vacio'}">${bar}</div>`
+      +`<div class="pmeta"><b>${tot?fmtDur(tot/60):'—'}</b>${o.perH?`<span>${fmtMXN(o.perH)}/h</span>`:''}`
+      +`${o.client?`<span class="pchip tag">${escH(o.client.toUpperCase())}</span>`:''}<span class="pchip ${o.chip[0]}">${o.chip[1]}</span></div></div>`; }).join('');
+}
+
 /* ================= TARIFA ================= */
 function renderTarifa(M){
   const row=document.getElementById('dineroRow'); const $=M.money;
@@ -3312,7 +3385,7 @@ function renderTarifa(M){
 function renderAll(model){
   M=model;
   // cada sección aislada: si una falla (dato raro en Notion), las demás se pintan igual
-  for(const f of [renderChrome,renderRaceMode,renderHero,renderRace,renderHoy,renderDia7,renderRitmoV,renderAdnV,renderMesa,renderTarifa,renderHist,renderSide]){
+  for(const f of [renderChrome,renderRaceMode,renderHero,renderRace,renderHoy,renderDia7,renderRitmoV,renderAdnV,renderMesa,renderOtros,renderTarifa,renderHist,renderSide]){
     try{ f(M); }catch(e){ console.error('render · '+f.name, e); }
   }
   embDecorate();

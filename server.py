@@ -551,6 +551,22 @@ def find_session_page(db, schema, item):
     return None
 
 
+def total_db_ok(total_db, session_db):
+    """¿La DB "Tiempo total" a la que apunta la columna Total es de ESTA tabla de Sesiones?
+    Al copiar una tabla Sesiones de otra boda, su columna Total sigue apuntando al "Tiempo
+    total" de la boda original (pasó con el primer proyecto freelance, copiado de la etapa
+    Cambios de una boda: el sprint ligaba sus sesiones a esa boda). La DB buena tiene una
+    relación de vuelta a esta tabla; si tiene relaciones pero ninguna vuelve aquí, no se liga."""
+    try:
+        props = notion("GET", "/databases/%s" % total_db).get("properties", {})
+    except Exception:
+        return False
+    targets = {(v.get("relation") or {}).get("database_id", "").replace("-", "")
+               for v in props.values() if v.get("type") == "relation"}
+    targets.discard("")
+    return not targets or session_db.replace("-", "") in targets
+
+
 def create_session(item, step=None, save_step=None):
     """Crea una fila en la DB "Sesiones" de una etapa IGUAL que el registro manual:
     título "Sesión", Inicio, Fin, Tipo, Escena (relación) y Total (relación a la fila
@@ -591,7 +607,7 @@ def create_session(item, step=None, save_step=None):
             props[name] = {"relation": [{"id": item["escena"]}]}
         elif t == "relation" and n == "total":
             tid = p["relation"].get("database_id")
-            if tid:
+            if tid and total_db_ok(tid, db):
                 for r in query_db(tid):
                     if _sinacento(title_any(r.get("properties", {}))) == _sinacento(tipo):
                         props[name] = {"relation": [{"id": r["id"]}]}
@@ -742,6 +758,9 @@ def session_targets(data):
             if s.get("sessionDb"):
                 out[s["sessionDb"]] = {"stage": s.get("id"),
                                        "scenes": {sc.get("id") for sc in s.get("scenes") or [] if sc.get("id")}}
+    for p in (data or {}).get("projects", []):     # otros proyectos: sin etapa ni escenas
+        if p.get("sessionDb"):
+            out[p["sessionDb"]] = {"stage": None, "scenes": set()}
     return out
 
 
@@ -825,6 +844,70 @@ def discover_wedding_pages(archive=None):
         except Exception as e:
             sys.stderr.write("[aviso] no se pudo traer %s (%s)\n" % (pid, e))
     return pages
+
+
+# ── Otros proyectos (no bodas): freelance, iglesia, etc. ─────────────────────
+# Filas de "Trabajo" con Tipo = Proyecto (12-nov-2026; el primero, un video musical freelance).
+# No siguen la plantilla de bodas: solo una DB "Sesiones" directa en la página (más
+# "Total" y "Panel de Control", como una etapa). Viajan en el payload como "projects",
+# APARTE de "weddings", para que nada de las estadísticas de bodas (carrera, historial,
+# tarifa, dona por etapa, archivo) los vea. Cuentan en Hoy y Tu ritmo (lo pidió Jordi).
+# Hay ~50 proyectos viejos (2021-2025, todos "Finalizadas"): para no gastar peticiones,
+# un proyecto finalizado solo se lee si su "Fecha" cae en los últimos RECENT_DONE_DAYS.
+def discover_project_pages():
+    cutoff = (datetime.date.today() - datetime.timedelta(days=RECENT_DONE_DAYS)).isoformat()
+    try:
+        pages = query_db(TRABAJO_DB_ID, {"property": "Tipo", "select": {"equals": "Proyecto"}})
+    except Exception as e:
+        sys.stderr.write("[aviso] no se pudieron leer los proyectos (%s)\n" % e)
+        return []
+    kept = []
+    for p in pages:
+        props = p.get("properties", {})
+        status = (p_select(props, "Status") or "").strip().lower()
+        ps, pe = first_date(props)
+        if status in DONE_STATUSES and (pe or ps or "")[:10] < cutoff:
+            continue   # terminado hace tiempo (o sin fecha): fuera, sin leer su contenido
+        kept.append(p)
+    return kept
+
+
+def build_project(page):
+    """Proyecto que no es boda → {name, client, status, price, sessionDb, sessionLog, …}.
+    None si la página no tiene una DB de Sesiones de verdad (con Inicio y Fin)."""
+    props = page.get("properties", {})
+    ps, pe = first_date(props)
+    proj = {
+        "name": p_title(props, "Proyecto") or title_any(props), "icon": page_icon(page),
+        "client": p_select(props, "Cliente / Línea") or p_select(props, "Subcategoría"),
+        "status": p_select(props, "Status"),
+        "price": p_number(props, "Total"),
+        "url": page.get("url", ""), "projectStart": ps, "projectEnd": pe,
+        "sessionDb": None, "sessionLog": [], "hours": 0, "sessions": 0,
+    }
+    for blk in iter_child_databases(page["id"]):
+        bid = blk["id"]
+        if not is_session_log_db(bid):    # "Total" y "Panel de Control" no tienen Inicio/Fin
+            continue
+        log, th, ns = read_session_db(bid)
+        proj["sessionDb"] = proj["sessionDb"] or bid
+        proj["sessionLog"].extend(log)
+        proj["hours"] = round(proj["hours"] + th, 1)
+        proj["sessions"] += ns
+    return proj if proj["sessionDb"] else None
+
+
+def build_projects():
+    out = []
+    for p in discover_project_pages():
+        try:
+            pr = build_project(p)
+        except Exception as e:
+            sys.stderr.write("[aviso] proyecto %s: %s\n" % (p.get("id"), e))
+            continue
+        if pr:
+            out.append(pr)
+    return out
 
 
 # ── Archivo histórico de bodas entregadas ────────────────────────────────────
@@ -1010,6 +1093,7 @@ def build_data(prev_archive=None):
         "live": True,
         "degraded": DISCOVERY_DEGRADED[0],   # True = solo las bodas de respaldo; no publicar
         "weddings": weddings,
+        "projects": build_projects(),   # otros proyectos (no bodas): ver build_project
         "archive": archive,
     }
 
@@ -1071,13 +1155,15 @@ def meta_min(date_str):
     return 0 if dow == 0 else (120 if dow == 6 else 300)
 
 def _all_sessions(data):
+    """Todas las sesiones del día a día: bodas + otros proyectos (cuentan para la meta)."""
+    logs = [s.get("sessionLog") or [] for w in data.get("weddings", []) for s in w.get("stages", [])]
+    logs += [p.get("sessionLog") or [] for p in data.get("projects", [])]
     out = []
-    for w in data.get("weddings", []):
-        for s in w.get("stages", []):
-            for x in (s.get("sessionLog") or []):
-                ini = x.get("inicio")
-                if ini:
-                    out.append({"key": ini[:10], "min": x.get("min") or 0})
+    for log in logs:
+        for x in log:
+            ini = x.get("inicio")
+            if ini:
+                out.append({"key": ini[:10], "min": x.get("min") or 0})
     return out
 
 def _day_totals(sessions):

@@ -67,6 +67,13 @@
       "scenes": [{ "id", "escena", "estado", "orden", "cancion", "dia", "start", "end" }]
     }]
   }],
+  "projects": [{                          // otros proyectos (Tipo = Proyecto), 12-nov-2026
+    "name", "icon", "client",             // client = "Cliente / Línea" (Freelance, IPV…)
+    "status", "price", "url", "projectStart", "projectEnd",
+    "sessionDb": "…",                     // su DB Sesiones (destino del sprint, sin etapa)
+    "hours": 4.2, "sessions": 3,
+    "sessionLog": [{ "name", "inicio", "min", "tipo", "ronda", "escena": null }]
+  }],
   "archive": [{                           // bodas entregadas con horas (persistente)
     "name", "icon", "hours", "scenes", "span", "price", "rounds", "lastEnd", "archivedAt",
     "ghost": { "v": 3, "projectStart", "projectEnd", "nDays": 1,   // nDays: boda de 1 o 2 días (v3)
@@ -91,6 +98,8 @@ stageProgress, stageHours, scene}, weddings[{name, icon, progress, done, live, w
 | `notion()` | Cliente HTTP: **throttle** 0,40 s entre peticiones (Notion ≈ 3 req/s) + **backoff** ante 429/5xx (6 intentos: 2-4-8-16-30 s, respeta `Retry-After`). Una extracción ≈ 200 peticiones ≈ 2 min. |
 | `discover_wedding_pages()` | Páginas `Tipo = Boda` de la DB "Trabajo". Deja fuera las **finalizadas sin sesiones en 45 días** (`RECENT_DONE_DAYS`; la actividad sale de `lastActivity`/`lastEnd` del archivo previo o del fin de *Fecha*, y solo a falta de ambos de `last_edited_time`, para que una edición masiva en Notion no las regrese al tablero; "finalizada" = `DONE_STATUSES`, comparado en Python para que renombrar la opción en Notion no rompa la consulta). Si la consulta falla → `FALLBACK_WEDDING_PAGES` y `degraded: true`. |
 | `build_wedding()` | Busca la sub-DB "Tracking de Edición" → etapas → dentro de cada etapa, sub-DBs de **escenas** (título "Escena…") y de **sesiones**. Sin tracking: DB "Sesiones" directa = etapa "Correcciones". Parsea por **tipo** de propiedad y sin acentos (conviven "Sesión"/"Sesion"). |
+| `discover_project_pages()` / `build_project()` | **Otros proyectos** (`Tipo = Proyecto`): sin terminar, o finalizados con *Fecha* en ≤45 días (los ~50 viejos ni se abren). De su página solo se leen las DBs con Inicio y Fin (Sesiones); "Total" y "Panel de Control" se ignoran. Sin DB de Sesiones → no sale. Van en `projects`, **aparte de `weddings`**: el front los suma solo a Hoy/Tu ritmo (`sess`), al sprint y a la tarjeta Otros proyectos; `_all_sessions` (widgets) también. |
+| `total_db_ok()` | Antes de ligar una sesión a la fila Edición/Gestión, comprueba que la DB "Tiempo total" tenga una relación de vuelta a ESA tabla de Sesiones. Una tabla Sesiones copiada de otra boda conserva su columna Total apuntando a la boda original (pasó con el primer proyecto freelance, copiado de la etapa Cambios de una boda). Igual en `functions/api/session.js` (`totalDbOk`). |
 | `is_session_log_db()` | Una DB es de sesiones solo si tiene fechas **Inicio y Fin**. ⚠️ "Tiempo total" también titula su columna "Sesión". |
 | `merge_archive` / `backfill_ghosts` | Upsert del archivo con las finalizadas del tablero; reconstruye desde Notion (máx. `BACKFILL_MAX` = 2 por corrida) las entradas sin `ghost` o con `GHOST_VERSION` vieja. Subir la versión fuerza el re-backfill. |
 | `build_summary()` | Resumen para widgets (§2). |
@@ -602,6 +611,11 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   `Orden`, `Inicio`, `Fin`), DB **Sesiones** (`Sesión`, `Inicio`, `Fin`, `Tipo`, `Escena`,
   `Total`, `Ronda` en Cambios) y DB **Tiempo total** (filas *Edición* y *Gestión*).
 - Teaser = la boda tiene etapas TEAS. 2 días = una escena "Día 1…".
+- **Otros proyectos** (`Tipo = Proyecto`): en la página, DB **Sesiones** (`Inicio`, `Fin`, `Tipo`,
+  `Total`) + DB **Total** (filas *Edición*/*Gestión*, relación de vuelta "Sesiones", rollup
+  "Minutos totales" y fórmula "Tiempo total") + **Panel de Control** (fila "Consola", vista
+  galería con los botones Sesión/Gestión/Finalización, que se configuran a mano: la API no crea
+  botones). `Cliente / Línea` y `Total` (precio) de la fila en Trabajo.
 
 ## 8. Mantenimiento
 
