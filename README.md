@@ -201,7 +201,9 @@ Pegar la dona **Horas y $ por etapa** de una boda en su página de Notion (`/emb
 - Dentro de Notion la tarjeta se funde con la página (11-nov): `--embbg` #191919 / #FFFFFF en html, body y
   tarjeta; sin borde, radio, sombra, grano (`::before`) ni halo (`.dsegs` sin filtro). `color-scheme` igual al
   de Notion (dark/light): si no coincide, el navegador pinta opaco el lienzo del iframe y asoman esquinas.
-- Interruptor general `?embed=tema` (`#temaCard`, sin datos ni clave): guarda `scEmbedTheme`, borra los
+- Interruptor general `?embed=tema` (`#temaCard`, sin datos ni clave). **Auto** (12-nov) borra `scEmbedTheme` y
+  los de cada tarjeta: entonces siguen `prefers-color-scheme` en vivo (`SYS_LIGHT` change), para el atajo «Modo
+  oscuro» del iPhone (`docs/atajo-modo-oscuro.md` en la raíz). Claro/Oscuro: guarda `scEmbedTheme`, borra los
   `scEmbedTheme:<tarjeta>:<boda>` y escribe `scEmbedThemeAt`; las tarjetas abiertas lo oyen (evento `storage`,
   mismo sitio dentro de Notion) y cambian al momento. El sol/luna de cada tarjeta guarda solo el suyo.
 - Tema de la tarjeta embebida: botón sol/luna dentro de ella → `localStorage scEmbedTheme` (manda sobre
