@@ -239,9 +239,11 @@ Un solo archivo: CSS (tokens Pantone, tema claro/oscuro) + HTML + un `<script>` 
    - **Scroll-spy** (IntersectionObserver sobre `.hero`/`.sec`): marca `nav a` (sidebar y
      tabbar), mueve la pastilla `#sInd`, actualiza la barra superior `.crumb` y pone `--amb1`
      (luz ambiente, propiedad `@property` con transición).
-   - **Tema** en `scTheme` (`''` = oscuro elegido); sin elección, el pre-script del `<head>` sigue
-     `prefers-color-scheme`. Al cambiarlo, `renderAll` + `applyGlow()` y `<meta name="theme-color">`
-     pasa a `#f0eee9` / `#050506`.
+   - **Tema** en `scTheme` (`'light'` = claro, `''` = oscuro elegido, sin clave = **Auto**). El pre-script del
+     `<head>` pone `html.thm-auto` y sigue `prefers-color-scheme`. `#thmBtn` recorre Auto → Claro → Oscuro → Auto
+     (icono ◐ `#i-auto` en Auto). `thmApply()` aplica, actualiza `aria-label`/`data-tip` y escucha en vivo
+     `THM_SYS` (`change`) y `storage` (ventana mini). Si cambia el tema: `renderAll` (no en mini) + `applyGlow()`, y
+     `<meta name="theme-color">` pasa a `#f0eee9` / `#050506` (12-nov).
    - **Identidad A (capa CSS al final del `<style>`):**
      - El grano (`--grain`, ruido generado en un canvas) vive en `.amb::after` y en el `::before`
        de `.card`, `.m` y el sidebar; nunca encima de los datos.
@@ -579,7 +581,7 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
 | Mac | `.cache.json` · `.archive.json` | caché local · archivo histórico local |
 | Mac | `.sprint-state.json` | sprint compartido dashboard ⇄ ventana flotante (`{rev, data}`) |
 | Mac | `.outbox.json` | cola de envíos a Notion guardados sin internet (`{items, sent}`, §5.2); se vacía sola |
-| Navegador | `scTheme` | tema claro/oscuro |
+| Navegador | `scTheme` | tema del dashboard: `light` · `''` (oscuro) · sin clave = Auto (sigue al sistema) |
 | Navegador | `hubHistMet` · `hubRitmoHist` | dato elegido en Progreso del Historial · Tu ritmo en *Historial* (`1`) o *Tablero* |
 | Navegador | `hubRaceIncl` | selector de la Carrera: `1` = con teaser, `0`/sin clave = sin teaser |
 | Navegador | `scLastData` | última lectura viva (payload completo, ~90 KB) para pintar al abrir |

@@ -16,7 +16,8 @@
 // Tema: el del sol/luna de ESA tarjeta (scEmbedTheme:<tarjeta>:<boda>); si no, el general (scEmbedTheme, el que
 // pone el widget «Tema de los widgets»); si no, &tema=claro|oscuro de la URL; si no, el del sistema. Nunca el del dashboard.
 try{const q=new URLSearchParams(location.search);if(q.has('embed')||/^\/embed(\/|$)/.test(location.pathname)){document.documentElement.classList.add('embed');let t=null;try{t=localStorage.getItem('scEmbedTheme:'+(q.get('embed')||q.get('card')||'donut')+':'+(q.get('boda')||'').trim().toLowerCase())||localStorage.getItem('scEmbedTheme')}catch(e){}const tm=q.get('tema');const light=t?t==='light':tm==='claro'?true:tm==='oscuro'?false:matchMedia('(prefers-color-scheme: light)').matches;if(light)document.documentElement.dataset.theme='light'}}catch(e){}
-if(!document.documentElement.classList.contains('embed'))try{const t=localStorage.getItem('scTheme');if(t)document.documentElement.dataset.theme=t;else if(t===null&&matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.dataset.theme='light'}catch(e){}
+// dashboard: scTheme 'light' = claro · '' = oscuro · sin guardar = Auto (sigue al sistema y lo escucha en vivo, 12-nov)
+if(!document.documentElement.classList.contains('embed'))try{const t=localStorage.getItem('scTheme');if(t===null)document.documentElement.classList.add('thm-auto');if(t)document.documentElement.dataset.theme=t;else if(t===null&&matchMedia('(prefers-color-scheme: light)').matches)document.documentElement.dataset.theme='light'}catch(e){}
 try{document.querySelector('meta[name="theme-color"]').content=document.documentElement.dataset.theme==='light'?'#f0eee9':'#050506'}catch(e){}
 // sidebar: el estado guardado manda; si no hay, desplegado solo en pantallas anchas (sin parpadeo al cargar)
 try{const s=localStorage.getItem('scSide');if(s==='0'||(s===null&&innerWidth<1280))document.documentElement.classList.add('side-closed')}catch(e){}
@@ -172,6 +173,10 @@ svg text{user-select:none}
 .rec.snap i{background:var(--naranja)}
 :root[data-theme="light"] .thm .i-luna-u{display:none}
 :root:not([data-theme="light"]) .thm .i-sol-u{display:none}
+/* Auto (12-nov): el botón del tema muestra ◐ en vez de sol/luna */
+#thmBtn .i-auto-u{display:none}
+:root.thm-auto #thmBtn .i-sol-u,:root.thm-auto #thmBtn .i-luna-u{display:none}
+:root.thm-auto #thmBtn .i-auto-u{display:block}
 
 /* ============ dock móvil / tablet (<1024 px): barra de secciones + botón del sprint ============ */
 .dock{position:fixed;z-index:40;left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom));
@@ -1625,9 +1630,10 @@ html.embed .salto.embtarget .cl .cardbtn{position:relative;top:auto;right:auto}
   <div class="date" id="hdrDate">—</div>
   <button class="refreshbtn" id="refreshBtn" type="button" aria-label="Actualizar datos desde Notion"><svg class="rfi" viewBox="0 0 16 16" aria-hidden="true"><path d="M13.2 8a5.2 5.2 0 1 1-1.6-3.75" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M12.3 1.6v3.2H9.1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   <div class="rec" id="stamp"><i></i>—</div>
-  <button class="thm" id="thmBtn" type="button" aria-label="Cambiar tema claro u oscuro">
+  <button class="thm" id="thmBtn" type="button" aria-label="Tema: Auto (sigue al sistema)" data-tip="<b>Tema: Auto</b><br>sigue el claro / oscuro de tu Mac o iPhone · toca para Claro">
     <svg class="ic i-sol-u"><use href="#i-sol"/></svg>
     <svg class="ic i-luna-u"><use href="#i-luna"/></svg>
+    <svg class="ic i-auto-u"><use href="#i-auto"/></svg>
   </button>
   <button class="thm cardbtn embtop" type="button" data-embed="tema" aria-label="Copiar el interruptor de tema para Notion" data-tip="<b>Tema de los widgets</b><br>copia un interruptor claro / oscuro que cambia todas tus tarjetas en Notion · en Notion: /embed y pegar"><svg class="ic i-emb"><use href="#i-embed"/></svg><svg class="ic i-ok"><use href="#i-check"/></svg></button>
 </div></header>
@@ -3942,9 +3948,28 @@ function placeInd(now){ const ind=document.getElementById('sInd'), on=document.q
     if(renderMesa._select) renderMesa._select(b.dataset.key,true);
     go(document.getElementById('mesa'),'start'); });
 })();
-document.getElementById('thmBtn').addEventListener('click',()=>{ const r=document.documentElement; const next=r.dataset.theme==='light'?'':'light'; if(next)r.dataset.theme=next;else delete r.dataset.theme; try{localStorage.setItem('scTheme',next)}catch(e){}
-  const tc=document.querySelector('meta[name="theme-color"]'); if(tc) tc.content=next?'#f0eee9':'#050506';
-  if(M)renderAll(M); applyGlow(); });
+// Tema del dashboard (12-nov): un botón con 3 estados que se recorren al tocarlo: Auto ◐ → Claro ☀ → Oscuro ☾ → Auto.
+// Auto = sin scTheme guardado: sigue prefers-color-scheme y lo escucha en vivo (la Mac pasa a oscuro → el dashboard
+// también, al momento). El evento storage lo lleva a las otras ventanas del mismo sitio (p. ej. la ventana mini del sprint).
+const THM_SYS=matchMedia('(prefers-color-scheme: light)');
+const THM_TXT={auto:['Auto','sigue el claro / oscuro de tu Mac o iPhone · toca para Claro'],
+  light:['Claro','toca para Oscuro'], dark:['Oscuro','toca para Auto (seguir al sistema)']};
+function thmApply(){ if(EMBED) return; const r=document.documentElement; let t=null; try{ t=localStorage.getItem('scTheme'); }catch(e){}
+  const mode=t===null?'auto':t==='light'?'light':'dark', light=mode==='auto'?THM_SYS.matches:mode==='light';
+  const was=r.dataset.theme==='light'; r.classList.toggle('thm-auto',mode==='auto');
+  if(light) r.dataset.theme='light'; else delete r.dataset.theme;
+  const tc=document.querySelector('meta[name="theme-color"]'); if(tc) tc.content=light?'#f0eee9':'#050506';
+  const b=document.getElementById('thmBtn'), [nm,tx]=THM_TXT[mode];
+  if(b){ b.setAttribute('aria-label','Tema: '+nm+(mode==='auto'?' (sigue al sistema)':'')); b.dataset.tip='<b>Tema: '+nm+'</b><br>'+tx; }
+  if(light!==was){ if(M&&!MINI) renderAll(M); applyGlow(); } }
+document.getElementById('thmBtn').addEventListener('click',()=>{ let t=null; try{ t=localStorage.getItem('scTheme'); }catch(e){}
+  try{ if(t===null) localStorage.setItem('scTheme','light');        // Auto → Claro
+       else if(t==='light') localStorage.setItem('scTheme','');     // Claro → Oscuro
+       else localStorage.removeItem('scTheme'); }catch(e){}          // Oscuro → Auto
+  thmApply(); });
+if(!EMBED){ THM_SYS.addEventListener('change',thmApply);
+  addEventListener('storage',e=>{ if(e.key==='scTheme'||e.key===null) thmApply(); });
+  thmApply(); }
 
 /* ================= reveal: entra al aparecer, se rearma al salir ================= */
 (function(){ if(EMBED) return;
