@@ -347,6 +347,7 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
 - **Interruptor general** (`tema`, `#temaCard`, `nodata`: no carga datos ni pide clave): Claro | Oscuro (`.rmode`)
   → `scEmbedTheme` + borra `scEmbedTheme:*` + `scEmbedThemeAt`; las demás tarjetas escuchan `storage`
   (`scEmbedThemeAt`) y aplican. Su `</>` (`.embtop`) va junto al botón de tema de la barra superior.
+  Botones solo con símbolo (sol · luna · `#i-auto`; nombre en `aria-label`/`title`, 12-nov).
   **Auto** (12-nov, `data-t="auto"`, icono `#i-auto`): borra también `scEmbedTheme`; sin tema guardado cada tarjeta
   sigue `prefers-color-scheme` y escucha su `change` (`SYS_LIGHT`; regla única en `embWantedLight()`: tarjeta >
   general > `&tema=` > sistema). Lo aprovecha el atajo «Modo oscuro» del iPhone (`docs/atajo-modo-oscuro.md`).
