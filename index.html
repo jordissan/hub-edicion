@@ -1426,8 +1426,9 @@ html:not(.embed) #temaCard{display:none !important}
 html.embed #temaCard.embtarget{display:flex;align-items:center;flex-wrap:wrap;gap:10px 18px;padding:12px 16px}
 html.embed #temaCard .cl{margin:0}
 html.embed #temaCard .rmode{margin-left:0;height:auto}
-html.embed #temaCard .rmode button{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;height:auto}
-html.embed #temaCard .rmode .ic{width:14px;height:14px}
+/* solo símbolos (12-nov, pedido de Jordi): sol · luna · auto; el nombre va en aria-label/title */
+html.embed #temaCard .rmode button{display:inline-flex;align-items:center;justify-content:center;padding:6px 11px;height:auto}
+html.embed #temaCard .rmode .ic{width:15px;height:15px}
 /* los recuadros de Tarifa, solos: la cifra al centro del espacio */
 html.embed .dinero>.kpi.embtarget{display:flex;flex-direction:column}
 html.embed .dinero>.kpi.embtarget .v{margin:auto 0;padding:10px 0;font-size:clamp(40px,14vw,72px)}
@@ -1852,7 +1853,7 @@ html.embed .salto.embtarget .cl .cardbtn{position:relative;top:auto;right:auto}
      Auto = sin tema guardado: siguen el aspecto del sistema y cambian al momento (atajo «Modo oscuro» del iPhone). -->
 <div class="card" id="temaCard"><div class="cl"><h3>Tema de los widgets</h3></div>
   <div class="rmode" role="group" aria-label="Tema de todas las tarjetas en Notion">
-    <button type="button" data-t="light" aria-pressed="false"><svg class="ic"><use href="#i-sol"/></svg>Claro</button><button type="button" data-t="dark" aria-pressed="false"><svg class="ic"><use href="#i-luna"/></svg>Oscuro</button><button type="button" data-t="auto" aria-pressed="false" title="Sigue el aspecto del iPhone o de la Mac"><svg class="ic"><use href="#i-auto"/></svg>Auto</button>
+    <button type="button" data-t="light" aria-pressed="false" aria-label="Claro" title="Claro"><svg class="ic"><use href="#i-sol"/></svg></button><button type="button" data-t="dark" aria-pressed="false" aria-label="Oscuro" title="Oscuro"><svg class="ic"><use href="#i-luna"/></svg></button><button type="button" data-t="auto" aria-pressed="false" aria-label="Auto: sigue el aspecto del iPhone o de la Mac" title="Auto: sigue el aspecto del iPhone o de la Mac"><svg class="ic"><use href="#i-auto"/></svg></button>
   </div></div>
 <div id="tip" role="status" aria-hidden="true"></div>
 
