@@ -181,6 +181,13 @@ GOTCHA UI: para crear el proyecto Pages, en Workers&Pages → Create application
   se abrevia: `.rf` texto completo, `.rs` corto (HIST.), `.rk` la fase una vez (TEASER [SIN|CON]);
   «Duración de sesiones» → «Duración»; `.u` de Boda con boda baja bajo el título (<420 px).
 
+## Otros proyectos (no bodas) — 12-nov-2026
+- `server.py` añade `projects` al payload (`Tipo = Proyecto` en Trabajo; ver docs/arquitectura.md §2-3).
+  Viajan a KV con el resto; `functions/embed/data.js` no los toca.
+- `functions/api/session.js` y `close.js` aceptan la DB Sesiones de un proyecto (sin etapa ni escenas);
+  `session.js` liga el Total solo si su DB apunta de vuelta a esa tabla (`totalDbOk`).
+- `snapshot-demo.py` también anonimiza `projects` (repo público).
+
 ## Tarjetas para Notion (/embed) — publicada 10-nov-2026 (7f6bb7d); 9 tarjetas desde el 11-nov
 - Tarjetas (`EMB_CARDS` en index.html, `&embed=<tarjeta>`): de una boda `donut` (por defecto), `etapas`,
   `cinta`; del tablero entero `dia7`, `intensidad`, `tarifa-hora`, `tarifa-escena`, `tarifa-eficiencia`,

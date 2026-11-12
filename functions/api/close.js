@@ -77,6 +77,8 @@ export async function onRequestPost({ request, env }) {
   let target = null;
   for (const w of data.weddings || []) for (const s of w.stages || [])
     if (s.sessionDb === it.db) target = { stage: s.id, scenes: new Set((s.scenes || []).map(x => x.id).filter(Boolean)) };
+  for (const p of data.projects || [])     // otros proyectos (no bodas): sin etapa ni escenas
+    if (p.sessionDb === it.db) target = { stage: null, scenes: new Set() };
   if (!target) return json({ ok: false, error: "Etapa desconocida" }, 400);
   if (it.stageId && target.stage && it.stageId !== target.stage) return json({ ok: false, error: "La etapa no corresponde a esa DB de Sesiones" }, 400);
   if (it.escena && !target.scenes.has(it.escena)) return json({ ok: false, error: "La escena no es de esa etapa" }, 400);

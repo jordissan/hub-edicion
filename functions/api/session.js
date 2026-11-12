@@ -63,6 +63,18 @@ async function setInProgress(token, pageId, startIso, kind) {
   return moved;
 }
 
+// mismo criterio que server.total_db_ok: una tabla Sesiones copiada de otra boda conserva su
+// columna Total apuntando al "Tiempo total" de la boda original → solo se liga si esa DB
+// tiene una relación de vuelta a esta tabla de Sesiones (o no tiene ninguna relación)
+async function totalDbOk(token, totalDb, sessionDb) {
+  try {
+    const props = (await notion(token, "GET", `/databases/${totalDb}`)).properties || {};
+    const ids = Object.values(props).filter(v => v.type === "relation")
+      .map(v => ((v.relation || {}).database_id || "").replace(/-/g, "")).filter(Boolean);
+    return !ids.length || ids.includes(sessionDb.replace(/-/g, ""));
+  } catch { return false; }
+}
+
 // mismo criterio que server.create_session
 async function createSession(token, it) {
   const tipo = it.tipo || "Edición";
@@ -80,7 +92,7 @@ async function createSession(token, it) {
       if ((p.select.options || []).some(o => o.name === tipo)) props[name] = { select: { name: tipo } };
     } else if (t === "number" && n === "ronda" && it.ronda != null) props[name] = { number: it.ronda };
     else if (t === "relation" && n.startsWith("escena") && it.escena) props[name] = { relation: [{ id: it.escena }] };
-    else if (t === "relation" && n === "total" && p.relation.database_id) {
+    else if (t === "relation" && n === "total" && p.relation.database_id && await totalDbOk(token, p.relation.database_id, it.db)) {
       const q = await notion(token, "POST", `/databases/${p.relation.database_id}/query`, {});
       const row = (q.results || []).find(r => {
         const tp = Object.values(r.properties || {}).find(v => v.type === "title");
@@ -116,6 +128,8 @@ export async function onRequestPost({ request, env }) {
   let target = null;
   for (const w of data.weddings || []) for (const s of w.stages || [])
     if (s.sessionDb === it.db) target = { stage: s.id, scenes: new Set((s.scenes || []).map(x => x.id).filter(Boolean)) };
+  for (const p of data.projects || [])     // otros proyectos (no bodas): sin etapa ni escenas
+    if (p.sessionDb === it.db) target = { stage: null, scenes: new Set() };
   if (!target) return json({ ok: false, error: "Etapa desconocida" }, 400);
   if (it.stageId && target.stage && it.stageId !== target.stage) return json({ ok: false, error: "La etapa no corresponde a esa DB de Sesiones" }, 400);
   if (it.escena && !target.scenes.has(it.escena)) return json({ ok: false, error: "La escena no es de esa etapa" }, 400);
