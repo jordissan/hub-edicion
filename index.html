@@ -1558,6 +1558,10 @@ html.embed .salto.embtarget .cl .cardbtn{position:relative;top:auto;right:auto}
     <symbol id="i-luna" viewBox="0 0 24 24">
       <path d="M14 4a8.5 8.5 0 1 0 6 14.5A9.3 9.3 0 0 1 14 4Z"/>
     </symbol>
+    <!-- auto (sigue el aspecto del sistema): círculo mitad lleno -->
+    <symbol id="i-auto" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16Z" fill="currentColor"/>
+    </symbol>
   </defs>
 </svg>
 
@@ -1844,10 +1848,11 @@ html.embed .salto.embtarget .cl .cardbtn{position:relative;top:auto;right:auto}
 
 </div><!-- /wrap -->
 
-<!-- widget «Tema de los widgets» (solo en Notion, /embed?embed=tema): cambia el tema de TODAS las tarjetas embebidas -->
+<!-- widget «Tema de los widgets» (solo en Notion, /embed?embed=tema): cambia el tema de TODAS las tarjetas embebidas.
+     Auto = sin tema guardado: siguen el aspecto del sistema y cambian al momento (atajo «Modo oscuro» del iPhone). -->
 <div class="card" id="temaCard"><div class="cl"><h3>Tema de los widgets</h3></div>
   <div class="rmode" role="group" aria-label="Tema de todas las tarjetas en Notion">
-    <button type="button" data-t="light" aria-pressed="false"><svg class="ic"><use href="#i-sol"/></svg>Claro</button><button type="button" data-t="dark" aria-pressed="false"><svg class="ic"><use href="#i-luna"/></svg>Oscuro</button>
+    <button type="button" data-t="light" aria-pressed="false"><svg class="ic"><use href="#i-sol"/></svg>Claro</button><button type="button" data-t="dark" aria-pressed="false"><svg class="ic"><use href="#i-luna"/></svg>Oscuro</button><button type="button" data-t="auto" aria-pressed="false" title="Sigue el aspecto del iPhone o de la Mac"><svg class="ic"><use href="#i-auto"/></svg>Auto</button>
   </div></div>
 <div id="tip" role="status" aria-hidden="true"></div>
 
@@ -4085,24 +4090,36 @@ document.addEventListener('click',async e=>{ const b=e.target.closest('[data-emb
 // · sol/luna de una tarjeta → solo ESA tarjeta (scEmbedTheme:<tarjeta>:<boda>)
 // · widget «Tema de los widgets» → TODAS: guarda el general (scEmbedTheme), borra los de cada tarjeta y avisa
 //   (scEmbedThemeAt). Las tarjetas abiertas lo oyen con el evento storage (mismo sitio dentro de Notion) y cambian al momento.
+//   «Auto» (12-nov) borra también el general: entonces siguen el aspecto del sistema (prefers-color-scheme) y lo
+//   escuchan en vivo, así el atajo del iPhone que pasa a oscuro/claro las cambia sin tocar nada más. Todo es
+//   localStorage del iframe = por dispositivo: lo del iPhone no cambia la Mac.
 const EMB_TKEY='scEmbedTheme:'+EMB.card+':'+EMB.boda;
-function embSetTheme(light){ const r=document.documentElement; if(light===(r.dataset.theme==='light')) return;
+const SYS_LIGHT=matchMedia('(prefers-color-scheme: light)');
+// misma regla que el script de arranque (arriba del todo): tarjeta → general → &tema= → sistema
+function embWantedLight(){ let t=null; try{ t=localStorage.getItem(EMB_TKEY)||localStorage.getItem('scEmbedTheme'); }catch(e){}
+  if(t) return t==='light';
+  const tm=new URLSearchParams(location.search).get('tema');
+  return tm==='claro'?true:tm==='oscuro'?false:SYS_LIGHT.matches; }
+function embSetTheme(light){ const r=document.documentElement; embTemaPaint(); if(light===(r.dataset.theme==='light')) return;
   if(light) r.dataset.theme='light'; else delete r.dataset.theme;
   applyGlow(); if(M&&M.projects) renderEmbed(M); embTemaPaint(); }
-function embTemaPaint(){ const l=document.documentElement.dataset.theme==='light';
-  document.querySelectorAll('#temaCard [data-t]').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.t==='light')===l))); }
+function embTemaPaint(){ let g=null; try{ g=localStorage.getItem('scEmbedTheme'); }catch(e){}
+  const sel=g||'auto';
+  document.querySelectorAll('#temaCard [data-t]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.t===sel))); }
 if(EMBED){
+  embTemaPaint();
   document.addEventListener('click',e=>{
     if(e.target.closest('.embthm')){ const light=document.documentElement.dataset.theme!=='light';
       try{ localStorage.setItem(EMB_TKEY,light?'light':'dark'); }catch(err){}
       embSetTheme(light); return; }
     const t=e.target.closest('#temaCard [data-t]'); if(!t) return;
     try{ for(let i=localStorage.length-1;i>=0;i--){ const k=localStorage.key(i); if(k&&k.startsWith('scEmbedTheme:')) localStorage.removeItem(k); }
-         localStorage.setItem('scEmbedTheme',t.dataset.t); localStorage.setItem('scEmbedThemeAt',String(Date.now())); }catch(err){}
-    embSetTheme(t.dataset.t==='light'); });
-  addEventListener('storage',e=>{ if(e.key!=='scEmbedThemeAt') return;
-    let t=null; try{ t=localStorage.getItem('scEmbedTheme'); }catch(err){}
-    if(t) embSetTheme(t==='light'); });
+         if(t.dataset.t==='auto') localStorage.removeItem('scEmbedTheme'); else localStorage.setItem('scEmbedTheme',t.dataset.t);
+         localStorage.setItem('scEmbedThemeAt',String(Date.now())); }catch(err){}
+    embSetTheme(embWantedLight()); });
+  addEventListener('storage',e=>{ if(e.key==='scEmbedThemeAt') embSetTheme(embWantedLight()); });
+  // el sistema cambió de aspecto (atajo, Centro de control, automático al anochecer): solo cambia si no hay tema elegido
+  SYS_LIGHT.addEventListener('change',()=>embSetTheme(embWantedLight()));
 }
 function bootRender(payload,isLive,saved){ try{ const P=EMBED?embedSlice(payload,EMB_SCOPE):payload;
   const model=deriveModel(P); model.live=isLive; model.saved=!!saved;
