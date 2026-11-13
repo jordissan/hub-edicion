@@ -52,7 +52,8 @@ con su `server.py` + launchd en el puerto 4599 — es **backup/dev** para probar
   `edicion:data` (exige la clave `k`) y la lista de enlaces (detrás de Access). Ver «Tarjeta para Notion».
 - `embed/plantilla.html` — marcador estático para la **plantilla de boda** de Notion
   (`/embed/plantilla?t=donut|cinta|etapas`): ocupa el recuadro del embed y pide reemplazarlo por el enlace
-  de la boda (botón `</>`). Sin datos ni clave; mismo tema que las tarjetas y sin scroll propio.
+  de la boda (botón `</>`). Sin datos ni clave; mismo tema que las tarjetas (general → `&tema=` → sistema,
+  en vivo; cualquier valor que no sea light/dark cuenta como Auto) y sin scroll propio.
 - `docs/arquitectura.md` — referencia técnica completa (la copia `sync-cloud.sh`).
 - `.github/workflows/publish.yml` — cron + `workflow_dispatch`. Secretos: `NOTION_TOKEN`, `CF_API_TOKEN`,
   `CF_ACCOUNT_ID`, `CF_KV_NAMESPACE_ID`. Lleva `env: TZ: America/Mexico_City` (el runner es UTC).
