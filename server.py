@@ -393,7 +393,7 @@ def read_session_db(sb_id):
 def build_wedding(page):
     props = page.get("properties", {})
     name = p_title(props, "Nombre") or title_any(props)
-    studio = p_select(props, "Subcategoría")
+    studio = p_select(props, "Cliente / Línea")   # 13-nov-2026: «Subcategoría» se borró de Notion
     status = p_select(props, "Status")
     prioridad = p_select(props, "Prioridad")
     ps, pe = first_date(props)
@@ -482,7 +482,10 @@ def build_wedding(page):
                         "estado": norm_estado(p_select(scp, "Estado")),
                         "orden": p_orden(scp),
                         "cancion": p_rich(scp, "Cancion", "Canción"),
-                        "dia": day, "start": c_start, "end": c_end,
+                        # Preboda (13-nov): las escenas «Civil (Pre)», «Sesión (Pre)»… llevan la
+                        # columna Día = Preboda; cuentan como el Día 1 (boda de 2 días).
+                        "dia": "Día 1" if _sinacento(p_select(scp, "Día") or p_select(scp, "Dia") or "") == "preboda" else day,
+                        "start": c_start, "end": c_end,
                     })
             elif _is_sesion(title_prop) or "sesion" in _sinacento(sb_title):
                 log, th, ns = read_session_db(sb_id)
@@ -879,7 +882,7 @@ def build_project(page):
     ps, pe = first_date(props)
     proj = {
         "name": p_title(props, "Proyecto") or title_any(props), "icon": page_icon(page),
-        "client": p_select(props, "Cliente / Línea") or p_select(props, "Subcategoría"),
+        "client": p_select(props, "Cliente / Línea"),
         "status": p_select(props, "Status"),
         "price": p_number(props, "Total"),
         "url": page.get("url", ""), "projectStart": ps, "projectEnd": pe,
