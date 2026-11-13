@@ -51,7 +51,7 @@
   "live": true,
   "degraded": false,                      // true = solo bodas de respaldo → publish.py NO publica
   "weddings": [{                          // tablero: activas + finalizadas con sesiones en ≤45 días
-    "name", "icon", "studio", "status", "priority", "url",
+    "name", "icon", "studio", "status", "priority", "url",   // studio = "Cliente / Línea" (13-nov-2026: se borró «Subcategoría»)
     "price": 13000,                       // propiedad "Total" (MXN); el front usa 13000 si falta
     "projectStart", "projectEnd",
     "stages": [{
