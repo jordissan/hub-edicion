@@ -8,12 +8,18 @@
 <!-- Marcador para la PLANTILLA de boda en Notion: ocupa el recuadro del /embed (que conserva su tamaño)
      y explica cómo cambiarlo por el enlace real de la boda (botón </> de la tarjeta en el dashboard).
      Sin datos ni clave. ?t=donut|etapas|cinta elige el nombre. Mismo tema que las tarjetas
-     (scEmbedTheme general → si no, el del sistema) y nada desplazable, para no robar el scroll a Notion. -->
+     (scEmbedTheme general → &tema= → el del sistema, en vivo) y nada desplazable, para no robar el scroll a Notion. -->
 <script>
-try{let t=null;try{t=localStorage.getItem('scEmbedTheme')}catch(e){}
-const tm=new URLSearchParams(location.search).get('tema');
-const light=t?t==='light':tm==='claro'?true:tm==='oscuro'?false:matchMedia('(prefers-color-scheme: light)').matches;
-if(light)document.documentElement.dataset.theme='light'}catch(e){}
+// Misma regla que las tarjetas reales (index.html · embWantedLight): general «Tema de los widgets»
+// (scEmbedTheme = light|dark; Auto = sin guardar) → &tema=claro|oscuro → aspecto del sistema.
+// Cualquier otro valor guardado (p. ej. «auto») cuenta como Auto, no como oscuro (13-nov).
+var SYS_LIGHT=null;try{SYS_LIGHT=matchMedia('(prefers-color-scheme: light)')}catch(e){}
+function wantLight(){let t=null;try{t=localStorage.getItem('scEmbedTheme')}catch(e){}
+  if(t==='light')return true;if(t==='dark')return false;
+  const tm=new URLSearchParams(location.search).get('tema');
+  return tm==='claro'?true:tm==='oscuro'?false:!!(SYS_LIGHT&&SYS_LIGHT.matches)}
+function applyTheme(){const r=document.documentElement;if(wantLight())r.dataset.theme='light';else delete r.dataset.theme}
+try{applyTheme()}catch(e){}
 </script>
 <style>
 @font-face{font-family:'JetBrains Mono';font-weight:400 700;font-display:swap;src:url(/fonts/jetbrains-mono-latin-v1.woff2) format('woff2')}
@@ -46,7 +52,12 @@ ol li span{font-family:'JetBrains Mono',ui-monospace,monospace;color:var(--txt)}
 const N={donut:'Horas y $ por etapa',etapas:'Etapas',cinta:'La cinta'};
 const t=new URLSearchParams(location.search).get('t');
 if(N[t])document.getElementById('nm').textContent=N[t];
-addEventListener('storage',e=>{if(e.key==='scEmbedThemeAt')location.reload()});
+// en vivo, sin recargar: el interruptor general (evento storage), el aspecto del sistema (atajo del iPhone,
+// Centro de control, automático al anochecer) y al volver a la pestaña por si algún aviso se perdió
+addEventListener('storage',e=>{if(e.key===null||e.key==='scEmbedThemeAt'||e.key==='scEmbedTheme')applyTheme()});
+if(SYS_LIGHT){if(SYS_LIGHT.addEventListener)SYS_LIGHT.addEventListener('change',applyTheme);else if(SYS_LIGHT.addListener)SYS_LIGHT.addListener(applyTheme)}
+addEventListener('pageshow',applyTheme);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)applyTheme()});
 </script>
 </body>
 </html>
