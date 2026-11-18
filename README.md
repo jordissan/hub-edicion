@@ -219,6 +219,8 @@ Pegar la dona **Horas y $ por etapa** de una boda en su página de Notion (`/emb
   mismo sitio dentro de Notion) y cambian al momento. El sol/luna de cada tarjeta guarda solo el suyo.
 - Tema de la tarjeta embebida: botón sol/luna dentro de ella → `localStorage scEmbedTheme` (manda sobre
   `&tema=claro|oscuro` de la URL; sin nada, el del sistema).
+- **Sin levantarse al hover (18-nov):** `html.embed .embtarget:hover{transform:none}` anula solo en la tarjeta
+  embebida el `translateY(-2px)` de `.card:hover`. El dashboard y el hover interno de las gráficas no cambian.
 - **Scroll (11-nov):** dentro de Notion la rueda / los dos dedos sobre la tarjeta deben mover la página. Antes la
   tarjeta (`.embtarget`, fija a todo el iframe) era `overflow:auto` + `overscroll-behavior:contain` y se quedaba
   con el gesto (incluso sin nada que desplazar). Ahora `overflow:clip` (ni es contenedor de scroll), sin

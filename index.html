@@ -1401,6 +1401,8 @@ html.embed .embpath{display:contents !important}
 /* llena el recuadro de Notion y se funde con la página: su mismo fondo, sin borde, sin esquinas, sin sombra */
 html.embed .embtarget,html.embed #embBox{position:fixed;inset:0;margin:0;padding:16px 18px 14px;
   background:var(--embbg);border:0;border-radius:0;box-shadow:none}
+/* la tarjeta completa no se levanta al pasar el cursor (en el dashboard sí: .card:hover); lo de dentro sigue vivo */
+html.embed .embtarget:hover{transform:none}
 /* sin scroll propio: con el puntero encima, la rueda/los dos dedos mueven la página de Notion (como sus widgets
    de reloj y clima). El navegador solo pasa el gesto a la página si nada dentro del recuadro puede desplazarse:
    por eso clip (ni siquiera es contenedor de scroll) y nada de overscroll-behavior. Si el recuadro es más bajo
