@@ -185,6 +185,13 @@ GOTCHA UI: para crear el proyecto Pages, en Workers&Pages → Create application
   se abrevia: `.rf` texto completo, `.rs` corto (HIST.), `.rk` la fase una vez (TEASER [SIN|CON]);
   «Duración de sesiones» → «Duración»; `.u` de Boda con boda baja bajo el título (<420 px).
 
+## Horas acumuladas desplegable (18-nov-2026)
+- Cerrada por defecto. Estado en `html.race-open`: lo pone el `<head>` desde `localStorage hubRaceOpen`, por aparato.
+- CSS «HORAS ACUMULADAS DESPLEGABLE»: el cuerpo `#raceBody` se pliega con `grid-template-rows` 0fr→1fr y
+  `visibility`, nunca `display:none`, para que el SVG conserve su ancho real.
+- `#raceTog` cubre la cabecera con `::after`; `.rmode` queda encima. `__playRace` no dibuja cerrada; al abrir se
+  rearma y redibuja. `.rbusy` apaga el halo SVG mientras se mueve. Resumen cerrado: `#raceSum` (en `renderRace`).
+
 ## Otros proyectos (no bodas) — 12-nov-2026
 - `server.py` añade `projects` al payload (`Tipo = Proyecto` en Trabajo; ver docs/arquitectura.md §2-3).
   Viajan a KV con el resto; `functions/embed/data.js` no los toca.
