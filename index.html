@@ -21,6 +21,8 @@ if(!document.documentElement.classList.contains('embed'))try{const t=localStorag
 try{document.querySelector('meta[name="theme-color"]').content=document.documentElement.dataset.theme==='light'?'#f0eee9':'#050506'}catch(e){}
 // sidebar: el estado guardado manda; si no hay, desplegado solo en pantallas anchas (sin parpadeo al cargar)
 try{const s=localStorage.getItem('scSide');if(s==='0'||(s===null&&innerWidth<1280))document.documentElement.classList.add('side-closed')}catch(e){}
+// Horas acumuladas: cerrada salvo que en este aparato se haya dejado abierta (sin parpadeo al cargar)
+try{if(localStorage.getItem('hubRaceOpen')==='1')document.documentElement.classList.add('race-open')}catch(e){}
 if(/[?&]mini\b/.test(location.search))document.documentElement.classList.add('mini');</script>
 <!-- fuentes: el alfabeto latino se sirve desde el propio sitio (/fonts, mismos archivos de Google
      Fonts, licencia OFL) y se precarga; los demás alfabetos siguen en Google y solo se bajan si
@@ -1486,6 +1488,63 @@ html.embed .salto.embtarget .cl .cardbtn{position:relative;top:auto;right:auto}
 @media(max-width:1023px){ .htoast{bottom:calc(96px + env(safe-area-inset-bottom))} }
 /* muy bajo y estrecho: solo la dona (el resumen sigue al tocar cada color, en el centro) */
 @media (max-height:340px) and (not ((min-width:520px) and (min-aspect-ratio:6/5))){ html.embed #donutCard .dlg{display:none} }
+
+/* ================================================================================================
+   HORAS ACUMULADAS DESPLEGABLE (18-nov-2026): cerrada por defecto, toda la cabecera abre y cierra.
+   · Estado: html.race-open (lo pone el <head> desde localStorage hubRaceOpen, sin parpadeo).
+   · El cuerpo se pliega con filas de rejilla 0fr→1fr y visibility: nunca display:none, así la gráfica
+     conserva su ancho real y se dibuja con medidas correctas aunque esté cerrada.
+   · .rbusy = abriendo o cerrando: recorta el cuerpo y apaga el halo SVG mientras se mueve.
+   ================================================================================================ */
+.racecard .cl{position:relative;min-height:28px;margin-bottom:0}
+.racecard .rchips{margin-top:12px}
+#race{height:auto}
+.rtog{display:inline-flex;align-items:center;gap:7px;min-height:28px;padding:0;border:0;background:none;color:inherit;font:inherit;
+  letter-spacing:inherit;text-transform:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;
+  transition:color .18s ease}
+/* el botón cubre toda la cabecera (cerrada: toda la tarjeta); el selector Sin/Con teaser queda por encima */
+.rtog::after{content:"";position:absolute;inset:-20px -22px -6px;border-radius:var(--r-lg) var(--r-lg) 0 0;transition:background-color .18s ease}
+html:not(.race-open) .rtog::after{inset:-20px -22px;border-radius:var(--r-lg)}
+.racecard .rtog:focus-visible{outline:0}
+.racecard .rtog:focus-visible::after{outline:2px solid var(--sun);outline-offset:-3px}
+.rchev{flex:none;width:12px;height:12px;fill:none;stroke:var(--sun-tx);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+  transition:transform .26s var(--ease)}
+html.race-open .rchev{transform:rotate(90deg)}
+@media (hover:hover){
+  .rtog:hover{color:var(--txt)}
+  html:not(.race-open) .rtog:hover::after{background:color-mix(in srgb,var(--txt) 3%,transparent)}
+}
+.racecard .rmode{position:relative;z-index:1}
+.racecard .rmode::before{content:"";position:absolute;z-index:-1;inset:-10px -8px}   /* rozar la píldora no cierra la tarjeta */
+html:not(.race-open) .racecard .rmode{display:none}
+/* resumen de la tarjeta cerrada */
+.rsum{display:none}
+html:not(.race-open) .rsum:not(:empty){display:inline-flex;align-items:baseline;gap:12px;margin-left:auto;font-family:var(--f-m);
+  font-size:var(--fs-micro);letter-spacing:var(--tr-label);text-transform:uppercase;white-space:nowrap;color:var(--dim);animation:rsumIn .24s ease both}
+.rsum b{font-weight:700}
+@keyframes rsumIn{from{opacity:0}to{opacity:1}}
+@container rcard (max-width:639px){ .rsum .rsh{display:none} }
+html:not(.race-open) #raceU{display:block;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}   /* en móvil, abierta, los nombres van en las pastillas */
+@container rcard (max-width:519px){ html:not(.race-open) .racecard .cl>.u{order:11;flex-basis:100%} }
+@container rcard (max-width:409px){   /* con la flecha, el selector se abrevia antes para seguir en el renglón del título */
+  .racecard .cl .rf{display:none} .racecard .rmode .rk{display:inline-flex}
+  .racecard .rmode button{padding:0 7px;min-width:38px}
+  .racecard .rmode button::after{inset:-11px -3px}
+}
+/* cuerpo plegable */
+.rbody{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:0fr;visibility:hidden;
+  transition:grid-template-rows .28s var(--ease),visibility 0s linear .28s}
+html.race-open .rbody{grid-template-rows:1fr;visibility:visible;transition:grid-template-rows .4s var(--ease),visibility 0s}
+.rbody-clip{min-width:0;min-height:0;overflow:hidden;opacity:0;transition:opacity .16s ease}
+.rbody-clip::before{content:"";display:block;height:4px}
+html.race-open .rbody-clip{opacity:1;transition:opacity .28s ease .05s}
+html.race-open .racecard:not(.rbusy) .rbody-clip{overflow:visible}
+.racecard.rbusy #race .rline{filter:none}
+.racecard.rpre .fadein{opacity:0;transition:none}   /* al abrir, rótulos y franja vuelven a aparecer tras el trazo */
+@media (prefers-reduced-motion:reduce){
+  .rtog,.rtog::after,.rchev,.rbody,html.race-open .rbody,.rbody-clip,html.race-open .rbody-clip{transition:none}
+  html:not(.race-open) .rsum:not(:empty){animation:none}
+}
 </style>
 </head>
 <body>
@@ -1668,12 +1727,15 @@ html.embed .salto.embtarget .cl .cardbtn{position:relative;top:auto;right:auto}
   </div>
   <!-- la curva a todo lo ancho; se dibuja al tamaño real del contenedor (renderRace) -->
   <div class="card racecard">
-    <div class="cl"><h3>Horas acumuladas</h3><span class="u" id="raceU"></span>
+    <div class="cl"><h3><button class="rtog" id="raceTog" type="button" aria-expanded="false" aria-controls="raceBody" aria-describedby="raceU raceSum"><svg class="rchev" viewBox="0 0 12 12" aria-hidden="true"><path d="M4.25 2.5 7.75 6l-3.5 3.5"/></svg>Horas acumuladas</button></h3><span class="u" id="raceU"></span>
+      <span class="rsum" id="raceSum"></span>
       <div class="rmode" id="raceMode" role="group" aria-label="Qué fases comparar" hidden></div></div>
-    <div class="rchips" id="raceChips" hidden></div>
-    <svg id="race" role="img" aria-label="Horas acumuladas por día de proyecto contra el fantasma de la boda anterior"></svg>
-    <div class="legend" id="raceLegend"></div>
-    <details class="tbl"><summary>VER LOS DATOS ▾</summary><div id="raceTbl"></div></details>
+    <div class="rbody" id="raceBody"><div class="rbody-clip">
+      <div class="rchips" id="raceChips" hidden></div>
+      <svg id="race" role="img" aria-label="Horas acumuladas por día de proyecto contra el fantasma de la boda anterior"></svg>
+      <div class="legend" id="raceLegend"></div>
+      <details class="tbl"><summary>VER LOS DATOS ▾</summary><div id="raceTbl"></div></details>
+    </div></div>
   </div>
 </section>
 
@@ -2630,13 +2692,17 @@ function renderHero(M){
    lista" (Cambios) va punteado; "edición lista" = punto en la curva + pastilla en el eje. */
 function renderRace(M){
   const svg=document.getElementById('race'), leg=document.getElementById('raceLegend'), tbl=document.getElementById('raceTbl');
-  const chips=document.getElementById('raceChips'), unit=document.getElementById('raceU');
+  const chips=document.getElementById('raceChips'), unit=document.getElementById('raceU'), sum=document.getElementById('raceSum');
   const R=raceOf(M);
-  if(!R){ svg.innerHTML=''; leg.innerHTML=''; tbl.innerHTML=''; chips.innerHTML=''; chips.hidden=true; unit.textContent=''; renderRace._build=null; return; }
+  if(!R){ svg.innerHTML=''; leg.innerHTML=''; tbl.innerHTML=''; chips.innerHTML=''; chips.hidden=true; unit.textContent=''; sum.innerHTML=''; renderRace._build=null; return; }
   const cur=R.cur||[], gh=R.hasGhost?(R.ghost||[]):[];
   const curEnd=R.curEditDay!=null?Math.min(R.curEditDay,cur.length-1):cur.length-1;
   const ghEnd=R.ghostEditDay!=null?Math.min(R.ghostEditDay,gh.length-1):gh.length-1;
   unit.textContent=R.hasGhost?`${R.curName} vs ${R.ghostName}`.toUpperCase():R.curName.toUpperCase();
+  // resumen de la tarjeta cerrada: días de diferencia (color por signo) y las horas de cada boda
+  const dDias=R.hasGhost&&R.curEditDay!=null&&R.ghostEditDay!=null?R.curEditDay-R.ghostEditDay:null;
+  sum.innerHTML=(dDias==null?'':`<b class="${tone(dDias,true)}">${dDias?`${signed(dDias)} ${Math.abs(dDias)===1?'día':'días'}`:'mismo día'}</b>`)+
+    (R.curEff==null?'':`<span class="rsh">${fmt(R.curEff)} h${R.hasGhost&&R.ghostEff!=null?` vs ${fmt(R.ghostEff)} h`:''}</span>`);
 
   function build(){
     const W=Math.round(svg.getBoundingClientRect().width); if(!W) return; renderRace._w=W;
@@ -2717,7 +2783,7 @@ function renderRace(M){
       const lv=cur[day], cv=gh[day];
       showTip(`<b>Día ${day}</b><br>${R.curName.split(' ')[0]}: <b>${lv!=null?fmt(lv)+' h':'—'}</b>`+(gh.length?`<br>Fantasma: ${cv!=null?fmt(cv)+' h':'—'}`:''),e.clientX,e.clientY); });
     hot.addEventListener('pointerleave',()=>{cross.setAttribute('opacity',0);ring(hGh);ring(hCur);hideTip()});
-    window.__playRace=()=>{ if(raceDrawn||reduced)return; raceDrawn=true;
+    window.__playRace=()=>{ if(raceDrawn||reduced||!document.documentElement.classList.contains('race-open'))return; raceDrawn=true;   // cerrada no se dibuja: lo hace al abrir
       [pGhost,pMain].forEach((p,i)=>{ if(!p)return; p.style.strokeDasharray='1';p.style.strokeDashoffset='1';
         p.animate([{strokeDashoffset:1},{strokeDashoffset:0}],{duration:950,delay:80+i*140,easing:'cubic-bezier(.3,.6,.2,1)',fill:'forwards'}); }); };
   }
@@ -4088,6 +4154,22 @@ if(!EMBED){ THM_SYS.addEventListener('change',thmApply);
 // tablas "Ver los datos": las filas entran en cascada al abrir
 document.addEventListener('toggle',e=>{ const d=e.target;
   if(d instanceof HTMLDetailsElement && d.open && d.classList.contains('tbl')) cascade(d.querySelectorAll('tr'),{step:35}); },true);
+
+/* ================= Horas acumuladas: la tarjeta se abre y se cierra =================
+   Cerrada si no hay nada guardado; recuerda la última elección en este aparato (hubRaceOpen).
+   Al abrir, el trazo se vuelve a dibujar. El estado inicial lo pone el <head> (html.race-open). */
+(function(){ const btn=document.getElementById('raceTog'), card=btn&&btn.closest('.racecard'); if(!card||EMBED) return;
+  const root=document.documentElement; let t=0;
+  btn.setAttribute('aria-expanded',root.classList.contains('race-open'));
+  btn.addEventListener('click',()=>{ const open=!root.classList.contains('race-open');
+    clearTimeout(t); hideTip();
+    try{ localStorage.setItem('hubRaceOpen',open?'1':'0'); }catch(e){}
+    if(!reduced){ card.classList.add('rbusy'); if(open){ window.__resetRace?.(); card.classList.add('rpre'); void card.offsetWidth; } }
+    root.classList.toggle('race-open',open); btn.setAttribute('aria-expanded',open);
+    if(reduced) return;
+    if(open){ card.classList.remove('rpre'); window.__playRace?.(); }
+    t=setTimeout(()=>card.classList.remove('rbusy'),open?1250:320); });
+})();
 
 /* ================= boot: últimos datos guardados → fetch vivo ================= */
 // Al abrir se pinta YA la última lectura viva que guardó este navegador (localStorage
