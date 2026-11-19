@@ -1,6 +1,6 @@
 # P1 · Conectar la Mac al sistema de pendientes
 
-- **Estado:** En curso
+- **Estado:** Hecho
 - **Dónde se ejecuta:** Mac
 - **Creado:** 2026-11-19, desde el teléfono
 - **Resumen:** que Claude Code abierto en `~/HubEdicion/` conozca este protocolo, para que basten
@@ -30,3 +30,4 @@
 
 ## Registro
 - 2026-11-19: creado.
+- 2026-11-19: hecho. `~/HubEdicion/CLAUDE.md` creado; `sync-cloud.sh --publicar` ahora hace `pull --rebase` antes del push (probado con un remoto de prueba, con y sin conflicto); una sesión nueva en la Mac mostró la lista con solo decir «revisa los pendientes». La nota en `docs/arquitectura.md` §8 sale con la próxima publicación.
