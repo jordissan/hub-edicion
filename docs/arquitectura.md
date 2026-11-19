@@ -457,7 +457,7 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   `canJoinAllSpaces` + `fullScreenAuxiliary`) con un `WKWebView` que carga
   **`http://localhost:4599/?mini=1`**: el MISMO `index.html`, nada reimplementado. Sin Dock
   (`LSUIElement`), esquema de URL **`hubsprint://`** (el botón ⤢ navega a `hubsprint://open`).
-  Arrastre: franja superior de 34 px (menos los 84 px de botones a la derecha, y salvo donde la
+  Arrastre: franja superior de 48 px (menos los 84 px de botones a la derecha, y salvo donde la
   página señala un control, como el menú del esquema) y cualquier zona sin controles → `performDrag`. Para saber qué hay bajo el ratón, la vista nativa tiene su
   propio `NSTrackingArea` (`.activeAlways`: el panel casi nunca es key y WebKit no reporta el
   hover ahí) y en cada `mouseMoved` pregunta `window.__hubDragAt(x,y)` (nada de
@@ -586,11 +586,14 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   se mueve a `<body>` (antes del reveal) y el CSS oculta todo lo demás; `bootRender` solo hace
   `Sprint.update(M)` (sin gráficas). **Desde el 18-nov-2026 usa el sprint compacto del
   dashboard (`.sx`):** vidrio oscuro (o claro según el tema), reloj lima y menús plegables (esquema ▾ en la
-  franja, destino ▾ junto al reloj y ⋯ junto al botón). En la ventana los menús se abren como hoja fija
-  bajo la franja (o abajo, el de ⋯) para que no se corten. El reloj crece con la ventana; desde 560 px de
-  ancho reloj, destino y botón van en una fila (la misma `@container sx` del dashboard); < 400 px de
-  ancho se oculta el título; < 280 px de alto, la línea de contexto. Tamaño mínimo de la ventana:
-  240×170. El acomodo anterior (tarjeta lima en tres zonas) está en
+  cabecera, destino ▾ junto al reloj y ⋯ junto al botón), con el mismo espaciado de la tarjeta (relleno
+  14/18 px, cabecera de 32 px, 16 px alrededor del reloj). **La ventana mide lo que la tarjeta:** un
+  `ResizeObserver` en modo mini manda `{k:'height', h}` y la app fija ese alto (`fitHeight`: conserva el
+  borde de arriba y bloquea el alto con `minSize`/`maxSize`; el ancho sigue libre). Con un menú abierto
+  manda el alto de la hoja + 68 px, así la ventana crece mientras está abierto; al mostrar la ventana la
+  app llama `window.__hubFit()`. Los menús se abren como hoja fija bajo la cabecera. Desde 560 px de
+  ancho reloj, destino y botón van en una fila (la misma `@container sx` del dashboard); < 380 px de ancho
+  se oculta el título. Ancho mínimo: 240 px. El acomodo anterior (tarjeta lima en tres zonas) está en
   `docs/historico/index.pre-ventana-sx.2026-11-18.html`. El fondo nativo del panel (`PANEL_BG`) es el
   `--bg` oscuro o claro según el sistema, igual que la página de «sin conexión».
 - **Sincronía** (`GET/POST /api/sprint-state`, solo local; `.sprint-state.json`): cada cliente
