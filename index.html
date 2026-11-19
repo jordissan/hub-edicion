@@ -481,90 +481,36 @@ html.mini .fpop{margin:0}
 @keyframes fcd{to{transform:scaleX(0)}}
 
 /* ============ modo mini: la tarjeta del sprint sola, dentro de la ventana flotante ============
-   Tres zonas en cuadrícula: A destino/esquema · B reloj · C acción. Se reacomodan según la
-   forma de la ventana (vertical, apaisada, franja) y, si falta alto, se guardan piezas en este
-   orden: texto explicativo → esquemas → destino → extras. */
-html.mini,html.mini body{height:100%;margin:0;overflow:hidden;background:var(--sun-block)}
+   Desde el 18-nov-2026 la ventana usa el mismo sprint compacto del dashboard (.sx, ver «SPRINT COMPACTO»):
+   vidrio oscuro, reloj lima y menús plegables (esquema ▾ · destino ▾ · ⋯). La franja de arriba (34 px)
+   arrastra la ventana salvo sobre sus botones; los menús se abren como hoja dentro de la ventana para que
+   nunca se corten. El acomodo anterior (tarjeta lima en tres zonas) está en
+   docs/historico/index.pre-ventana-sx.2026-11-18.html. */
+html.mini,html.mini body{height:100%;margin:0;overflow:hidden;background:var(--bg)}
 html.mini body>*:not(#focus){display:none !important}
-html.mini #focus{position:fixed;inset:0;border-radius:0;padding:44px 16px 14px;
-  display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto;grid-template-areas:"a" "b" "c";gap:12px;
-  overflow-x:hidden;overflow-y:auto;scrollbar-width:none;overscroll-behavior:none;transform:none !important;opacity:1 !important;
+html.mini #focus{position:fixed;inset:0;border:0;border-radius:0;box-shadow:none;padding:44px 16px 14px;
+  display:flex;flex-direction:column;justify-content:center;overflow:hidden;transform:none !important;opacity:1 !important;
   -webkit-user-select:none;user-select:none}
-html.mini #focus::-webkit-scrollbar{display:none}
 html.mini #focus input{-webkit-user-select:text;user-select:text}
-html.mini #focus>div:nth-child(1){grid-area:a;min-width:0;display:flex;flex-direction:column;gap:10px}
-html.mini #focus>div:nth-child(2){grid-area:b;min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px}
-html.mini #focus>.fact{grid-area:c;min-width:0;gap:8px}
-/* franja superior = zona de arrastre de la ventana (la maneja la app nativa) */
-html.mini #focus .cl{position:fixed;top:0;left:0;right:0;height:34px;margin:0;padding:0 8px 0 16px;cursor:grab;z-index:2;background:var(--sun-block)}
+html.mini #focus>div:first-child{min-height:0}
+html.mini #focus .cl{position:fixed;top:0;left:0;right:0;height:34px;margin:0;padding:0 8px 0 16px;cursor:grab;z-index:2}
 html.mini #focus .cl h3{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-html.mini #focus .cl .u{flex:none;white-space:nowrap}
+html.mini #focus .cl .u{flex:none;white-space:nowrap;margin-left:8px}
+html.mini #focus .fpop{margin:0}
 @media (max-width:299px){ html.mini #focus .cl .u{display:none} }   /* el reloj que late y TERMINAR ya dicen que corre */
-html.mini #focus .fpick,html.mini #focus .fmode,html.mini #focus .flbl,html.mini #focus .why,html.mini #focus .fpend{margin:0}
-html.mini #focus .fpend{padding-top:0;border-top:0}
-/* esquemas: cuadrícula pareja (3 × 2, o 6 en línea si cabe) en vez de pastillas sueltas */
-html.mini #focus .fmode{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
-html.mini #focus .fmode button{padding:7px 2px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-@media (min-width:430px){ html.mini #focus .fmode{grid-template-columns:repeat(6,minmax(0,1fr))} }
-/* reloj centrado; "Ajustar" al lado (o debajo si no cabe) */
-html.mini #focus .ftime{justify-content:center;align-items:center;gap:8px 14px}
-html.mini #focus .fadj{margin:0}
-html.mini #focus .fedit{justify-content:center}
-html.mini #focus .tcode{font-size:clamp(34px,min(19vw,15vh),112px)}
-html.mini #focus .fgo{padding:12px 0}
-html.mini #focus .fdrop{padding:2px 8px}
-/* alto justo (vertical) */
-@media (max-height:500px){ html.mini #focus .why{display:none} }
-@media (max-height:420px){ html.mini #focus .fmode{display:none !important} }
-@media (max-height:300px){ html.mini #focus .fpick{display:none !important}
-  html.mini #focus .flbl small{display:none} html.mini #focus .flbl{font-size:var(--fs-sm)} }
-@media (max-height:250px){ html.mini #focus .fdrop{display:none !important}
-  html.mini #focus{padding-bottom:10px;gap:8px} }
-/* diminuta (vertical): solo reloj, escalera y botón */
-@media (max-height:230px) and (max-width:419px){
-  html.mini #focus{padding:38px 12px 10px;gap:6px}
-  html.mini #focus>div:nth-child(1){position:absolute}          /* fuera de la cuadrícula; solo queda su barra superior */
-  html.mini #focus>div:nth-child(1)>:not(.cl),html.mini #focus .fadj,html.mini #focus .fedit{display:none !important}
-  html.mini #focus .tcode{font-size:clamp(30px,min(17vw,22vh),56px)}
-  html.mini #focus .fcut button{padding:5px 2px}
-  html.mini #focus .fgo{padding:9px 0}
-}
-
-/* apaisada: destino a la izquierda; reloj y acción a la derecha */
-@media (min-aspect-ratio:5/4) and (min-width:460px){
-  html.mini #focus{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr) auto;
-    grid-template-areas:"a b" "a c";column-gap:22px}
-  html.mini #focus>div:nth-child(1){overflow-y:auto;scrollbar-width:none;justify-content:center}
-  html.mini #focus>div:nth-child(1)::-webkit-scrollbar{display:none}
-  html.mini #focus .tcode{font-size:clamp(34px,min(10vw,19vh),104px)}
-  html.mini #focus .fmode{grid-template-columns:repeat(3,minmax(0,1fr))}
-  html.mini #focus .why{display:block}
-}
-@media (min-aspect-ratio:5/4) and (min-width:460px) and (max-height:380px){ html.mini #focus:not(.run) .why{display:none} }
-@media (min-aspect-ratio:5/4) and (min-width:460px) and (max-height:300px) and (min-height:231px){
-  html.mini #focus .fmode{display:none !important}
-  html.mini #focus .fpick:not([hidden]){display:flex !important} html.mini #focus .flbl small{display:block} }
-
-/* franja (muy baja y ancha): todo en una fila — destino · reloj · acción */
-@media (max-height:230px) and (min-width:420px){
-  html.mini #focus{grid-template-columns:auto minmax(0,1fr);grid-template-rows:minmax(0,1fr);grid-template-areas:"b c";
-    padding:38px 16px 12px;column-gap:20px;align-items:center}
-  html.mini #focus>div:nth-child(1){position:absolute}
-  html.mini #focus>div:nth-child(1)>:not(.cl){display:none}
-  html.mini #focus .tcode{font-size:clamp(34px,min(9vw,34vh),76px)}
-  html.mini #focus .fadj,html.mini #focus .fdrop,html.mini #focus .fedit{display:none !important}
-  html.mini #focus .fcls{text-align:left}
-}
-@media (max-height:230px) and (min-width:640px){
-  html.mini #focus{grid-template-columns:minmax(0,1.1fr) auto minmax(0,1fr);grid-template-areas:"a b c"}
-  html.mini #focus>div:nth-child(1){position:static;display:flex;justify-content:center;overflow:hidden}
-  html.mini #focus>div:nth-child(1)>:not(.cl){display:revert}
-  html.mini #focus .fpick:not([hidden]){display:flex !important;gap:6px}
-  html.mini #focus .fpick .fsel{padding-top:7px;padding-bottom:7px}
-  html.mini #focus .fseg button{padding:6px 8px}
-  html.mini #focus .fmode,html.mini #focus .why,html.mini #focus .fpend{display:none !important}
-  html.mini #focus .flbl small{display:block}
-}
+@media (max-width:399px){ html.mini #focus .cl h3{display:none} }   /* angosta: el título no cabe junto al esquema */
+/* reloj: crece con la ventana */
+html.mini #focus .sx-core{margin:0 0 14px}
+html.mini #focus.sx .tcode{font-size:clamp(40px,min(17vw,20vh),88px)}
+html.mini #focus.sx .flbl small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}   /* bloque en marcha: una línea */
+/* menús como hoja dentro de la ventana */
+html.mini #focus .sx-pop{position:fixed;left:10px;right:10px;top:40px;bottom:auto;width:auto;max-width:none;
+  max-height:calc(100vh - 50px);overflow-y:auto;scrollbar-width:none;transform-origin:top center}
+html.mini #focus .sx-pop::-webkit-scrollbar{display:none}
+html.mini #focus .sx-pop-more{top:auto;bottom:10px;transform-origin:bottom center}
+/* ventana baja: primero se va la línea de contexto */
+@media (max-height:280px){ html.mini #focus.sx .why{display:none} }
+@media (max-height:210px){ html.mini #focus{padding-top:38px;padding-bottom:10px} html.mini #focus .sx-core{margin-bottom:10px} }
 [hidden]{display:none !important}
 .focuscard.run .tcode{animation:pulse 1s steps(2,jump-none) infinite}
 @keyframes pulse{50%{opacity:.55}}
@@ -1066,7 +1012,6 @@ html.side-closed .spr-mini{opacity:1;pointer-events:auto;transition-delay:.2s}
 .fplan i.b{background:transparent;box-shadow:inset 0 0 0 1px rgba(21,22,10,.35)}
 .fplan i.cur{opacity:1;box-shadow:0 0 0 2px rgba(21,22,10,.28)}
 .fplan i.open{flex:1;opacity:.45;background:repeating-linear-gradient(90deg,var(--ink) 0 6px,transparent 6px 11px)}
-html.mini #focus .fplan,html.mini #focus .fmode button i{display:none}
 .spr{cursor:pointer}
 
 /* ---- Tarifa: tres cifras + el salto en una fila (la cifra de cambio en color, el contexto en gris) ---- */
@@ -1198,7 +1143,7 @@ html.mini #focus .fplan,html.mini #focus .fmode button i{display:none}
    · ESQUEMA ▾ (arriba a la derecha): esquemas, ciclo dibujado, Editar tiempos.
    · DESTINO ▾ (junto al reloj): etapa · escena · Edición/Gestión.
    · ⋯ (junto al botón, solo con bloque o descanso): cerrar también en Notion y descartar.
-   Solo en el dashboard: la ventana flotante (html.mini) no cambia.
+   También en la ventana flotante (html.mini) desde el 18-nov-2026; su acomodo está en «modo mini».
    ================================================================================================ */
 .focuscard.sx{position:relative;overflow:visible;container:sx/inline-size;gap:0;justify-content:flex-start;color:var(--txt);
   background:radial-gradient(120% 110% at 0% 100%,rgba(217,237,47,calc(.16*var(--glow))),transparent 60%),linear-gradient(180deg,var(--g1),var(--g2));
@@ -3922,10 +3867,10 @@ const Sprint=EMBED?{update(){}}:(function(){
 
 /* ================= SPRINT COMPACTO (reacomodo 7-nov) =================
    Reacomoda las piezas REALES de la tarjeta (mismos ids, mismos listeners, misma lógica de Sprint)
-   dentro de tres ventanas emergentes. Solo en el dashboard: con ?mini=1 no se toca nada. */
+   dentro de tres ventanas emergentes. También en la ventana flotante (?mini=1) desde el 18-nov-2026. */
 (function(){
   const $=id=>document.getElementById(id);
-  const card=$('focus'); if(!card||MINI||EMBED) return {on(){},off(){}};
+  const card=$('focus'); if(!card||EMBED) return {on(){},off(){}};
   const d1=card.children[0], d2=card.children[1], fact=card.querySelector('.fact'), cl=d1.querySelector('.cl'), fbtns=cl.querySelector('.fbtns');
   const ftime=d2.querySelector('.ftime');
   const pick=$('fPick'), lbl=$('fLbl'), modeBox=$('fMode'), plan=$('fPlan'), why=$('focusWhy'), pend=$('fPend'),
