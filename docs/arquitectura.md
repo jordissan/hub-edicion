@@ -87,6 +87,8 @@
 
 **Widget de la dona (16-nov-2026):** el Scriptable `Hub Edición · Donas` NO usa el resumen: lee `/api/edicion` (payload completo, mismo Service Token) y rehace en el teléfono `currentKey` + `projModel` (fases, $ y %). Si cambia esa lógica en `deriveModel`, hay que copiarla a `widgets/HubEdicion-dona.scriptable.js`.
 
+**Tema de los widgets (18-nov-2026):** Barras y Donas son imágenes de `DrawContext`, así que no siguen el aspecto del sistema por sí solas, y Atajos no tiene un disparador de «cambió el aspecto». Tocar el widget `Dark Mode` abre el atajo `Tema widget` (`widgets/atajo/make-atajo.py`): corre `Dark Mode` con `alternar`, pide `Refresh All Widgets` y regresa al inicio.
+
 **Resumen de widgets** (`/api/summary` · KV `edicion:summary`): `generatedAt, today, todayMin,
 metaMin, streak, week[{key,min,meta}], overallProgress, active{wedding, icon, stage, stageColor,
 stageProgress, stageHours, scene}, weddings[{name, icon, progress, done, live, wait, stages, hours}]`.

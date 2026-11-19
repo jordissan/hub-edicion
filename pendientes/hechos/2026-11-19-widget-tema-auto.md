@@ -1,6 +1,6 @@
 # P3 · Widgets de Scriptable: tema claro/oscuro sin abrir la app
 
-- **Estado:** En curso
+- **Estado:** Hecho
 - **Dónde se ejecuta:** Mac (para leer los scripts de iCloud) + prueba en el iPhone
 - **Creado:** 2026-11-19, desde el teléfono
 - **Resumen:** hoy, al tocar el widget para cambiar entre claro y oscuro, se abre Scriptable, corre
@@ -51,4 +51,5 @@ Secret). No se copia al repo (es público) ni se pega en chats. Se edita en su s
 
 ## Registro
 - 2026-11-19: creado.
-- 2026-11-19: Jordi eligió la opción 2: los widgets son imágenes dibujadas y la opción 1 obligaba a simplificar su diseño. Atajo «Tema widget» generado (alterna, redibuja y regresa al inicio) y widget «Dark Mode» conectado a él. Comprobado en simulación. **Falta instalar el atajo y probarlo en el iPhone**; después se documenta y pasa a *Hecho*.
+- 2026-11-19: Jordi eligió la opción 2: los widgets son imágenes dibujadas y la opción 1 obligaba a simplificar su diseño. Atajo «Tema widget» generado (alterna, redibuja y regresa al inicio) y widget «Dark Mode» conectado a él. Comprobado en simulación.
+- 2026-11-19: hecho. Jordi instaló el atajo y confirmó en el iPhone que el toque funciona. Documentado y publicado.
