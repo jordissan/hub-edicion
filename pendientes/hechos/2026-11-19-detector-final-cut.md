@@ -1,6 +1,6 @@
 # P2 · Detector de Final Cut en la barra de menús
 
-- **Estado:** En curso
+- **Estado:** Hecho
 - **Dónde se ejecuta:** Mac (`~/HubEdicion/`, con el server local en `:4599`)
 - **Creado:** 2026-11-19, desde el teléfono
 - **Resumen:** el reloj de la barra de menús pide iniciar una sesión si trabajas en Final Cut sin
@@ -115,12 +115,13 @@ en `:4599` y se porta por el mismo camino.
 
 ## Listo cuando
 
-- [ ] Trabajando en Final Cut sin timer, a los 2 min el reloj pide iniciar y a los 7 min aparece la ventana.
-- [ ] Ningún aviso durante un bloque o un descanso, ni con Final Cut abierto pero sin uso.
-- [ ] Cerrar Final Cut con un bloque corriendo ofrece terminarlo.
-- [ ] Todo se apaga o se ajusta desde *Opciones → Detector*.
-- [ ] Documentado y publicado con `sync-cloud.sh`.
+- [x] Trabajando en Final Cut sin timer, a los 2 min el reloj pide iniciar y a los 7 min aparece la ventana.
+- [x] Ningún aviso durante un bloque o un descanso, ni con Final Cut abierto pero sin uso.
+- [x] Cerrar Final Cut con un bloque corriendo ofrece terminarlo.
+- [x] Todo se apaga o se ajusta desde *Opciones → Detector*.
+- [x] Documentado y publicado con `sync-cloud.sh`.
 
 ## Registro
 - 2026-11-19: creado.
-- 2026-11-19: detector construido, instalado en la Mac y documentado. Probado con un bundle aislado y Final Cut simulado: avisos A y B, pausa al cambiar de app, sin actividad, descanso, «Ahora no», cierre con bloque (Terminar y Seguir) y detector apagado. Ajustes al plan: un descanso ya vencido cuenta como reposo (`scSprintBrk` sigue guardado hasta el siguiente bloque) y 20 min sin editar reinician la cuenta. **Falta la prueba real con Final Cut abierto**; al confirmarla, pasa a *Hecho*.
+- 2026-11-19: detector construido, instalado en la Mac y documentado. Probado con un bundle aislado y Final Cut simulado: avisos A y B, pausa al cambiar de app, sin actividad, descanso, «Ahora no», cierre con bloque (Terminar y Seguir) y detector apagado. Ajustes al plan: un descanso ya vencido cuenta como reposo (`scSprintBrk` sigue guardado hasta el siguiente bloque) y 20 min sin editar reinician la cuenta.
+- 2026-11-19: hecho. Jordi confirmó que el aviso funciona con Final Cut real; los demás casos quedaron comprobados en la prueba simulada.
