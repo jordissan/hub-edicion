@@ -10,6 +10,9 @@ apagada, detrás de login, **100% gratis**.
   carpeta raíz; `sync-cloud.sh` no copia uno real). El historial de git anterior sí conserva el de julio
   — ver "Privacidad" en `docs/arquitectura.md` §9.
 
+**Pendientes entre sesiones** (planes que salen de platicar con Claude para ejecutarlos en otra sesión):
+[`pendientes/`](pendientes/README.md) · lista en [`pendientes/INDICE.md`](pendientes/INDICE.md).
+
 ## Arquitectura
 
 ```
