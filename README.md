@@ -133,6 +133,8 @@ GOTCHA UI: para crear el proyecto Pages, en Workers&Pages → Create application
   (Edición/Gestión) y **Esquema ▸** para elegir destino, tipo y esquema del próximo bloque. En la nube no cambia nada (no hay sincronía del sprint en
   `pages.dev`); el `index.html` solo gana las órdenes `etapa:`/`escena:`/`tipo:`/`modo:`/`tipo-toggle` (atajo ⌃⌥B, Edición ↔ Gestión) de `SprintCmd` (modo mini) y
   respeta «Sin escena» elegida a propósito. Detalle en `docs/arquitectura.md` (Barra de menús).
+- **Detector de Final Cut** (solo en la app del Mac): si editas en Final Cut o Premiere sin bloque, a los 2 min el reloj
+  pide iniciar y 5 min después aparece la ventana. Se ajusta en *Opciones → Detector*. No cambia nada en la nube.
 
 ## Sprint sin internet (10-nov-2026, solo Mac)
 - `server.py` local guarda cada sesión y cierre en `.outbox.json` antes de escribir en Notion y lo sube

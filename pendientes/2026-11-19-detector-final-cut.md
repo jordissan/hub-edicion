@@ -123,3 +123,4 @@ en `:4599` y se porta por el mismo camino.
 
 ## Registro
 - 2026-11-19: creado.
+- 2026-11-19: detector construido, instalado en la Mac y documentado. Probado con un bundle aislado y Final Cut simulado: avisos A y B, pausa al cambiar de app, sin actividad, descanso, «Ahora no», cierre con bloque (Terminar y Seguir) y detector apagado. Ajustes al plan: un descanso ya vencido cuenta como reposo (`scSprintBrk` sigue guardado hasta el siguiente bloque) y 20 min sin editar reinician la cuenta. **Falta la prueba real con Final Cut abierto**; al confirmarla, pasa a *Hecho*.

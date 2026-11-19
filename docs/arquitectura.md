@@ -520,6 +520,25 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   `Sounds.play("error")`. El menú añade bajo *Tipo ▸* «Cambiar a «…»» con el atajo como `keyEquivalent`.
   Probar sin pantalla: `HUB_PICK="hotkey:4,…"` en la build `-D DUMP_MENU` ejecuta `hotKey(4)` e
   imprime el título de la barra; `HUB_LOG=1` registra el resultado de cada `RegisterEventHotKey`.
+- **Detector de Final Cut** (nov-2026, solo en `main.swift`; sin permisos de Accesibilidad): si Final
+  Cut (`com.apple.FinalCut`) o Premiere (prefijo `com.adobe.PremierePro`) está al frente, se usó teclado
+  o ratón hace menos de `det.idle` y no hay bloque, cuenta segundos activos. Al cambiar de app se
+  pausa; tras `det.snooze` sin editar vuelve a cero. **Aviso A** a los `det.wait`: el reloj dice
+  «¿Iniciar?», suena `nudge`, manda `SprintCmd('tipo:Edición')` y el menú gana «Final Cut sin timer —
+  Iniciar» y «Ahora no». **Aviso B** tras `det.escalate` activos más: `showPanel()` sin robar el foco
+  (`detOpenedPanel`; va encima aunque la ventana esté «En el escritorio»). Si lo ignoras, sigue el
+  «¿Iniciar?» sin repetir nada durante `det.snooze` y vuelve a contar de cero. «Ahora no» calla hasta
+  cerrar la app vigilada. Iniciar un bloque por cualquier vía apaga el aviso y oculta la ventana si la
+  abrió el detector. Al cerrar la última app vigilada con un bloque corriendo: `NSAlert` «Llevas X min.
+  ¿Terminar el bloque?» (no sale al apagar el Mac). Un descanso ya vencido cuenta como reposo porque
+  `scSprintBrk` sigue guardado hasta empezar otro bloque. Piezas: `struct Detector` (lógica pura, entre
+  `DETECTOR-INICIO` y `DETECTOR-FIN`), `detectorTick()` en el sondeo de 1 s, `detectorMenu()`.
+  `UserDefaults`: `det.on`, `det.apps` (`fcp`, `premiere`), `det.wait` 120, `det.escalate` 300,
+  `det.snooze` 1200, `det.idle` 180 y `snd.nudge` (Purr); todo se cambia en *Opciones → Detector* y
+  *Opciones → Sonidos*. **Probar sin Final Cut:** build `-D DUMP_MENU` en un bundle de prueba contra
+  `HUB_BASE=http://localhost:4611`, con `HUB_DET_BUNDLE=com.apple.finder` y `HUB_PICK` con
+  `det-front:<bundle>`, `det-quit:<bundle>`, `det-idle:<s>` y `det-mute`; `HUB_DET_ANSWER=terminar`
+  contesta el diálogo y `defaults write <id-prueba> det.wait -int 6` acorta los tiempos.
 - **Sonidos** (`enum Sounds` + `soundsMenu()` en `main.swift`, *Opciones → Sonidos*): acciones
   `start` (de serie Tink), `finish` (Hero), `discard` (Funk), `goal` (Glass, meta/descanso), `tipo` (Pop, ⌃⌥B) y
   `error` (aviso del sistema; también cuando falla una acción del menú). Guardado en
@@ -626,7 +645,8 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
 2. Verifica con datos reales en <http://localhost:4599> (en Claude Code: configuración
    `hub-vivo` de `.claude/launch.json`).
 3. `./sync-cloud.sh` → revisa el diff → `./sync-cloud.sh --publicar "mensaje"`
-   (commit + push; Pages despliega en 1-2 min; si cambió `server.py` republica los datos).
+   (commit + `pull --rebase` + push, porque otra sesión pudo subir pendientes a `main`; Pages
+   despliega en 1-2 min; si cambió `server.py` republica los datos).
 4. `publish.py`, `functions/` y el workflow se editan directamente en `cloud/`.
 5. Actualiza la documentación en la misma pasada si cambió comportamiento o datos.
 6. Para ver la versión nueva **del diseño** en el iPhone: **matar la PWA** desde el app switcher y
