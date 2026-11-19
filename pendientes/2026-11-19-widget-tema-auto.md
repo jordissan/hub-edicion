@@ -1,6 +1,6 @@
 # P3 · Widgets de Scriptable: tema claro/oscuro sin abrir la app
 
-- **Estado:** Por hacer
+- **Estado:** En curso
 - **Dónde se ejecuta:** Mac (para leer los scripts de iCloud) + prueba en el iPhone
 - **Creado:** 2026-11-19, desde el teléfono
 - **Resumen:** hoy, al tocar el widget para cambiar entre claro y oscuro, se abre Scriptable, corre
