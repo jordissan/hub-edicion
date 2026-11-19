@@ -481,36 +481,34 @@ html.mini .fpop{margin:0}
 @keyframes fcd{to{transform:scaleX(0)}}
 
 /* ============ modo mini: la tarjeta del sprint sola, dentro de la ventana flotante ============
-   Desde el 18-nov-2026 la ventana usa el mismo sprint compacto del dashboard (.sx, ver «SPRINT COMPACTO»):
-   vidrio oscuro, reloj lima y menús plegables (esquema ▾ · destino ▾ · ⋯). La franja de arriba (34 px)
-   arrastra la ventana salvo sobre sus botones; los menús se abren como hoja dentro de la ventana para que
-   nunca se corten. El acomodo anterior (tarjeta lima en tres zonas) está en
-   docs/historico/index.pre-ventana-sx.2026-11-18.html. */
+   Desde el 18-nov-2026 la ventana es la misma tarjeta compacta del dashboard (.sx, ver «SPRINT COMPACTO»),
+   con su mismo espaciado: cabecera (título · esquema ▾ · botones), reloj y destino, botón y contexto.
+   La ventana mide lo que la tarjeta: la página le dice a la app su alto (mensaje «height») y crece
+   mientras un menú está abierto. Los menús se abren como hoja bajo la cabecera. El acomodo anterior
+   (tarjeta lima en tres zonas) está en docs/historico/index.pre-ventana-sx.2026-11-18.html. */
 html.mini,html.mini body{height:100%;margin:0;overflow:hidden;background:var(--bg)}
 html.mini body>*:not(#focus){display:none !important}
-html.mini #focus{position:fixed;inset:0;border:0;border-radius:0;box-shadow:none;padding:44px 16px 14px;
-  display:flex;flex-direction:column;justify-content:center;overflow:hidden;transform:none !important;opacity:1 !important;
+html.mini #focus{position:fixed;inset:0;border:0;border-radius:0;box-shadow:none;padding:14px 18px 18px;
+  display:flex;flex-direction:column;justify-content:flex-start;overflow:hidden;transform:none !important;opacity:1 !important;
   -webkit-user-select:none;user-select:none}
 html.mini #focus input{-webkit-user-select:text;user-select:text}
-html.mini #focus>div:first-child{min-height:0}
-html.mini #focus .cl{position:fixed;top:0;left:0;right:0;height:34px;margin:0;padding:0 8px 0 16px;cursor:grab;z-index:2}
+html.mini #focus>div:first-child{flex:none}
+/* cabecera = zona de arrastre de la ventana (la maneja la app nativa; sus botones no arrastran) */
+html.mini #focus .cl{height:32px;margin:0;cursor:grab}
 html.mini #focus .cl h3{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 html.mini #focus .cl .u{flex:none;white-space:nowrap;margin-left:8px}
 html.mini #focus .fpop{margin:0}
+html.mini #focus .sx-chip:not([hidden])+.fbtns{margin-left:10px}
 @media (max-width:299px){ html.mini #focus .cl .u{display:none} }   /* el reloj que late y TERMINAR ya dicen que corre */
-@media (max-width:399px){ html.mini #focus .cl h3{display:none} }   /* angosta: el título no cabe junto al esquema */
-/* reloj: crece con la ventana */
-html.mini #focus .sx-core{margin:0 0 14px}
-html.mini #focus.sx .tcode{font-size:clamp(40px,min(17vw,20vh),88px)}
+@media (max-width:379px){ html.mini #focus .cl h3{display:none} }   /* angosta: el título no cabe junto al esquema */
+/* reloj y destino · botón · contexto, con el aire de la tarjeta */
+html.mini #focus .sx-core{margin:16px 0}
+html.mini #focus.sx .tcode{font-size:clamp(44px,15vw,72px)}
 html.mini #focus.sx .flbl small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}   /* bloque en marcha: una línea */
-/* menús como hoja dentro de la ventana */
-html.mini #focus .sx-pop{position:fixed;left:10px;right:10px;top:40px;bottom:auto;width:auto;max-width:none;
-  max-height:calc(100vh - 50px);overflow-y:auto;scrollbar-width:none;transform-origin:top center}
-html.mini #focus .sx-pop::-webkit-scrollbar{display:none}
-html.mini #focus .sx-pop-more{top:auto;bottom:10px;transform-origin:bottom center}
-/* ventana baja: primero se va la línea de contexto */
-@media (max-height:280px){ html.mini #focus.sx .why{display:none} }
-@media (max-height:210px){ html.mini #focus{padding-top:38px;padding-bottom:10px} html.mini #focus .sx-core{margin-bottom:10px} }
+html.mini #focus.sx .why{margin-top:12px!important}
+@container sx (min-width:560px){ html.mini #focus .sx-core{margin:16px 0 0} html.mini #focus .sx-act{margin-top:16px} }
+/* menús: hoja bajo la cabecera; la ventana crece para que quepa entera */
+html.mini #focus .sx-pop{position:fixed;left:12px;right:12px;top:54px;bottom:auto;width:auto;max-width:none;transform-origin:top center}
 [hidden]{display:none !important}
 .focuscard.run .tcode{animation:pulse 1s steps(2,jump-none) infinite}
 @keyframes pulse{50%{opacity:.55}}
@@ -3934,6 +3932,25 @@ const Sprint=EMBED?{update(){}}:(function(){
       [pick,modeBox,cut,drop,selT,selE,seg].forEach(n=>mo.observe(n,{attributes:true,childList:true,subtree:true}));
       selT.addEventListener('change',queue); selE.addEventListener('change',queue);
       label(); })();
+})();
+
+/* ================= ventana flotante: mide lo que la tarjeta (18-nov-2026) =================
+   La app nativa ajusta el alto de la ventana al que le manda la página; con un menú abierto, el de la hoja. */
+(function(){ if(!MINI||EMBED) return;
+  const card=document.getElementById('focus'); if(!card) return;
+  const box=card.firstElementChild; let last=0, t=0;
+  function fit(){ t=0;
+    const cs=getComputedStyle(card);
+    let h=box.getBoundingClientRect().height+parseFloat(cs.paddingTop)+parseFloat(cs.paddingBottom);
+    card.querySelectorAll('.sx-pop').forEach(p=>{ if(!p.hidden) h=Math.max(h,p.offsetHeight+68); });
+    h=Math.ceil(h);
+    if(Math.abs(h-last)>=2){ last=h; try{ webkit.messageHandlers.hub.postMessage({k:'height',h}); }catch(e){} }
+    return h; }
+  const ask=()=>{ if(!t) t=setTimeout(fit,30); };
+  const ro=new ResizeObserver(ask); ro.observe(box); card.querySelectorAll('.sx-pop').forEach(p=>ro.observe(p));
+  window.addEventListener('resize',ask);
+  window.__hubFit=()=>{ last=0; return fit(); };    // la app lo llama al mostrar la ventana
+  ask();
 })();
 
 /* ================= sprint en el sidebar y en el botón móvil: espejo de la tarjeta de Hoy =================
