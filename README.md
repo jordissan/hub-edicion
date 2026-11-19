@@ -97,7 +97,7 @@ GitHub: la verificación es visual (en el iPhone, matar la PWA y reabrir).
   Binding KV: `HUB_KV`.
 - **Cloudflare Pages**: `EMBED_SECRET` (texto largo al azar) — firma las claves de la tarjeta para Notion.
   Sin ella `/embed/data` responde 503. Cambiarla invalida todos los enlaces pegados.
-- **Widgets**: Service Token de Cloudflare Access (Client ID + Secret) pegado en el script de Scriptable.
+- **Widgets**: Service Token de Cloudflare Access (Client ID + Secret) pegado en el script de Scriptable. El de barras lee `/api/summary`; el de la dona (16-nov-2026) lee `/api/edicion` con el mismo token. Si algún día se limita el Service Token a ciertas rutas, deja las dos.
 
 ## Ajustes visuales rápidos
 Se hacen en `~/HubEdicion/index.html` (capa "IDENTIDAD A") y se portan con `sync-cloud.sh`:

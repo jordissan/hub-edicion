@@ -85,6 +85,8 @@
 }
 ```
 
+**Widget de la dona (16-nov-2026):** el Scriptable `Hub Edición · Donas` NO usa el resumen: lee `/api/edicion` (payload completo, mismo Service Token) y rehace en el teléfono `currentKey` + `projModel` (fases, $ y %). Si cambia esa lógica en `deriveModel`, hay que copiarla a `widgets/HubEdicion-dona.scriptable.js`.
+
 **Resumen de widgets** (`/api/summary` · KV `edicion:summary`): `generatedAt, today, todayMin,
 metaMin, streak, week[{key,min,meta}], overallProgress, active{wedding, icon, stage, stageColor,
 stageProgress, stageHours, scene}, weddings[{name, icon, progress, done, live, wait, stages, hours}]`.
