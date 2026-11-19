@@ -51,3 +51,4 @@ Secret). No se copia al repo (es público) ni se pega en chats. Se edita en su s
 
 ## Registro
 - 2026-11-19: creado.
+- 2026-11-19: Jordi eligió la opción 2: los widgets son imágenes dibujadas y la opción 1 obligaba a simplificar su diseño. Atajo «Tema widget» generado (alterna, redibuja y regresa al inicio) y widget «Dark Mode» conectado a él. Comprobado en simulación. **Falta instalar el atajo y probarlo en el iPhone**; después se documenta y pasa a *Hecho*.
