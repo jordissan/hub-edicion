@@ -1,7 +1,10 @@
-# Plan: detector de Final Cut en la barra de menús
+# P2 · Detector de Final Cut en la barra de menús
 
-> Para hacerse en una sesión de Claude Code **en la Mac**, dentro de `~/HubEdicion/`, con el server
-> local en `:4599`. Decisiones tomadas el 19-nov-2026: aviso **A → B** y **todos los extras**.
+- **Estado:** Por hacer
+- **Dónde se ejecuta:** Mac (`~/HubEdicion/`, con el server local en `:4599`)
+- **Creado:** 2026-11-19, desde el teléfono
+- **Resumen:** el reloj de la barra de menús pide iniciar una sesión si trabajas en Final Cut sin
+  timer. Decisiones: aviso **A → B** y **todos los extras**.
 
 ## Qué hace
 
@@ -54,7 +57,7 @@ una sesión. Si lo ignoras, aparece la ventana flotante. Todo vive en la app del
 
 **Fase 0. Preparar (5 min)**
 
-- [ ] `git fetch origin claude/fervent-knuth-8bci8e` en `cloud/` para tener este plan.
+- [ ] `git -C ~/HubEdicion/cloud pull --ff-only`.
 - [ ] Comprobar que el server responde: `curl -s localhost:4599/api/sprint-state | head -c 200`.
 - [ ] Leer `mac/SprintFlotante/main.swift`: dónde vive el sondeo, `render()`, `flash`, `Sounds`,
       `togglePanel` y `menuNeedsUpdate`.
@@ -118,11 +121,5 @@ en `:4599` y se porta por el mismo camino.
 - [ ] Todo se apaga o se ajusta desde *Opciones → Detector*.
 - [ ] Documentado y publicado con `sync-cloud.sh`.
 
-## Para arrancar la sesión en casa
-
-Abre Claude Code en `~/HubEdicion/` y pega:
-
-> Lee `cloud/docs/plan-detector-final-cut.md` (rama `claude/fervent-knuth-8bci8e`) y
-> `docs/arquitectura.md` §5.1. Implementa el detector de Final Cut en `mac/SprintFlotante/` por
-> fases, probando cada fase con el bundle de prueba antes de tocar la app real. Al final,
-> documenta y publica con `sync-cloud.sh`.
+## Registro
+- 2026-11-19: creado.
