@@ -1,6 +1,6 @@
 # P1 · Conectar la Mac al sistema de pendientes
 
-- **Estado:** Por hacer
+- **Estado:** En curso
 - **Dónde se ejecuta:** Mac
 - **Creado:** 2026-11-19, desde el teléfono
 - **Resumen:** que Claude Code abierto en `~/HubEdicion/` conozca este protocolo, para que basten
