@@ -1,6 +1,6 @@
 # P2 · Detector de Final Cut en la barra de menús
 
-- **Estado:** Por hacer
+- **Estado:** En curso
 - **Dónde se ejecuta:** Mac (`~/HubEdicion/`, con el server local en `:4599`)
 - **Creado:** 2026-11-19, desde el teléfono
 - **Resumen:** el reloj de la barra de menús pide iniciar una sesión si trabajas en Final Cut sin
