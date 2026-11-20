@@ -1053,7 +1053,8 @@ def adopt_archive_ids(archive, idents):
     `idents` = TODAS las bodas de Notion como (id, nombre, inicio, fin).
     · Entrada sin ID (de antes de este cambio): se le pone el de la página con su mismo
       nombre; si ninguna se llama así (la renombraron), el de la ÚNICA página sin entrada
-      con las mismas fechas de proyecto (rango «Fecha»). Si hay duda, se queda como está.
+      con el mismo inicio de proyecto (rango «Fecha»; el fin solo desempata). Si hay duda,
+      se queda como está.
     · Entrada con ID cuyo nombre cambió en Notion: toma el nombre nuevo y guarda el viejo
       en "aka" (así siguen sirviendo los enlaces /embed que se pegaron con el nombre viejo).
     · Dos entradas con el mismo ID: se quedan en una (la más reciente)."""
@@ -1075,8 +1076,11 @@ def adopt_archive_ids(archive, idents):
         gs, ge = (g.get("projectStart") or "")[:10], (g.get("projectEnd") or "")[:10]
         if not gs:
             continue
-        cands = [i for i in idents if i[0] and i[0] not in claimed and i[2] == gs
-                 and (not ge or not i[3] or i[3] == ge)]
+        # el inicio del proyecto casi nunca cambia; la entrega (fin) sí se mueve, así que
+        # solo desempata (pasó en la nube: archivada con fin 20-nov, Notion ya decía 18-nov)
+        cands = [i for i in idents if i[0] and i[0] not in claimed and i[2] == gs]
+        if len(cands) > 1 and ge:
+            cands = [i for i in cands if i[3] == ge]
         if len(cands) == 1:
             e["id"] = cands[0][0]; claimed.add(e["id"])
             sys.stderr.write("[archivo] entrada renombrada en Notion: se une a su página por fechas\n")
