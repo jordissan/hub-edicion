@@ -37,11 +37,15 @@ export async function onRequest({ request, env }) {
   if (!raw) return json(503, { error: "Sin datos aún." });
   const P = JSON.parse(raw);
   if (boda === "todo") return json(200, { ...P, embed: true });
-  // mismo recorte que embedSlice() en index.html
+  // mismo recorte que embedSlice() en index.html. Un enlace pegado con un nombre anterior sigue
+  // valiendo: el archivo guarda los nombres viejos en "aka" y une la boda del tablero por su ID de
+  // página de Notion (20-nov-2026; antes, corregir el título en Notion rompía la tarjeta)
+  const archive = (P.archive || []).filter(a => [a.name, ...(a.aka || [])].some(n => slug(n) === boda));
+  const ids = new Set(archive.map(a => a.id).filter(Boolean));
   const out = {
     generatedAt: P.generatedAt, today: P.today, live: P.live, degraded: P.degraded, embed: true,
-    weddings: (P.weddings || []).filter(w => slug(w.name) === boda),
-    archive: (P.archive || []).filter(a => slug(a.name) === boda),
+    weddings: (P.weddings || []).filter(w => slug(w.name) === boda || (w.id && ids.has(w.id))),
+    archive,
   };
   if (!out.weddings.length && !out.archive.length) return json(404, { error: "No encuentro esa boda." });
   return json(200, out);

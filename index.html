@@ -2065,9 +2065,14 @@ window.SNAPSHOT_DATA = {"generatedAt":"2026-11-09T22:13:42","today":"2026-11-09"
     // del tablero (archivo → ghost), para que el año se vaya llenando con todo lo medido
     const heatMin = {};
     for (const s of sess) heatMin[s.date] = (heatMin[s.date]||0) + s.min;
+    // ¿esta entrada del archivo es una boda que sigue en el tablero? por ID de página de Notion
+    // (el nombre se puede corregir: 20-nov-2026 una boda renombrada salía dos veces y era su
+    // propio fantasma) y por nombre para datos viejos sin ID
+    const boardIds = new Set(weddings.map(w=>w.id).filter(Boolean));
     const boardNames = new Set(weddings.map(w=>(w.name||'').trim().toLowerCase()));
+    const onBoardA = a => (a.id && boardIds.has(a.id)) || boardNames.has((a.name||'').trim().toLowerCase());
     for (const a of archive){
-      if (!a.ghost || !a.name || boardNames.has(a.name.trim().toLowerCase())) continue;
+      if (!a.ghost || !a.name || onBoardA(a)) continue;
       for (const st of (a.ghost.stages||[])) for (const d in (st.days||{})) heatMin[d] = (heatMin[d]||0) + st.days[d];
     }
     const heat = {};
@@ -2201,10 +2206,9 @@ window.SNAPSHOT_DATA = {"generatedAt":"2026-11-09T22:13:42","today":"2026-11-09"
     const lastEffDate = w => { let m=null; for(const s of (w.stages||[])){ if(isCorr(s))continue; for(const x of (s.sessionLog||[])){ if(x.inicio&&(m==null||x.inicio.slice(0,10)>m))m=x.inicio.slice(0,10);} } return m||w.projectEnd||w.projectStart||''; };
     // bodas entregadas que ya salieron del tablero (45 días sin cambios): se
     // reconstruyen desde su "ghost" del archivo para que sigan sirviendo de fantasma
-    const onBoard = new Set(weddings.map(w=>(w.name||'').trim().toLowerCase()));
     const fromArchive = archive
-      .filter(a=> a.ghost && a.name && !onBoard.has(a.name.trim().toLowerCase()))
-      .map(a=>({ name:a.name, icon:a.icon, price:a.price, archived:true, nDays:a.ghost.nDays||null,
+      .filter(a=> a.ghost && a.name && !onBoardA(a))
+      .map(a=>({ id:a.id||null, name:a.name, icon:a.icon, price:a.price, archived:true, nDays:a.ghost.nDays||null,
         projectStart:a.ghost.projectStart, projectEnd:a.ghost.projectEnd,
         lastEnd:a.lastEnd||a.ghost.projectEnd||'',
         stages:(a.ghost.stages||[]).map(s=>({ etapa:s.etapa, fase:s.fase, isCorrections:!!s.isCorrections,
@@ -2268,7 +2272,7 @@ window.SNAPSHOT_DATA = {"generatedAt":"2026-11-09T22:13:42","today":"2026-11-09"
       } else {
         // solo una boda medida terminada: sin comparación, hero informativo
         const curK=race.curName.toLowerCase();
-        const prevKnown = archive.some(a=> a.name && a.name.trim().toLowerCase()!==curK && (a.hours||0)>0);
+        const prevKnown = archive.some(a=> a.name && !(refCur.id && a.id===refCur.id) && a.name.trim().toLowerCase()!==curK && (a.hours||0)>0);
         hero={ hasGhost:false, prevKnown, curName:race.curName, curEditDay:race.curEditDay, curEff:race.curEff };
       }
       return [race, hero];
@@ -2385,7 +2389,7 @@ window.SNAPSHOT_DATA = {"generatedAt":"2026-11-09T22:13:42","today":"2026-11-09"
     const hHod={}, hWk=[0,0,0,0,0,0,0], hMins=sess.map(s=>s.min);
     for (const s of sess){ hHod[s.hour]=(hHod[s.hour]||0)+s.min; hWk[dowMon0(s.date)]+=s.min; }
     let hodMissing=0;
-    for (const a of archive){ if(!a.ghost || !a.name || onBoard.has(a.name.trim().toLowerCase())) continue;
+    for (const a of archive){ if(!a.ghost || !a.name || onBoardA(a)) continue;
       let had=false;
       for (const st of (a.ghost.stages||[])){
         for (const d in (st.days||{})) hWk[dowMon0(d)]+=st.days[d];
@@ -4163,9 +4167,12 @@ const EMB=(()=>{ const q=new URLSearchParams(location.search);
 const EMB_SPEC=EMB_CARDS[EMB.card]||null;
 const EMB_SCOPE=EMB_SPEC&&EMB_SPEC.boda?EMB.boda:'todo';      // de qué datos vive la tarjeta (y su clave)
 const embSlug=s=>(s||'').trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+// mismo recorte que functions/embed/data.js: por nombre actual o por un nombre anterior ("aka" del
+// archivo), y la boda del tablero con el mismo ID de Notion — un enlace pegado sobrevive al renombre
 function embedSlice(P,key){ if(key==='todo') return P;
+  const arc=(P.archive||[]).filter(a=>[a.name,...(a.aka||[])].some(n=>embSlug(n)===key)), ids=new Set(arc.map(a=>a.id).filter(Boolean));
   return { generatedAt:P.generatedAt, today:P.today, live:P.live, degraded:P.degraded, embed:true,
-  weddings:(P.weddings||[]).filter(w=>embSlug(w.name)===key), archive:(P.archive||[]).filter(a=>embSlug(a.name)===key) }; }
+  weddings:(P.weddings||[]).filter(w=>embSlug(w.name)===key||(w.id&&ids.has(w.id))), archive:arc }; }
 function embedMsg(t){ let b=document.getElementById('embBox');
   if(!b){ if(!t) return; b=document.createElement('div'); b.id='embBox'; b.setAttribute('role','status'); document.body.appendChild(b); }
   b.textContent=t||''; b.hidden=!t; }
@@ -4184,11 +4191,14 @@ function embMark(el){ document.querySelectorAll('.embtarget,.embpath').forEach(x
 function embCut(){ const el=document.querySelector('.embtarget'); if(el) el.classList.toggle('embcut',el.scrollHeight>el.clientHeight+1); }
 function renderEmbed(model){
   if(!EMB_SPEC) return embedMsg('Tarjeta desconocida');
-  const p=EMB_SPEC.boda?model.projects[EMB.boda]:null;
+  // enlace con un nombre anterior de la boda (se renombró en Notion): el recorte ya trae solo esa boda,
+  // con su nombre actual → se usa su única llave
+  const ks=Object.keys(model.projects||{}), bk=EMB_SPEC.boda?(model.projects[EMB.boda]?EMB.boda:(ks.length===1?ks[0]:null)):null;
+  const p=bk?model.projects[bk]:null;
   if(EMB_SPEC.boda&&!p) return embedMsg(model.embedFound?'Esta boda aún no tiene horas medidas':'No encuentro esta boda en los datos');
   M=model;
   const paint=()=>{ for(const f of EMB_SPEC.render){ try{ f(model); }catch(e){ console.error('render · embed',e); } }
-    if(EMB_SPEC.boda) renderMesa._select(EMB.boda);
+    if(EMB_SPEC.boda) renderMesa._select(bk);
     embDecorate(); return document.querySelector(EMB_SPEC.sel); };
   let el=paint();
   if(!el) return embedMsg(EMB.card.startsWith('tarifa')?'Aún no hay una boda entregada con horas para calcular la tarifa':'Sin datos para esta tarjeta');

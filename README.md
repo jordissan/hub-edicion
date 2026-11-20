@@ -19,7 +19,8 @@ apagada, detrás de login, **100% gratis**.
 GitHub Actions (workflow_dispatch del Mac tras cada sesión y cada 15 min + cron */30 de respaldo · TZ America/Mexico_City)
   publish.py → server.py extrae Notion → escribe data.json + summary.json en Cloudflare KV (namespace "hub")
   (+ archivo histórico: lee edicion:archive de KV, server.merge_archive lo actualiza con las
-   bodas entregadas con horas trackeadas, y lo re-publica — viaja embebido en data.json como "archive")
+   bodas entregadas con horas trackeadas, y lo re-publica — viaja embebido en data.json como "archive".
+   Llave = ID de la página de Notion; si se corrige un título, el nombre viejo queda en "aka")
         │
 Cloudflare Pages  (siempre encendido, gratis)
   index.html              → el dashboard
@@ -219,6 +220,8 @@ Pegar la dona **Horas y $ por etapa** de una boda en su página de Notion (`/emb
 - `GET /embed/data?boda=&k=` → `functions/embed/data.js`: valida `k = HMAC-SHA256(EMBED_SECRET,
   "embed:"+boda)` (20 hex) y devuelve `edicion:data` recortado a esa boda (tablero + archivo, ~45 KB).
   403 clave mala · 404 boda no encontrada · 503 sin `EMBED_SECRET`. **No hay almacenamiento por boda.**
+  Si la boda se renombró en Notion, el enlace viejo sigue valiendo: el archivo guarda el nombre
+  anterior en `aka` y la boda del tablero se une por su ID de página (20-nov-2026).
 - `GET /api/embed-link[?boda=]` → enlaces listos para copiar (detrás de Access, como todo `/api`). Lo usa el
   botón **`</>`** de la tarjeta (dashboard): copia el enlace de la boda abierta (ClipboardItem con promesa
   para Safari; si falla, `prompt` con el enlace). En el Mac lo responde `server.py` (mismo HMAC) leyendo
