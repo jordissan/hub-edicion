@@ -687,6 +687,13 @@ Un archivo nuevo que deba subir se añade a esa lista.
 
 ## 9. Trampas conocidas
 
+- **Vistas previas de Pages sin Access (20-nov-2026):** cada deploy tiene también su URL
+  `<hash>.hub-edicion.pages.dev`, y esa URL sale en el check «Cloudflare Pages» de cada commit
+  (repo público). El Access app solo cubría `hub-edicion.pages.dev`, así que `/api/*` servía los datos
+  reales ahí sin login. Arreglos: `functions/api/_middleware.js` (404 en `/api` para cualquier host
+  que no sea el de producción; protege desde el deploy 63f7fff) y Access también para las vistas
+  previas, en Cloudflare. **Ojo:** los deploys viejos siguen con su código viejo, así que solo Access
+  (o borrarlos) los cierra. Un host nuevo (por ejemplo, un dominio propio) hay que añadirlo a `PRODUCCION`.
 - **"Tiempo total"** titula su columna "Sesión": nunca la trates como DB de sesiones (§3).
 - **Estado de escena** es una fórmula → `p_select` lee fórmulas de texto.
 - **iOS / PWA**: `backdrop-filter` + `transform` animado necesita `will-change:transform`; `:active`
