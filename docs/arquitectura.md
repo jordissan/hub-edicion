@@ -75,6 +75,8 @@
     "sessionLog": [{ "name", "inicio", "min", "tipo", "ronda", "escena": null }]
   }],
   "archive": [{                           // bodas entregadas con horas (persistente)
+    "id",                                 // ID de la página de Notion = la llave (20-nov-2026)
+    "aka": ["…"],                         // nombres anteriores (si se corrigió el título en Notion)
     "name", "icon", "hours", "scenes", "span", "price", "rounds", "lastEnd", "archivedAt",
     "ghost": { "v": 3, "projectStart", "projectEnd", "nDays": 1,   // nDays: boda de 1 o 2 días (v3)
                "stages": [{ "etapa", "fase", "isCorrections", "estado", "sessions",
@@ -105,7 +107,8 @@ stageProgress, stageHours, scene}, weddings[{name, icon, progress, done, live, w
 | `discover_project_pages()` / `build_project()` | **Otros proyectos** (`Tipo = Proyecto`): sin terminar, o finalizados con *Fecha* en ≤45 días (los ~50 viejos ni se abren). De su página solo se leen las DBs con Inicio y Fin (Sesiones); "Total" y "Panel de Control" se ignoran. Sin DB de Sesiones → no sale. Van en `projects`, **aparte de `weddings`**: el front los suma solo a Hoy/Tu ritmo (`sess`), al sprint y a la tarjeta Otros proyectos; `_all_sessions` (widgets) también. |
 | `total_db_ok()` | Antes de ligar una sesión a la fila Edición/Gestión, comprueba que la DB "Tiempo total" tenga una relación de vuelta a ESA tabla de Sesiones. Una tabla Sesiones copiada de otra boda conserva su columna Total apuntando a la boda original (pasó con el primer proyecto freelance, copiado de la etapa Cambios de una boda). Igual en `functions/api/session.js` (`totalDbOk`). |
 | `is_session_log_db()` | Una DB es de sesiones solo si tiene fechas **Inicio y Fin**. ⚠️ "Tiempo total" también titula su columna "Sesión". |
-| `merge_archive` / `backfill_ghosts` | Upsert del archivo con las finalizadas del tablero; reconstruye desde Notion (máx. `BACKFILL_MAX` = 2 por corrida) las entradas sin `ghost` o con `GHOST_VERSION` vieja. Subir la versión fuerza el re-backfill. |
+| `adopt_archive_ids()` | **Identidad por ID de página** (20-nov-2026). Las entradas viejas sin `id` lo toman de la página con su mismo nombre o, si se renombró, de la única página sin entrada con las mismas fechas de proyecto. Si el título cambia en Notion, la entrada toma el nombre nuevo y guarda el viejo en `aka`. Dos entradas con el mismo ID se quedan en una. No corre en modo degradado. |
+| `merge_archive` / `backfill_ghosts` | Upsert del archivo **por ID de página** (nombre solo para entradas sin ID) con las finalizadas del tablero; reconstruye desde Notion (máx. `BACKFILL_MAX` = 2 por corrida) las entradas sin `ghost` o con `GHOST_VERSION` vieja. Subir la versión fuerza el re-backfill. |
 | `build_summary()` | Resumen para widgets (§2). |
 | `create_session()` / `set_in_progress()` | Registro de sprints (§5). |
 
@@ -695,6 +698,14 @@ Datos a mano: `gh workflow run "Publicar dashboard" -R jordissan/hub-edicion`.
 - **Server local solo en este Mac** (9-nov-2026): escucha en `127.0.0.1` (antes `0.0.0.0`, visible
   para toda la Wi-Fi con CORS `*`). Pendiente menor: un sitio web abierto en el navegador del Mac
   aún podría hacer un POST a `localhost:4599` (lo frena la lista blanca de etapas, no el origen).
+- **Una boda = un ID de Notion** (20-nov-2026): el archivo histórico se indexaba por **nombre**. Al
+  corregir el título de una boda ya archivada, la entrada vieja seguía viva con el nombre anterior y
+  el dashboard la tomaba como otra boda: el fantasma era la misma boda («0 días, 0 h», dos curvas
+  iguales). Ahora `weddings[].id` y `archive[].id` = ID de la página; `merge_archive`,
+  `discover_wedding_pages` y `backfill_ghosts` buscan por ID; el front (`onBoardA` en deriveModel)
+  descarta del archivo lo que ya está en el tablero por ID o nombre; y `/embed/data` + `embedSlice`
+  aceptan los nombres viejos (`aka`), así una tarjeta pegada en Notion con el nombre anterior sigue
+  viva. Las entradas existentes se migran solas en la primera extracción (`adopt_archive_ids`).
 - **Escrituras atómicas** (9-nov-2026): `.cache.json`, `.archive.json` y `.sprint-state.json` se
   escriben a un temporal y se renombran (`_write_json_atomic`). Antes, un apagón a media escritura
   dejaba el archivo truncado y `load_archive()` lo leía como "sin historia" → se perdía el archivo local.

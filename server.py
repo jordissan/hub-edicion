@@ -398,6 +398,7 @@ def build_wedding(page):
     prioridad = p_select(props, "Prioridad")
     ps, pe = first_date(props)
     wedding = {
+        "id": page.get("id"),   # ID de la página en Notion: identidad estable (el nombre se puede corregir)
         "name": name, "icon": page_icon(page), "studio": studio,
         "status": status, "priority": prioridad,
         "price": p_number(props, "Total"),   # precio cobrado (MXN) para rentabilidad $/h
@@ -814,8 +815,12 @@ def discover_wedding_pages(archive=None):
     no hay ninguna de las dos se usa last_edited_time (así una boda recién cerrada
     nunca se queda fuera sin archivarse)."""
     DISCOVERY_DEGRADED[0] = False
-    last_act = {(e.get("name") or "").strip().lower(): (e.get("lastActivity") or e.get("lastEnd"))
-                for e in (archive or []) if e.get("name")}
+    last_act = {}   # por ID de página (y por nombre, para entradas viejas del archivo sin ID)
+    for e in (archive or []):
+        v = e.get("lastActivity") or e.get("lastEnd")
+        for k in (e.get("id"), (e.get("name") or "").strip().lower()):
+            if k:
+                last_act[k] = v
     del DROPPED_DONE_PAGES[:]
     cutoff = (datetime.date.today() - datetime.timedelta(days=RECENT_DONE_DAYS)).isoformat()
     filt = {"property": "Tipo", "select": {"equals": "Boda"}}
@@ -828,7 +833,7 @@ def discover_wedding_pages(archive=None):
                 props = p.get("properties", {})
                 name = (p_title(props, "Nombre") or title_any(props)).strip().lower()
                 ps, pe = first_date(props)  # rango "Fecha" del proyecto: el fin es la entrega
-                activity = max(last_act.get(name) or "", (pe or ps or "")[:10]) \
+                activity = max(last_act.get(p.get("id")) or last_act.get(name) or "", (pe or ps or "")[:10]) \
                     or (p.get("last_edited_time") or "")[:10]
                 if status in DONE_STATUSES and activity < cutoff:
                     DROPPED_DONE_PAGES.append(p)  # para rellenar su curva en el archivo
@@ -996,7 +1001,7 @@ def wedding_archive_stats(w):
             if x.get("ronda") is not None:
                 rondas.add(x["ronda"])
     return {
-        "name": (w.get("name") or "").strip(), "icon": w.get("icon"),
+        "id": w.get("id"), "name": (w.get("name") or "").strip(), "icon": w.get("icon"),
         "hours": hours, "scenes": scenes, "span": span,
         "price": w.get("price"), "rounds": len(rondas) or (1 if any_corr else 0),
         "lastEnd": days[-1] if days else None,
@@ -1033,12 +1038,83 @@ def save_archive(archive):
         sys.stderr.write("[archivo] no se pudo guardar %s: %s\n" % (ARCHIVE_FILE, e))
 
 
-def merge_archive(prev, weddings):
+def _page_ident(p):
+    """(id, nombre actual, inicio, fin) de una página de boda de Notion."""
+    props = p.get("properties", {})
+    ps, pe = first_date(props)
+    return (p.get("id"), (p_title(props, "Nombre") or title_any(props) or "").strip(),
+            (ps or "")[:10], (pe or "")[:10])
+
+
+def adopt_archive_ids(archive, idents):
+    """Identidad por ID de página (20-nov-2026). Antes el archivo se indexaba por NOMBRE:
+    al corregir el título de una boda en Notion, su entrada vieja seguía viva con el
+    nombre anterior y el dashboard la usaba como fantasma (la boda contra sí misma).
+    `idents` = TODAS las bodas de Notion como (id, nombre, inicio, fin).
+    · Entrada sin ID (de antes de este cambio): se le pone el de la página con su mismo
+      nombre; si ninguna se llama así (la renombraron), el de la ÚNICA página sin entrada
+      con las mismas fechas de proyecto (rango «Fecha»). Si hay duda, se queda como está.
+    · Entrada con ID cuyo nombre cambió en Notion: toma el nombre nuevo y guarda el viejo
+      en "aka" (así siguen sirviendo los enlaces /embed que se pegaron con el nombre viejo).
+    · Dos entradas con el mismo ID: se quedan en una (la más reciente)."""
+    by_id = {i[0]: i for i in idents if i[0]}
+    by_name = {}
+    for i in idents:
+        by_name.setdefault(i[1].lower(), []).append(i)
+    claimed = {e.get("id") for e in archive if e.get("id")}
+    for e in archive:
+        if e.get("id") or not e.get("name"):
+            continue
+        hit = by_name.get(e["name"].strip().lower()) or []
+        if len(hit) == 1 and hit[0][0] not in claimed:
+            e["id"] = hit[0][0]; claimed.add(e["id"])
+    for e in archive:
+        if e.get("id") or not e.get("name"):
+            continue
+        g = e.get("ghost") or {}
+        gs, ge = (g.get("projectStart") or "")[:10], (g.get("projectEnd") or "")[:10]
+        if not gs:
+            continue
+        cands = [i for i in idents if i[0] and i[0] not in claimed and i[2] == gs
+                 and (not ge or not i[3] or i[3] == ge)]
+        if len(cands) == 1:
+            e["id"] = cands[0][0]; claimed.add(e["id"])
+            sys.stderr.write("[archivo] entrada renombrada en Notion: se une a su página por fechas\n")
+    for e in archive:
+        cur = by_id.get(e.get("id"))
+        if cur and cur[1] and cur[1] != e.get("name"):
+            aka = [a for a in (e.get("aka") or []) if a.strip().lower() != cur[1].lower()]
+            if e.get("name") and e["name"] not in aka:
+                aka.append(e["name"])
+            e["name"], e["aka"] = cur[1], aka
+    out, seen = [], {}
+    for e in sorted(archive, key=lambda e: e.get("lastEnd") or e.get("archivedAt") or ""):
+        k = e.get("id")
+        if k and k in seen:          # duplicada: gana la más reciente, conserva fecha y alias
+            old = out[seen[k]]
+            dates = [x for x in (old.get("archivedAt"), e.get("archivedAt")) if x]
+            e["archivedAt"] = min(dates) if dates else None
+            e["aka"] = sorted({*(old.get("aka") or []), *(e.get("aka") or []), old.get("name")} - {e.get("name"), None})
+            out[seen[k]] = e
+            continue
+        if k:
+            seen[k] = len(out)
+        out.append(e)
+    archive[:] = out
+    return archive
+
+
+def merge_archive(prev, weddings, idents=None):
     """Upsert de las bodas terminadas con horas trackeadas del tablero actual sobre el
     archivo previo; las que ya salieron del tablero se conservan tal cual. Mientras una
     boda archivada siga visible (ventana de 45 días) sus stats se refrescan en cada
-    extracción (p. ej. si le corriges una sesión en Notion)."""
-    by = {e["name"].strip().lower(): e for e in prev if e.get("name")}
+    extracción (p. ej. si le corriges una sesión en Notion). La llave es el ID de la
+    página de Notion (el nombre solo para entradas viejas sin ID): ver adopt_archive_ids."""
+    prev = [dict(e) for e in prev if isinstance(e, dict)]
+    if idents:
+        adopt_archive_ids(prev, idents)
+    key_of = lambda e: e.get("id") or "n:" + (e.get("name") or "").strip().lower()
+    by = {key_of(e): e for e in prev if e.get("name")}
     today = datetime.date.today().isoformat()
     for w in weddings:
         status = (w.get("status") or "").strip().lower()
@@ -1047,9 +1123,11 @@ def merge_archive(prev, weddings):
         st = wedding_archive_stats(w)
         if not st["name"] or st["hours"] <= 0:
             continue
-        key = st["name"].lower()
-        st["archivedAt"] = (by.get(key) or {}).get("archivedAt") or today
-        by[key] = st
+        old = by.pop(key_of(st), None) or by.pop("n:" + st["name"].lower(), None) or {}
+        st["archivedAt"] = old.get("archivedAt") or today
+        if old.get("aka"):
+            st["aka"] = old["aka"]
+        by[key_of(st)] = st
     return sorted(by.values(), key=lambda e: e.get("lastEnd") or e.get("archivedAt") or "")
 
 
@@ -1060,15 +1138,17 @@ def backfill_ghosts(archive):
     """Entradas archivadas sin "ghost" o con uno de versión vieja (bodas ya fuera del
     tablero): se reconstruyen desde Notion una sola vez. Después viajan en el archivo y
     no se vuelven a consultar."""
-    missing = {e["name"].strip().lower(): e for e in archive
-               if e.get("name") and (e.get("ghost") or {}).get("v", 1) < GHOST_VERSION}
+    missing = {}
+    for e in archive:
+        if e.get("name") and (e.get("ghost") or {}).get("v", 1) < GHOST_VERSION:
+            missing[e.get("id") or e["name"].strip().lower()] = e
     done = 0
     for p in DROPPED_DONE_PAGES:
         if not missing or done >= BACKFILL_MAX:
             break
         props = p.get("properties", {})
         key = ((p_title(props, "Nombre") or title_any(props)) or "").strip().lower()
-        entry = missing.pop(key, None)
+        entry = missing.pop(p.get("id"), None) or missing.pop(key, None)
         if not entry:
             continue
         try:
@@ -1086,7 +1166,10 @@ def build_data(prev_archive=None):
     weddings.sort(key=lambda w: 0 if any(s["estado"] == "live" for s in w["stages"]) else 1)
     # archivo histórico: local se persiste en disco; el extractor de la nube pasa
     # el previo leído de KV (prev_archive) y publica el resultado él mismo.
-    archive = merge_archive(prev, weddings)
+    # identidades de TODAS las bodas de Notion (tablero + las que salieron); en modo
+    # degradado solo hay las de respaldo, así que no se adoptan IDs ni se renombra nada
+    idents = None if DISCOVERY_DEGRADED[0] else [_page_ident(p) for p in pages + DROPPED_DONE_PAGES]
+    archive = merge_archive(prev, weddings, idents)
     backfill_ghosts(archive)
     save_archive(archive)
     now = datetime.datetime.now()
