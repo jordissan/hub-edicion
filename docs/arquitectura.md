@@ -691,9 +691,10 @@ Un archivo nuevo que deba subir se añade a esa lista.
   `<hash>.hub-edicion.pages.dev`, y esa URL sale en el check «Cloudflare Pages» de cada commit
   (repo público). El Access app solo cubría `hub-edicion.pages.dev`, así que `/api/*` servía los datos
   reales ahí sin login. Arreglos: `functions/api/_middleware.js` (404 en `/api` para cualquier host
-  que no sea el de producción; protege desde el deploy 63f7fff) y Access también para las vistas
-  previas, en Cloudflare. **Ojo:** los deploys viejos siguen con su código viejo, así que solo Access
-  (o borrarlos) los cierra. Un host nuevo (por ejemplo, un dominio propio) hay que añadirlo a `PRODUCCION`.
+  que no sea el de producción; protege desde el deploy 63f7fff) y la app de Access **`hub-vistas-previas`**
+  (destino `*.hub-edicion.pages.dev`, política «Solo yo»), que cierra también los deploys viejos.
+  **Trampa:** el `*` no cubre `hub-edicion.pages.dev`. Por eso es una app aparte: si se cambiara el
+  destino de la app principal por `*.…`, el dominio principal quedaría abierto. Un host nuevo (por ejemplo, un dominio propio) hay que añadirlo a `PRODUCCION`.
 - **"Tiempo total"** titula su columna "Sesión": nunca la trates como DB de sesiones (§3).
 - **Estado de escena** es una fórmula → `p_select` lee fórmulas de texto.
 - **iOS / PWA**: `backdrop-filter` + `transform` animado necesita `will-change:transform`; `:active`

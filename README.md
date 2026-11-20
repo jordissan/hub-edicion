@@ -133,7 +133,9 @@ conocidas) está en [`docs/arquitectura.md`](docs/arquitectura.md) — copia ver
   (no se apuntan aquí: el repo es público). Access app: "Hub" (PIN para humanos + Service Auth para widgets).
 - **`/api` solo en producción** (`functions/api/_middleware.js`, 20-nov-2026): las URLs de vista previa
   (`<hash>.hub-edicion.pages.dev`) no pasan por Access y salen en los checks públicos de GitHub, así que
-  ahí `/api` responde 404. Access también debe cubrir las vistas previas (Pages → Settings). Detalle en
+  ahí `/api` responde 404. Además, la app de Access `hub-vistas-previas` (destino `*.hub-edicion.pages.dev`,
+  «Solo yo») pide login en todas las vistas previas. No juntarla con la app principal: el `*` no cubre
+  el dominio principal. Hay 3 apps: la principal, `hub-vistas-previas` y `hub-embed`. Detalle en
   `docs/arquitectura.md` §9.
 
 ---
