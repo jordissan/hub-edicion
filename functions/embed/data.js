@@ -15,7 +15,7 @@ async function embedKey(secret, boda) {
   const sig = new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode("embed:" + boda)));
   return [...sig.slice(0, 10)].map(b => b.toString(16).padStart(2, "0")).join("");
 }
-// igual que slug() de deriveModel (index.html): "Ale + Lorenzo" → "ale-lorenzo"
+// igual que slug() de deriveModel (index.html): "Renata + Emilio" → "renata-emilio"
 const slug = s => (s || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
   .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 function same(a, b) {                         // comparación sin atajos (no revela cuántos caracteres acertó)

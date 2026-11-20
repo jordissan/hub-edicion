@@ -78,7 +78,7 @@ def get_embed_secret():
 
 
 def embed_link(boda):
-    """{boda, url} para pegar en Notion, o None sin secreto. boda = slug ("ale-lorenzo")."""
+    """{boda, url} para pegar en Notion, o None sin secreto. boda = slug ("renata-emilio")."""
     import hmac, hashlib
     secret = get_embed_secret()
     if not secret:

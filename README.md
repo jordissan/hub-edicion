@@ -4,7 +4,7 @@ Dashboard de métricas de edición de bodas, en la nube. Accesible desde cualqui
 apagada, detrás de login, **100% gratis**.
 
 - **URL:** https://hub-edicion.pages.dev
-- **Login:** Cloudflare Access — **One-time PIN por correo** (jor.jorwww@gmail.com), sesión 1 mes.
+- **Login:** Cloudflare Access — **One-time PIN por correo** (tu correo), sesión 1 mes.
 - **Repo:** `github.com/jordissan/hub-edicion` (**público**). Nunca tokens. El snapshot embebido
   (`SNAPSHOT_DATA`) son **datos de ejemplo** desde el 9-nov-2026 (lo genera `snapshot-demo.py` en la
   carpeta raíz; `sync-cloud.sh` no copia uno real). El historial de git anterior sí conserva el de julio
@@ -65,6 +65,16 @@ con su `server.py` + launchd en el puerto 4599 — es **backup/dev** para probar
 - `fonts/*-latin-v1.woff2` — Archivo, Inter y JetBrains Mono (alfabeto latino, mismos archivos de Google Fonts,
   OFL), precargados desde `index.html`. Los copia `sync-cloud.sh`.
 - `_headers` — caché de un año para `/fonts/*` (si cambian las fuentes, renombrar a `-v2`).
+- **Lo que vive en la Mac, copiado aquí para tener todo el sistema en GitHub (20-nov-2026):**
+  - `mac/`: la app del sprint (`SprintFlotante/`) y los atajos de Siri (`Siri/make-shortcuts.py`);
+  - `widgets/`: los widgets de Scriptable con `PEGA_AQUI…` en lugar de la llave, el plugin de SwiftBar y `atajo/make-atajo.py`;
+  - `docs/`: `guia-de-uso.md` (el README de la Mac), `solo-en-la-mac.md` y las guías y análisis;
+  - `scripts/`: `sync-cloud.sh`, `privacidad.py`, `snapshot-demo.py`, `start.command` y el `.plist` de launchd.
+  
+  Se editan en `~/HubEdicion` y `sync-cloud.sh` los trae con limpieza de privacidad (nombres de ejemplo, sin
+  montos ni llaves). **No se editan aquí**: la próxima sincronización los pisaría. Pages también los publica,
+  pero detrás de Access (como todo salvo `/embed` y `/fonts`) y además ya son públicos en GitHub, así que no
+  exponen nada nuevo.
 
 ## Cómo se actualizan los datos
 - **Cada 15 min con la Mac encendida:** el `server.py` local (launchd) corre `gh workflow run publish.yml`
@@ -81,11 +91,12 @@ con su `server.py` + launchd en el puerto 4599 — es **backup/dev** para probar
 ## Cómo cambiar el dashboard (mantenimiento)
 **Se edita el LOCAL (`~/HubEdicion/`) y se porta aquí** — nunca al revés.
 1. Edita `~/HubEdicion/index.html` y/o `server.py` y pruébalo con datos reales en <http://localhost:4599>.
-2. `~/HubEdicion/sync-cloud.sh` → copia `index.html`, `server.py` y `docs/arquitectura.md` a esta carpeta
-   y muestra el diff (no publica).
+2. `~/HubEdicion/sync-cloud.sh` → copia `index.html`, `server.py` y `fonts/` tal cual, y con limpieza `docs/`,
+   `mac/`, `widgets/` y `scripts/`. Luego pasa `privacidad.py revisar` por todo el repo (si encuentra algo
+   privado, se detiene) y muestra el diff (no publica).
 3. `~/HubEdicion/sync-cloud.sh --publicar "mensaje"` → commit + push (**Cloudflare Pages despliega solo,
    ~1-2 min**); si cambió `server.py`, además lanza el workflow para republicar KV y reinicia el server local.
-4. `publish.py`, `functions/` y `.github/workflows/` viven solo aquí: se editan directamente en `cloud/`.
+4. `publish.py`, `functions/`, `embed/`, `pendientes/` y `.github/workflows/` viven solo aquí: se editan directamente en `cloud/`.
 
 `server.py` es **idéntico** al de la raíz (se copia tal cual). El deploy de Pages no se reporta a la API de
 GitHub: la verificación es visual (en el iPhone, matar la PWA y reabrir).
@@ -118,8 +129,8 @@ conocidas) está en [`docs/arquitectura.md`](docs/arquitectura.md) — copia ver
 `~/HubEdicion/docs/arquitectura.md`.
 
 ## Datos de referencia (Cloudflare)
-- Account ID: `3e5d3a65aa4f2a3819cdaacc1c92c6d9` · KV namespace "hub" ID: `c183c5e72d5e48a19d07fd6831ececeb`
-- Zero Trust team: `steep-wood-c7bc` · Access app: "Hub" (PIN para humanos + Service Auth para widgets).
+- Account ID, ID del KV namespace "hub" y nombre del equipo de Zero Trust: en el panel de Cloudflare
+  (no se apuntan aquí: el repo es público). Access app: "Hub" (PIN para humanos + Service Auth para widgets).
 
 ---
 
@@ -252,8 +263,8 @@ Pegar la dona **Horas y $ por etapa** de una boda en su página de Notion (`/emb
   Comprobar: `curl -s -o /dev/null -w '%{http_code}' https://hub-edicion.pages.dev/fonts/inter-latin-v1.woff2` → 200
   (y `/` → 302). (3) Enlaces: abrir `/api/embed-link` (con el PIN) y pegar el de la boda con `/embed` en Notion.
 - `/manifest.json` e `/icon-*.png` siguen tras Access: dentro de Notion fallan en silencio (no se usan).
-- Probado (10-nov): local en `:4599/?embed=donut&boda=ale-lorenzo` con datos reales; camino nube
+- Probado (10-nov): local en `:4599/?embed=donut&boda=renata-emilio` con datos reales; camino nube
   simulado (copia con `IS_CLOUD=true`, boda del archivo); funciones con un arnés de Node (claves buenas,
-  malas, de otra boda, sin secreto). En la nube real (10-nov): `/embed` de Ale + Lorenzo pinta 83 h con
+  malas, de otra boda, sin secreto). En la nube real (10-nov): `/embed` de Renata + Emilio pinta 83 h con
   fuentes y datos; clave falsa → 403. Falta verlo dentro de Notion (Mac e iPhone).
 
