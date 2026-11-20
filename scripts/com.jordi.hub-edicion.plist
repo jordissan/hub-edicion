@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Auto-arranque OPCIONAL del puente local al iniciar sesión.
+     Instalar (una vez):
+       cp ~/HubEdicion/com.jordi.hub-edicion.plist ~/Library/LaunchAgents/
+       launchctl load ~/Library/LaunchAgents/com.jordi.hub-edicion.plist
+     Desinstalar:
+       launchctl unload ~/Library/LaunchAgents/com.jordi.hub-edicion.plist
+       rm ~/Library/LaunchAgents/com.jordi.hub-edicion.plist  -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.jordi.hub-edicion</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/python3</string>
+    <string>/Users/jordi/HubEdicion/server.py</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/jordi/HubEdicion</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/tmp/hub-edicion.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/hub-edicion.err</string>
+</dict>
+</plist>

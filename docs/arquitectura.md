@@ -1,7 +1,7 @@
 # Hub de Edición — arquitectura y referencia técnica
 
 > Referencia única para **mantener** el proyecto. La guía de uso está en el
-> [`README.md`](../README.md) de la raíz; la operación de la nube, en [`cloud/README.md`](../cloud/README.md).
+> [`README.md`](guia-de-uso.md) de la raíz; la operación de la nube, en [`cloud/README.md`](../README.md).
 > Este archivo vive en `docs/` y `sync-cloud.sh` lo copia a `cloud/docs/` (queda versionado en git).
 
 ---
@@ -68,7 +68,7 @@
     }]
   }],
   "projects": [{                          // otros proyectos (Tipo = Proyecto), 12-nov-2026
-    "name", "icon", "client",             // client = "Cliente / Línea" (Freelance, IPV…)
+    "name", "icon", "client",             // client = "Cliente / Línea" (Freelance, Estudio A…)
     "status", "price", "url", "projectStart", "projectEnd",
     "sessionDb": "…",                     // su DB Sesiones (destino del sprint, sin etapa)
     "hours": 4.2, "sessions": 3,
@@ -667,6 +667,23 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
 
 Datos a mano: `gh workflow run "Publicar dashboard" -R jordissan/hub-edicion`.
 `sync-cloud.sh` también copia `fonts/` (las fuentes) a `cloud/fonts/`.
+
+**Todo el sistema en el repo (20-nov-2026).** Además del dashboard, `sync-cloud.sh` copia con
+`privacidad.py copiar`:
+- `docs/` (las guías y referencias, no las capturas);
+- `mac/` (la app del sprint y los atajos de Siri);
+- `widgets/` (Scriptable y SwiftBar);
+- el README de la raíz, que en el repo es `docs/guia-de-uso.md`;
+- y las herramientas de la raíz, que en el repo van a `scripts/`.
+
+Al copiar, cambia los nombres reales por nombres de ejemplo y los montos en pesos por `$XX,XXX`, y
+re-apunta los enlaces de los `.md`. Luego `privacidad.py revisar cloud` lee todo lo que git subiría.
+Si encuentra una llave real (las toma de la Mac: token de Notion, `.embed-secret`, Service Token de
+los widgets en iCloud), un correo, un ID de 32 hex o un UUID, un nombre real o un binario que no sea
+un icono, **no publica**. `server.py` tiene permiso para sus IDs de Notion de siempre.
+Un nombre nuevo que se cuele se añade en `.privacidad.json` → `extra`. La lista exacta de lo que
+sube está en `ARCHIVOS` de `sync-cloud.sh`; lo que no sube y por qué, en `docs/solo-en-la-mac.md`.
+Un archivo nuevo que deba subir se añade a esa lista.
 
 ## 9. Trampas conocidas
 

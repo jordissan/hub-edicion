@@ -7,3 +7,16 @@ index.*.bak.html
 .sprint-state.json
 .outbox.json
 .embed-secret
+
+# ── Datos reales y secretos: viven SOLO en la Mac (ver docs/solo-en-la-mac.md) ──
+.privacidad.json
+.notion-dashboard-token
+Token.js
+*.shortcut
+docs/capturas/
+docs/historico/
+docs/reportes/
+docs/propuestas/**/*.png
+docs/propuestas/**/*.jpg
+docs/propuestas/*.pdf
+docs/propuestas/*.html
