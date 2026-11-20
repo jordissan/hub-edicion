@@ -1984,7 +1984,15 @@ window.SNAPSHOT_DATA = {"generatedAt":"2026-11-09T22:13:42","today":"2026-11-09"
   const SCENE_P  = new Set(['prep','doc','hl']);   // fases que trabajan sobre escenas (sin teaser)
   // boda de 2 días: la plantilla mete el día previo como escena "Día 1" que recorre las etapas
   const isDay1 = sc => /^\s*d[ií]a\s*(1|uno|previo)\b/i.test(sc.escena||'') || sc.dia==='Día 1';
-  const daysOf = w => (w.stages||[]).some(s=>(s.scenes||[]).some(isDay1)) ? 2 : 1;
+  // 20-nov: «Entregables» de Notion (Teaser · DCT + SF/HL · Completo) manda sobre lo que
+  // se deduce de las etapas; vacío = como antes (fase TEAS = teaser, escena «Día 1» = 2 días).
+  // 'teaser' = solo teaser · 'dct' = documental + SF/HL sin teaser · 'full' = todo
+  const entOf = w => { const t=(w.entregables||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    return !t ? null : /complet/.test(t) ? 'full' : /dct|doc|hl|sf/.test(t) ? 'dct' : /teaser/.test(t) ? 'teaser' : null; };
+  const ENT_LBL = { teaser:'solo teaser', dct:'documental + SF/HL', full:'completa (teaser + documental + SF/HL)' };
+  const hasTeaser = w => { const e=entOf(w); return e ? e!=='dct' : phasesOf(w).has('teas'); };
+  // solo teaser: no hay día previo que editar → siempre 1 (el chip «2 DÍAS» no aplica)
+  const daysOf = w => entOf(w)==='teaser' ? 1 : (w.stages||[]).some(s=>(s.scenes||[]).some(isDay1)) ? 2 : 1;
 
   // nombres de la plantilla vieja, más cortos; los nuevos ya lo son y CONSERVAN su
   // sufijo de fase ("Montaje (TEAS)" ≠ "Montaje (DCT)" ≠ "Montaje (HL/SF)")
@@ -2150,7 +2158,7 @@ window.SNAPSHOT_DATA = {"generatedAt":"2026-11-09T22:13:42","today":"2026-11-09"
         fases.push([PHASES[k].lbl, round1(faseSum[k]), Math.round(faseSum[k]/gt*100), PHASES[k].col, k]); }
       if (faseSum.cam>0) fases.push(['CAMBIOS', round1(faseSum.cam), Math.round(faseSum.cam/gt*100), PHASES.cam.col, 'cam']);
       else if (pend)     fases.push(['CAMBIOS · EN ESPERA', null, null, 'color-mix(in srgb,var(--naranja) 55%,transparent)', 'cam']);
-      const teaser = present.has('teas'), days = daysOf(w);
+      const teaser = hasTeaser(w), teaserOnly = entOf(w)==='teaser', days = w.archived ? (w.nDays||1) : daysOf(w);
       // chip de estado
       const st=(w.status||'').toLowerCase();
       let chip;
@@ -2160,7 +2168,7 @@ window.SNAPSHOT_DATA = {"generatedAt":"2026-11-09T22:13:42","today":"2026-11-09"
       return {
         key: slug(w.name), nm:(w.name||'').trim(), ic:w.icon||'⛪',
         total, eff, price, prog:`${nDone}/${nStages} etapas`, w:w_pct, chip,
-        extra: fmt1(total)+' h', pend, etapas, checklist, fases, teaser, days,
+        extra: fmt1(total)+' h', pend, etapas, checklist, fases, teaser, teaserOnly, days,
         scenes: scenesOf(w)
       };
     }
@@ -2209,6 +2217,7 @@ window.SNAPSHOT_DATA = {"generatedAt":"2026-11-09T22:13:42","today":"2026-11-09"
     const fromArchive = archive
       .filter(a=> a.ghost && a.name && !onBoardA(a))
       .map(a=>({ id:a.id||null, name:a.name, icon:a.icon, price:a.price, archived:true, nDays:a.ghost.nDays||null,
+        entregables:a.entregables||null,
         projectStart:a.ghost.projectStart, projectEnd:a.ghost.projectEnd,
         lastEnd:a.lastEnd||a.ghost.projectEnd||'',
         stages:(a.ghost.stages||[]).map(s=>({ etapa:s.etapa, fase:s.fase, isCorrections:!!s.isCorrections,
@@ -2246,10 +2255,16 @@ window.SNAPSHOT_DATA = {"generatedAt":"2026-11-09T22:13:42","today":"2026-11-09"
       [race,hero]=buildRace(P, excluded);
       if (excluded.length){ [raceAll,heroAll]=buildRace(null, excluded);
         raceAll.incl=heroAll.incl=true; heroAll.onlyIn=onlyIn; }
-      // boda de 1 o 2 días (solo bodas del tablero: el archivo no guarda las escenas)
-      if (hero && refGhost && !refCur.archived && !refGhost.archived){
-        const dc=daysOf(refCur), dg=daysOf(refGhost);
-        if (dc!==dg) for (const h of [hero,heroAll]) if (h){ h.curDays=dc; h.ghostDays=dg; } }
+      // entregables distintos (Notion «Entregables»): se dice eso y no los días — un solo
+      // teaser contra una boda completa no es «1 día contra 2».
+      const ec=refGhost?entOf(refCur):null, eg=refGhost?entOf(refGhost):null;
+      if (hero && ec && eg && ec!==eg){
+        for (const h of [hero,heroAll]) if (h){ h.curEnt=ENT_LBL[ec]; h.ghostEnt=ENT_LBL[eg]; } }
+      // boda de 1 o 2 días (solo si ninguna es solo teaser; el archivo guarda nDays desde v3)
+      else if (hero && refGhost && ec!=='teaser' && eg!=='teaser'){
+        const dOf=w=> w.archived ? w.nDays : daysOf(w);
+        const dc=dOf(refCur), dg=dOf(refGhost);
+        if (dc && dg && dc!==dg) for (const h of [hero,heroAll]) if (h){ h.curDays=dc; h.ghostDays=dg; } }
     }
     function buildRace(P, excluded){
       let race, hero;
@@ -2378,7 +2393,7 @@ window.SNAPSHOT_DATA = {"generatedAt":"2026-11-09T22:13:42","today":"2026-11-09"
       return { key:slug(w.name), nm:(w.name||'').trim(), archived:!!w.archived,
         live: !w.archived && inProgress(w),
         start: w.projectStart||null, end: lastEffDate(w)||null,
-        teaser: ph.has('teas'), nDays: w.archived ? (w.nDays||null) : daysOf(w),
+        teaser: hasTeaser(w), teaserOnly: entOf(w)==='teaser', nDays: w.archived ? (w.nDays||null) : daysOf(w),
         scenes: scenesOf(w), hpe: hp? round2(hp) : null,
         price: real, perH: effH(w)>0 ? Math.round(priceOf(w)/effH(w)) : null, priceGuess: !real,
         sin: histRow(w, NOTEAS), con: histRow(w, null) };
@@ -2607,7 +2622,8 @@ function renderHero(M){
     const contra = (H.dDays>0&&H.dH<0)||(H.dDays<0&&H.dH>0);
     const ex=H.excluded||[];
     const quien=H.onlyIn&&H.onlyIn.length&&H.onlyIn.every(n=>n===H.onlyIn[0])?H.onlyIn[0]:null;
-    const dias2=H.curDays&&H.ghostDays?` Boda de ${H.curDays} ${H.curDays===1?'día':'días'} contra una de ${H.ghostDays}.`:'';
+    const dias2=H.curEnt&&H.ghostEnt?` Una es ${H.curEnt} y la otra ${H.ghostEnt}.`
+               :H.curDays&&H.ghostDays?` Boda de ${H.curDays} ${H.curDays===1?'día':'días'} contra una de ${H.ghostDays}.`:'';
     lede.innerHTML=`<b>${H.curName}</b> ${when} ${H.ghostName}${hrs?(contra?', pero ':' y ')+hrs:''}.`+
       (!ex.length?'':H.incl?` Incluye ${ex.length===1&&ex[0]==='teaser'?'el teaser':ex.join(' y ')}${quien?`, que solo tuvo ${quien}`:': solo una de las dos lo tiene'}.`
                            :` Comparado sin ${ex.join(' ni ')}: solo una de las dos lo tiene.`)+dias2;
@@ -2798,7 +2814,7 @@ function renderHist(M){
   const prevOf=(i,mt)=>{ for(let j=i-1;j>=0;j--){ const v=mt.get(rows[j],m); if(v!=null) return v; } return null; };
   let h=`<thead><tr><th>BODA</th>${HIST_MET.map(mt=>`<th>${mt.th}</th>`).join('')}</tr></thead><tbody>`;
   rows.forEach((r,i)=>{
-    const tags=(r.teaser?'<span class="pchip tag">TEASER</span>':'')+(r.nDays>1?`<span class="pchip tag">${r.nDays} DÍAS</span>`:'')+(r.live?'<span class="pchip now">EN CURSO</span>':'');
+    const tags=(r.teaser?`<span class="pchip tag">${r.teaserOnly?'SOLO TEASER':'TEASER'}</span>`:'')+(r.nDays>1?`<span class="pchip tag">${r.nDays} DÍAS</span>`:'')+(r.live?'<span class="pchip now">EN CURSO</span>':'');
     h+=`<tr data-key="${r.key}" class="${r.key===histSel?'sel':''}${r.live?' live':''}${i<rows.length-3?' old':''}" tabindex="0"><td class="hn"><b>${r.nm}</b><small>${monYr(r.start||r.end)}${tags}</small></td>`;
     for(const mt of HIST_MET){ const v=mt.get(r,m);
       if(v==null){ h+=`<td data-l="${mt.th}"><span class="v">—</span><small class="dl">&nbsp;</small></td>`; continue; }
@@ -3313,12 +3329,12 @@ function renderMesa(M){
 
   let html='';
   M.projOrder.forEach((key,i)=>{ const p=M.projects[key];
-    html+=`<div class="prow" data-key="${key}" role="button" tabindex="0" aria-pressed="false" data-tip="<b>${p.nm}</b><br>${p.prog} · ${p.extra} trabajadas${p.teaser?' · con teaser':''}${p.days>1?' · boda de '+p.days+' días':''} — toca para abrir"><div class="pnm">${p.ic} <span>${p.nm}</span></div><div class="ptrack"><i style="--w:${p.w}%;--i:${i}"></i></div><div class="pmeta"><b>${p.w} %</b>${p.teaser?'<span class="pchip tag">TEASER</span>':''}${p.days>1?`<span class="pchip tag">${p.days} DÍAS</span>`:''}<span class="pchip ${p.chip[0]}">${p.chip[1]}</span><span>${p.extra}</span></div></div>`; });
+    html+=`<div class="prow" data-key="${key}" role="button" tabindex="0" aria-pressed="false" data-tip="<b>${p.nm}</b><br>${p.prog} · ${p.extra} trabajadas${p.teaser?(p.teaserOnly?' · solo teaser':' · con teaser'):''}${p.days>1?' · boda de '+p.days+' días':''} — toca para abrir"><div class="pnm">${p.ic} <span>${p.nm}</span></div><div class="ptrack"><i style="--w:${p.w}%;--i:${i}"></i></div><div class="pmeta"><b>${p.w} %</b>${p.teaser?`<span class="pchip tag">${p.teaserOnly?'SOLO TEASER':'TEASER'}</span>`:''}${p.days>1?`<span class="pchip tag">${p.days} DÍAS</span>`:''}<span class="pchip ${p.chip[0]}">${p.chip[1]}</span><span>${p.extra}</span></div></div>`; });
   if(M.archOrder.length){
     const open=!!renderMesa._archOpen, n=M.archOrder.length;
     html+=`<button type="button" class="parch" aria-expanded="${open}" aria-controls="projArch"><span>ARCHIVO · ${n} ${n===1?'BODA ENTREGADA':'BODAS ENTREGADAS'}</span><i aria-hidden="true">›</i></button><div id="projArch" class="parchl"${open?'':' hidden'}>`;
     M.archOrder.forEach((key,i)=>{ const p=M.projects[key];
-      html+=`<div class="prow arch" data-key="${key}" role="button" tabindex="0" aria-pressed="false" data-tip="<b>${p.nm}</b><br>${p.prog} · ${p.extra} trabajadas${p.teaser?' · con teaser':''} — toca para abrir"><div class="pnm">${p.ic} <span>${p.nm}</span></div><div class="ptrack"><i style="--w:${p.w}%;--i:${i}"></i></div><div class="pmeta">${p.teaser?'<span class="pchip tag">TEASER</span>':''}<span class="pchip ${p.chip[0]}">${p.chip[1]}</span><span>${p.extra}</span></div></div>`; });
+      html+=`<div class="prow arch" data-key="${key}" role="button" tabindex="0" aria-pressed="false" data-tip="<b>${p.nm}</b><br>${p.prog} · ${p.extra} trabajadas${p.teaser?(p.teaserOnly?' · solo teaser':' · con teaser'):''} — toca para abrir"><div class="pnm">${p.ic} <span>${p.nm}</span></div><div class="ptrack"><i style="--w:${p.w}%;--i:${i}"></i></div><div class="pmeta">${p.teaser?`<span class="pchip tag">${p.teaserOnly?'SOLO TEASER':'TEASER'}</span>`:''}<span class="pchip ${p.chip[0]}">${p.chip[1]}</span><span>${p.extra}</span></div></div>`; });
     html+=`</div>`;
   }
   projBox.innerHTML=html;

@@ -193,6 +193,14 @@ Los datos y cálculos no cambian.
 - Formato de horas: exactas `4h 14m`, agregados `20,3 h`, menos de 6 min `N min`.
 Respaldo previo: `docs/historico/index.pre-auditoria.2026-11-10.html`.
 
+### Entregables de cada boda (20-nov-2026)
+La propiedad **Entregables** de la base Trabajo en Notion (*Teaser* · *DCT + SF/HL* · *Completo*)
+dice qué lleva cada boda, y el dashboard la respeta: chip **SOLO TEASER** / **TEASER**, el teaser del
+Historial y la frase de «vs tu yo anterior» (si las dos bodas tienen entregables distintos dice
+«Una es solo teaser y la otra completa…» en vez de comparar días). Una boda solo de teaser cuenta
+siempre como de 1 día. Si Entregables está vacío, se deduce como antes: fase TEAS = teaser y escena
+«Día 1…» = boda de 2 días. El archivo guarda el valor de las bodas que ya salieron del tablero.
+
 ### Selectores segmentados (10-nov-2026)
 Los cinco selectores (*Tablero / Historial* en Tu ritmo y Duración, *Sin / Con teaser* en Horas
 acumuladas y Boda con boda, y el de Progreso) siguen un solo sistema (CSS «SELECTORES SEGMENTADOS»):

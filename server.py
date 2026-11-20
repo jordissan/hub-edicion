@@ -402,6 +402,9 @@ def build_wedding(page):
         "name": name, "icon": page_icon(page), "studio": studio,
         "status": status, "priority": prioridad,
         "price": p_number(props, "Total"),   # precio cobrado (MXN) para rentabilidad $/h
+        # 20-nov: qué se entrega (select «Entregables» de Trabajo: Teaser · DCT + SF/HL ·
+        # Completo). Vacío = el front lo deduce de las fases y escenas, como antes.
+        "entregables": p_select(props, "Entregables"),
         "url": page.get("url", ""),
         "projectStart": ps, "projectEnd": pe,
         "stages": [],
@@ -938,7 +941,25 @@ GHOST_VERSION = 3  # v2: + estado y nº de sesiones por etapa (para el Archivo d
 DAY1_RE = re.compile(r"^\s*d[ií]a\s*(1|uno|previo)\b", re.I)
 
 
+def wedding_entregables(w):
+    """«Entregables» normalizado: 'teaser' (solo teaser), 'dct' (documental + SF/HL, sin
+    teaser), 'completo' (teaser + todo) o None si está vacío. Misma regla que entOf del front."""
+    t = _sinacento(w.get("entregables") or "")
+    if not t:
+        return None
+    if "complet" in t:
+        return "completo"
+    if "dct" in t or "doc" in t or "hl" in t or "sf" in t:
+        return "dct"
+    if "teaser" in t:
+        return "teaser"
+    return None
+
+
 def wedding_days(w):
+    # solo teaser: no hay día previo que editar (la boda de 1 o 2 días es del documental)
+    if wedding_entregables(w) == "teaser":
+        return 1
     for s in w.get("stages") or []:
         for sc in (s.get("scenes") or []):
             if DAY1_RE.match(sc.get("escena") or "") or sc.get("dia") == "Día 1":
@@ -1004,6 +1025,7 @@ def wedding_archive_stats(w):
         "id": w.get("id"), "name": (w.get("name") or "").strip(), "icon": w.get("icon"),
         "hours": hours, "scenes": scenes, "span": span,
         "price": w.get("price"), "rounds": len(rondas) or (1 if any_corr else 0),
+        "entregables": w.get("entregables"),
         "lastEnd": days[-1] if days else None,
         "lastActivity": max(acts) if acts else None,  # lo usa discover_wedding_pages
         "ghost": wedding_ghost(w),
@@ -1162,6 +1184,21 @@ def backfill_ghosts(archive):
             sys.stderr.write("[archivo] no se pudo reconstruir %s (%s)\n" % (key, e))
 
 
+def sync_archive_entregables(archive):
+    """«Entregables» de las bodas que ya salieron del tablero: viene en las propiedades de
+    la página que la consulta ya trajo (DROPPED_DONE_PAGES), así que no cuesta peticiones.
+    Si en Notion se corrige, el archivo lo sigue en la siguiente extracción."""
+    by_id = {e.get("id"): e for e in archive if e.get("id")}
+    for p in DROPPED_DONE_PAGES:
+        e = by_id.get(p.get("id"))
+        if e is not None:
+            v = p_select(p.get("properties", {}), "Entregables")
+            if v:
+                e["entregables"] = v
+            else:
+                e.pop("entregables", None)
+
+
 def build_data(prev_archive=None):
     prev = load_archive() if prev_archive is None else prev_archive
     pages = discover_wedding_pages(prev)
@@ -1175,6 +1212,8 @@ def build_data(prev_archive=None):
     idents = None if DISCOVERY_DEGRADED[0] else [_page_ident(p) for p in pages + DROPPED_DONE_PAGES]
     archive = merge_archive(prev, weddings, idents)
     backfill_ghosts(archive)
+    if not DISCOVERY_DEGRADED[0]:
+        sync_archive_entregables(archive)
     save_archive(archive)
     now = datetime.datetime.now()
     return {
