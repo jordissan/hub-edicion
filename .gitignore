@@ -20,3 +20,41 @@ docs/propuestas/**/*.png
 docs/propuestas/**/*.jpg
 docs/propuestas/*.pdf
 docs/propuestas/*.html
+
+# ── Basura de macOS y discos externos ──
+._*
+.Spotlight-V100
+.Trashes
+
+# ── Final Cut y medios pesados (nunca al repo) ──
+*.fcpbundle
+Render Files/
+Transcoded Media/
+Proxy Media/
+Analysis Files/
+*.mov
+*.MOV
+*.mp4
+*.MP4
+*.mxf
+*.MXF
+*.braw
+*.BRAW
+*.r3d
+*.R3D
+*.wav
+*.WAV
+*.aif
+*.AIF
+*.aiff
+*.AIFF
+*.mp3
+*.MP3
+
+# ── Entornos, secretos y temporales ──
+node_modules/
+.venv/
+.env
+.env.*
+*.log
+tmp/
