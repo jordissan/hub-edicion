@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Sync automático GitHub → Mac: corre `sync-cloud.sh --traer` al iniciar sesión y cada 15 min.
+     Pone al día ~/HubEdicion/cloud (solo fast-forward) y trae a ~/HubEdicion lo que cambió en
+     GitHub, sin pisar nunca un cambio local. Si algo no puede traerlo solo, avisa con una
+     notificación. Estado: ~/HubEdicion/.sync-estado · bitácora: ~/Library/Logs/hub-edicion-sync.log
+     Instalar (una vez):
+       cp ~/HubEdicion/com.jordi.hub-edicion.sync.plist ~/Library/LaunchAgents/
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.jordi.hub-edicion.sync.plist
+     Correrlo ya:   launchctl kickstart gui/$(id -u)/com.jordi.hub-edicion.sync
+     Desinstalar:
+       launchctl bootout gui/$(id -u)/com.jordi.hub-edicion.sync
+       rm ~/Library/LaunchAgents/com.jordi.hub-edicion.sync.plist  -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.jordi.hub-edicion.sync</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/jordi/HubEdicion/sync-cloud.sh</string>
+    <string>--traer</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/jordi/HubEdicion</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StartInterval</key>
+  <integer>900</integer>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>LowPriorityIO</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/jordi/Library/Logs/hub-edicion-sync.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/jordi/Library/Logs/hub-edicion-sync.log</string>
+</dict>
+</plist>

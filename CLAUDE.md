@@ -18,12 +18,21 @@ Contexto general: `README.md` (operar la nube), `docs/arquitectura.md` (referenc
   **No es un clon de git.**
 - `~/HubEdicion/cloud/` es el clon de este repo. `sync-cloud.sh` lleva lo local hacia aquí con
   limpieza de privacidad.
+- **Sync automático GitHub → Mac:** el LaunchAgent `com.jordi.hub-edicion.sync` corre
+  `sync-cloud.sh --traer` al iniciar sesión y cada 15 min. Pone `cloud/` al día (solo fast-forward)
+  y trae a `~/HubEdicion` lo que cambió en GitHub, pero solo si la copia local no se tocó desde la
+  última sincronización. Si `cloud/` tiene cambios a mano, commits sin subir o divergió, avisa con
+  una notificación y no toca nada. Estado de la última corrida: `~/HubEdicion/.sync-estado`.
+- Lo que no puede traer solo (la copia local también cambió, o el repo lleva nombres de ejemplo,
+  como los `.md`) lo avisa, y `sync-cloud.sh` **no publica** hasta que se pase a mano; así un PR
+  mergeado nunca se deshace en silencio. `--forzar` pisa lo de GitHub con lo local.
 - Nunca copies a ciegas del repo a `~/HubEdicion/`: los `.md`, la app y los widgets del repo pueden
   llevar nombres de ejemplo en lugar de los reales.
 
 ## Flujo de trabajo (reglas)
 1. **Primero, lo último de GitHub.** En la nube: `git fetch origin main`. En la Mac:
-   `git -C ~/HubEdicion/cloud pull --ff-only`. Si hay cambios locales sin subir o divergencia,
+   `~/HubEdicion/sync-cloud.sh --traer` (en Claude Code lo corre solo un hook al abrir la sesión).
+   Si avisa de cambios locales sin subir, divergencia o archivos por traer a mano,
    **detente y pregunta**; no fuerces nada.
 2. **Directo a `main`** (commit claro en español): documentación, `pendientes/`, `CLAUDE.md`,
    `README.md`, `.gitignore`.
