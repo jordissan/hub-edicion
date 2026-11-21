@@ -8,8 +8,59 @@ Contexto general: `README.md` (operar la nube), `docs/arquitectura.md` (referenc
 - Sistema de la Mac (copias): `mac/` (app del sprint, Siri), `widgets/` (Scriptable, SwiftBar),
   `scripts/` (`sync-cloud.sh`, `privacidad.py`…), `docs/`. La fuente de verdad es `~/HubEdicion` en la Mac:
   ahí se editan y `sync-cloud.sh` los copia aquí con limpieza. Lo que no sube: `docs/solo-en-la-mac.md`.
+- Viven solo en el repo (se editan aquí): `README.md`, `CLAUDE.md`, `pendientes/`, `publish.py`,
+  `functions/`, `embed/`, `.github/`, `.gitignore`.
 - **El repo es público:** nada de llaves, IDs, correos, nombres de parejas o clientes, ni precios.
   `privacidad.py revisar` lo vigila antes de cada publicación.
+
+## Las dos carpetas de la Mac
+- `~/HubEdicion/` es el sistema vivo: tiene los datos reales y lo que corre (servidor, app, widgets).
+  **No es un clon de git.**
+- `~/HubEdicion/cloud/` es el clon de este repo. `sync-cloud.sh` lleva lo local hacia aquí con
+  limpieza de privacidad.
+- Nunca copies a ciegas del repo a `~/HubEdicion/`: los `.md`, la app y los widgets del repo pueden
+  llevar nombres de ejemplo en lugar de los reales.
+
+## Flujo de trabajo (reglas)
+1. **Primero, lo último de GitHub.** En la nube: `git fetch origin main`. En la Mac:
+   `git -C ~/HubEdicion/cloud pull --ff-only`. Si hay cambios locales sin subir o divergencia,
+   **detente y pregunta**; no fuerces nada.
+2. **Directo a `main`** (commit claro en español): documentación, `pendientes/`, `CLAUDE.md`,
+   `README.md`, `.gitignore`.
+3. **Por PR** para que Jordi lo revise, **sin merge sin su ok**: el dashboard (`index.html`,
+   `server.py`, `functions/`, `publish.py`, el workflow), los widgets (`widgets/`), la app de la Mac
+   (`mac/`) y las herramientas de `scripts/`.
+4. Al abrir o cerrar un pendiente, actualiza `pendientes/INDICE.md`.
+5. Nunca subas secretos (`.env`, tokens, credenciales), medios pesados ni bibliotecas de Final Cut.
+
+## Diagnóstico (no hay pruebas automáticas)
+Antes de dar un cambio por bueno:
+
+```bash
+python3 scripts/privacidad.py revisar .          # nada privado en lo que sube
+python3 -m py_compile server.py publish.py scripts/*.py
+for f in functions/*/*.js widgets/*.js; do node --check "$f"; done
+bash -n scripts/*.sh
+python3 - <<'EOF'                                # el JS embebido en index.html
+import re, subprocess, tempfile, os
+h = open("index.html", encoding="utf-8").read()
+for b in re.findall(r"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", h, re.S):
+    p = tempfile.mktemp(suffix=".js"); open(p, "w").write(b)
+    r = subprocess.run(["node", "--check", p]); os.remove(p)
+    assert r.returncode == 0
+print("index.html: JS sin errores de sintaxis")
+EOF
+```
+
+Después de un merge a `main`, revisa la corrida de «Publicar dashboard» (Actions) y el deploy de
+Cloudflare Pages.
+
+## Qué solo se prueba en la Mac
+- El dashboard con **datos reales**: `http://localhost:4599` (servidor de `com.jordi.hub-edicion`).
+- La app del sprint (`mac/SprintFlotante/build.sh`), el detector de Final Cut y los atajos de Siri.
+- Los widgets: Scriptable en el iPhone y SwiftBar en la barra de menús.
+- `privacidad.py revisar` completo: en la nube no tiene las llaves ni los nombres reales, así que
+  solo atrapa correos, IDs y binarios.
 
 ## Pendientes entre sesiones
 @pendientes/README.md
