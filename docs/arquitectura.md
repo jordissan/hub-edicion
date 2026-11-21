@@ -52,7 +52,7 @@
   "degraded": false,                      // true = solo bodas de respaldo → publish.py NO publica
   "weddings": [{                          // tablero: activas + finalizadas con sesiones en ≤45 días
     "name", "icon", "studio", "status", "priority", "url",   // studio = "Cliente / Línea" (13-nov-2026: se borró «Subcategoría»)
-    "price": 15000,                       // propiedad "Total" (MXN); el front usa 13000 si falta
+    "price": 13000,                       // propiedad "Total" (MXN); el front usa 13000 si falta
     "projectStart", "projectEnd",
     "stages": [{
       "id": "…",                          // página de la etapa (el sprint cambia su estado)
@@ -684,6 +684,16 @@ un icono, **no publica**. `server.py` tiene permiso para sus IDs de Notion de si
 Un nombre nuevo que se cuele se añade en `.privacidad.json` → `extra`. La lista exacta de lo que
 sube está en `ARCHIVOS` de `sync-cloud.sh`; lo que no sube y por qué, en `docs/solo-en-la-mac.md`.
 Un archivo nuevo que deba subir se añade a esa lista.
+
+**Sync automático GitHub → Mac (21-nov-2026).** El LaunchAgent `com.jordi.hub-edicion.sync`
+corre `./sync-cloud.sh --traer` al iniciar sesión y cada 15 min (y el hook `SessionStart` de
+Claude Code al abrir una sesión). Pone `cloud/` al día solo con fast-forward; si `cloud/` tiene
+cambios sin commit, commits sin subir o divergió, avisa y no toca nada. Lo que cambió en GitHub de
+un archivo que nace en la Mac lo trae a `~/HubEdicion` **solo si la copia local sigue intacta**
+desde la última sincronización; si no, lo lista con una notificación y `sync-cloud.sh` **no
+publica** hasta que se traiga a mano (así una publicación no deshace en silencio un PR mergeado).
+`--forzar` publica de todos modos y pisa lo de GitHub. La última corrida queda en `.sync-estado`,
+el último commit reflejado en `.sync-base`, y la bitácora en `~/Library/Logs/hub-edicion-sync.log`.
 
 ## 9. Trampas conocidas
 

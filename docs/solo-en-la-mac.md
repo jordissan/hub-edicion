@@ -24,7 +24,7 @@ el Service Token de los widgets. Las lee de la Mac y nunca las muestra.
 | `docs/*.md`, `docs/propuestas/auditoria-diseno-2026-11-10.md` | igual |
 | `mac/SprintFlotante/`, `mac/Siri/make-shortcuts.py` | igual |
 | `widgets/` (scripts de Scriptable, SwiftBar, `atajo/make-atajo.py`) | igual |
-| `sync-cloud.sh`, `privacidad.py`, `snapshot-demo.py`, `start.command`, `com.jordi.hub-edicion.plist` | `scripts/` |
+| `sync-cloud.sh`, `privacidad.py`, `snapshot-demo.py`, `start.command`, `com.jordi.hub-edicion.plist`, `com.jordi.hub-edicion.sync.plist` | `scripts/` |
 | `CLAUDE.md` (solo apunta a `cloud/`) | `CLAUDE.md` del repo |
 
 `publish.py`, `functions/`, `embed/`, `pendientes/`, `README.md` y `CLAUDE.md` del repo viven
@@ -44,6 +44,7 @@ solo en `cloud/` y se editan ahí.
 | `*.shortcut` (atajos firmados) | Se regeneran con `make-atajo.py` / `make-shortcuts.py`, y la firma lleva un identificador de la cuenta de Apple. |
 | `docs/propuestas/trazo/patch_trazo.py` | Fue un parche de una sola vez y ya está aplicado. |
 | `icon-*.png`, `manifest.json` de la raíz | Ya están en el repo, son los mismos. |
+| `.sync-base`, `.sync-estado`, `.sync-avisado` | Estado del sync automático; solo tiene sentido en esta Mac. |
 
 ## Migrar a otra máquina
 
