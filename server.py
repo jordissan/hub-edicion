@@ -349,6 +349,16 @@ def norm_estado(s):
         return "live"
     return "wait"
 
+def _dia_extra(valor):
+    """Columna «Día» de una escena: Preboda → "Día 1", Tornaboda → "Día 3"; si no, None."""
+    v = _sinacento(valor or "")
+    if v == "preboda":
+        return "Día 1"
+    if v == "tornaboda":
+        return "Día 3"
+    return None
+
+
 def parse_day(title):
     if not title:
         return "Escenas"
@@ -488,7 +498,9 @@ def build_wedding(page):
                         "cancion": p_rich(scp, "Cancion", "Canción"),
                         # Preboda (13-nov): las escenas «Civil (Pre)», «Sesión (Pre)»… llevan la
                         # columna Día = Preboda; cuentan como el Día 1 (boda de 2 días).
-                        "dia": "Día 1" if _sinacento(p_select(scp, "Día") or p_select(scp, "Dia") or "") == "preboda" else day,
+                        # Tornaboda (22-nov): «Sesión (Tor)», «Comida (Tor)»… llevan Día = Tornaboda;
+                        # son el día después de la boda → "Día 3" (suma un día más).
+                        "dia": _dia_extra(p_select(scp, "Día") or p_select(scp, "Dia")) or day,
                         "start": c_start, "end": c_end,
                     })
             elif _is_sesion(title_prop) or "sesion" in _sinacento(sb_title):
@@ -937,7 +949,7 @@ GHOST_VERSION = 3  # v2: + estado y nº de sesiones por etapa (para el Archivo d
                    # v3: + minutos por hora del día (hod), duración de cada sesión (durs) y
                    #     boda de 1 o 2 días (nDays) — para el Historial y "Tu ritmo" con todo
 
-# boda de 2 días = tiene una escena "Día 1…" (misma regla que daysOf del front)
+# boda de 2 días = tiene una escena "Día 1…"; +1 si tiene Tornaboda ("Día 3") (misma regla que daysOf del front)
 DAY1_RE = re.compile(r"^\s*d[ií]a\s*(1|uno|previo)\b", re.I)
 
 
@@ -960,11 +972,15 @@ def wedding_days(w):
     # solo teaser: no hay día previo que editar (la boda de 1 o 2 días es del documental)
     if wedding_entregables(w) == "teaser":
         return 1
+    # 22-nov: días = boda + día previo (Preboda / «Día 1») + día después (Tornaboda / "Día 3")
+    pre = tor = False
     for s in w.get("stages") or []:
         for sc in (s.get("scenes") or []):
             if DAY1_RE.match(sc.get("escena") or "") or sc.get("dia") == "Día 1":
-                return 2
-    return 1
+                pre = True
+            elif sc.get("dia") == "Día 3":
+                tor = True
+    return 1 + pre + tor
 
 
 def wedding_ghost(w):

@@ -547,6 +547,8 @@ El *Tracking de Edición* se segmenta en 5 fases (propiedad **Fase**), en este o
   así que la boda cuenta como de 2 días. El orden y la lista de escenas se pueden ajustar por boda.
   - **Para módulos futuros:** misma receta. Plantillas de base en la tabla
     que corresponda (para el Día 1, las tablas de Escenas) y un botón con una acción por plantilla.
+    Guía completa, paso a paso y con las trampas: `~/Documents/Claude/Notion/botones-modulares-notion.md`
+    (solo en la Mac).
 - **Boda de 2 días** = alguna escena se llama **"Día 1…"** (el día previo como escena que
   recorre Limpieza → Sincronización → Música → Montaje → Color). Sin etapas duplicadas.
 - **Las dos plantillas se comparan entre sí**: cada etapa se reduce a *fase + rol*

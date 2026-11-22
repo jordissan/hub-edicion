@@ -1992,7 +1992,10 @@ window.SNAPSHOT_DATA = {"generatedAt":"2026-11-09T22:13:42","today":"2026-11-09"
   const ENT_LBL = { teaser:'solo teaser', dct:'documental + SF/HL', full:'completa (teaser + documental + SF/HL)' };
   const hasTeaser = w => { const e=entOf(w); return e ? e!=='dct' : phasesOf(w).has('teas'); };
   // solo teaser: no hay día previo que editar → siempre 1 (el chip «2 DÍAS» no aplica)
-  const daysOf = w => entOf(w)==='teaser' ? 1 : (w.stages||[]).some(s=>(s.scenes||[]).some(isDay1)) ? 2 : 1;
+  // 22-nov: + Tornaboda (escenas «… (Tor)», dia = 'Día 3') = un día más → boda de 3 días con preboda
+  const isDay3 = sc => sc.dia==='Día 3';
+  const daysOf = w => { if (entOf(w)==='teaser') return 1; const sc=(w.stages||[]).flatMap(s=>s.scenes||[]);
+    return 1 + (sc.some(isDay1)?1:0) + (sc.some(isDay3)?1:0); };
 
   // nombres de la plantilla vieja, más cortos; los nuevos ya lo son y CONSERVAN su
   // sufijo de fase ("Montaje (TEAS)" ≠ "Montaje (DCT)" ≠ "Montaje (HL/SF)")
