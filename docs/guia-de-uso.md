@@ -520,7 +520,7 @@ El *Tracking de Edición* se segmenta en 5 fases (propiedad **Fase**), en este o
 | **PREP** · Preparación | Setup · Escenas · Limpieza · Sincronización | azul cielo |
 | **TEAS** · Teaser | Selección · Música · Montaje · Color (TEAS) | aqua |
 | **DCT** · Documental | Música · Montaje · Color y finalización (DCT) | lima |
-| **HL/SF** · Highlights / Same-day | Selección · Música · Montaje (HL/SF) | violeta |
+| **HL/SF** · Highlights / Short film | Selección · Música · Montaje (HL/SF) | violeta |
 | **CMB** · Cambios | Cambios | naranja |
 
 - **Avance %** = etapas hechas / etapas de trabajo (Cambios no cuenta). Varias etapas pueden

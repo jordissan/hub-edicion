@@ -75,7 +75,7 @@ function phaseOf(s) {
   return "doc";
 }
 const PHASE_ORDER = ["prep", "teas", "doc", "hl", "cam"];
-const PH_NM = { prep:"Preparación", teas:"Teaser", doc:"Documental", hl:"Highlights / Same-day", cam:"Cambios" };
+const PH_NM = { prep:"Preparación", teas:"Teaser", doc:"Documental", hl:"Highlights / Short film", cam:"Cambios" };
 const PH_SHORT = { ...PH_NM, hl:"HL / SF" };
 const PRICE_DEFAULT = 13000;                      // si una boda no tiene "Total" en Notion
 
