@@ -1,6 +1,7 @@
 // Sprint flotante — el Sprint de enfoque del Hub de Edición integrado en el Mac:
 //  · un reloj en la barra de menús (tiempo que llevas / descanso) con un menú para terminar,
-//    cerrar escena/etapa, descartar o empezar el siguiente bloque, y elegir la etapa, la
+//    cerrar escena/etapa, descartar o empezar el siguiente bloque, finalizar la etapa elegida
+//    sin bloque en marcha (si al terminar no la cerraste), y elegir la etapa, la
 //    escena y el esquema del próximo bloque (Etapa ▸ / Escena ▸ / Tipo ▸ / Esquema ▸, como la ventana);
 //  · la tarjeta del sprint en una ventanita propia que se arrastra desde cualquier zona sin
 //    controles, siempre encima (también sobre Premiere/Resolve en pantalla completa) o fijada
@@ -800,6 +801,14 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
             }
             menu.addItem(i)
         }
+        // cerrar la etapa elegida sin bloque en marcha (por si al terminar no elegiste «…y cerrar la etapa»):
+        // la página lo ofrece (pick["fin"]) solo si la etapa existe en Notion y no hay otro cierre en espera
+        func finStage() {
+            var fin = str(pick["fin"])
+            guard !fin.isEmpty, s.close == nil else { return }
+            if fin.count > 48 { fin = String(fin.prefix(47)) + "…" }
+            act("Finalizar la etapa «\(fin)»", #selector(command(_:)), "close-etapa")
+        }
         func live() {
             let i = NSMenuItem(title: liveLine(), action: nil, keyEquivalent: "")
             i.isEnabled = false
@@ -838,6 +847,7 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
             menu.addItem(.separator())
             act("Empezar bloque \(s.cycle)" + (dest.isEmpty ? "" : " · " + dest), #selector(command(_:)), "start")
             act("Terminar ciclo", #selector(command(_:)), "endcycle")
+            finStage()
         } else {
             info("Sprint de enfoque", bold: true)
             // el destino y el esquema se ven en sus submenús; si la página aún no los mandó, en texto
@@ -846,6 +856,7 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
             pickers(menu, ["etapa", "escena", "tipo", "modo"])
             menu.addItem(.separator())
             act(s.cycle > 1 ? "Empezar bloque \(s.cycle)" : "Iniciar sprint", #selector(command(_:)), "start")
+            finStage()
         }
 
         // avisos: cierre en Notion con margen para deshacer · registro pendiente · último resultado
