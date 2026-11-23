@@ -222,6 +222,66 @@ enum Sounds {
     }
 }
 
+/// Fila de menú con vista propia: al hacer clic ejecuta su acción **sin cerrar el menú** (un
+/// NSMenuItem normal lo cierra siempre). La usan Etapa ▸ / Escena ▸ / Tipo ▸ / Esquema ▸ para
+/// cambiar varias cosas seguidas; el menú se cierra al hacer clic fuera o con Esc.
+/// El NSMenuItem conserva título, estado y acción (los lee la prueba DUMP_MENU); la vista solo
+/// dibuja (resaltado, ✓, texto) y reenvía el clic.
+final class StayRow: NSView {
+    let text: String, header: Bool
+    var on = false { didSet { if on != oldValue { needsDisplay = true } } }
+    static let font = NSFont.menuFont(ofSize: 0)
+    static let headerFont = NSFont.systemFont(ofSize: NSFont.smallSystemFontSize, weight: .semibold)
+    static let textX: CGFloat = 22, maxW: CGFloat = 420
+
+    init(_ text: String, header: Bool = false) {
+        self.text = text; self.header = header
+        let w = ceil((text as NSString).size(withAttributes: [.font: header ? StayRow.headerFont : StayRow.font]).width)
+        super.init(frame: NSRect(x: 0, y: 0, width: min(max(w + StayRow.textX + 24, 140), StayRow.maxW),
+                                 height: header ? 20 : 22))
+        autoresizingMask = .width                  // el menú la estira a su ancho
+        setAccessibilityElement(true)
+        setAccessibilityRole(header ? .staticText : .menuItem)
+        setAccessibilityLabel(text)
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) no se usa") }
+
+    var highlighted: Bool { !header && enclosingMenuItem?.isHighlighted == true && enclosingMenuItem?.isEnabled == true }
+
+    override func draw(_ r: NSRect) {
+        let hl = highlighted
+        if hl {
+            NSColor.controlAccentColor.setFill()
+            NSBezierPath(roundedRect: bounds.insetBy(dx: 5, dy: 0), xRadius: 4, yRadius: 4).fill()
+        }
+        let para = NSMutableParagraphStyle(); para.lineBreakMode = .byTruncatingTail
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: header ? StayRow.headerFont : StayRow.font, .paragraphStyle: para,
+            .foregroundColor: header ? NSColor.secondaryLabelColor : hl ? NSColor.white : NSColor.labelColor]
+        let h = ceil((text as NSString).size(withAttributes: attrs).height), y = (bounds.height - h) / 2
+        if on { ("✓" as NSString).draw(at: NSPoint(x: 9, y: y), withAttributes: attrs) }
+        let x = header ? 14 : StayRow.textX
+        (text as NSString).draw(with: NSRect(x: x, y: y, width: bounds.width - x - 12, height: h),
+                                options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], attributes: attrs)
+    }
+
+    // el menú no siempre repinta una vista al mover el resaltado: que se repinte al entrar y salir
+    override func updateTrackingAreas() {
+        trackingAreas.forEach(removeTrackingArea)
+        addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                                       owner: self, userInfo: nil))
+        super.updateTrackingAreas()
+    }
+    override func mouseEntered(with e: NSEvent) { needsDisplay = true }
+    override func mouseExited(with e: NSEvent) { needsDisplay = true }
+
+    override func mouseUp(with e: NSEvent) {
+        guard !header, let i = enclosingMenuItem, i.isEnabled, let a = i.action else { return }
+        NSApp.sendAction(a, to: i.target, from: i)
+        needsDisplay = true
+    }
+}
+
 /// Vista previa: al pasar por un sonido del submenú, suena (sin elegirlo todavía).
 final class SoundPreview: NSObject, NSMenuDelegate {
     var current: NSSound?
@@ -305,6 +365,7 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
     var pickItems: [String: NSMenuItem] = [:]   // "Etapa: …" / "Escena: …" / "Tipo: …" / "Esquema: …" del menú abierto
     var polling = false
     var liveItem: NSMenuItem?          // la línea del menú que cuenta en vivo mientras está abierto
+    var tipoToggleItem: NSMenuItem?    // «Cambiar a «…»» del menú abierto (cambia al elegir otro tipo)
     var chimed = ""
     let preview = SoundPreview()
     var hotRefs: [EventHotKeyRef] = []
@@ -778,7 +839,7 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
         // la página oculta no se pone al día sola: que lea el server (si cambió algo, manda "state")
         web.callAsyncJavaScript("if (window.SprintCmd) window.SprintCmd('sync')", arguments: [:], in: nil, in: .page)
         menu.removeAllItems()
-        liveItem = nil; pickItems = [:]
+        liveItem = nil; pickItems = [:]; tipoToggleItem = nil
         let s = sprint
         func info(_ t: String, bold: Bool = false) {
             let i = NSMenuItem(title: t, action: nil, keyEquivalent: "")
@@ -951,7 +1012,7 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
 
     func menuDidClose(_ menu: NSMenu) {
         guard menu.identifier == nil else { return }      // al cerrar un submenú Etapa/Escena el principal sigue abierto
-        liveItem = nil; pickItems = [:]
+        liveItem = nil; pickItems = [:]; tipoToggleItem = nil
     }
 
     // ───────────────────────── Etapa ▸ / Escena ▸ / Tipo ▸ / Esquema ▸ ─────────────────────────
@@ -959,6 +1020,8 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
     /// En curso / Por hacer…) y elegir una opción es tocar esa lista o ese botón: se guarda y
     /// se sincroniza con el dashboard. Como en la ventana, con un bloque en marcha no se cambian
     /// (con etapa y escena se registra la sesión en Notion) y el esquema solo en reposo.
+    /// Elegir una opción no cierra el menú (filas StayRow): se pueden cambiar varias cosas seguidas
+    /// y el menú se cierra al hacer clic fuera o con Esc.
     typealias Opt = (v: String, t: String, g: String)
     /// tipo → (lista, "¿se puede?" que manda la página, título)
     let PICKS: [String: (list: String, flag: String, title: String)] = [
@@ -989,11 +1052,10 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
             pickItems[k] = i
             // Tipo ▸ lleva a su lado el alternador con su atajo global (⌃⌥B)
             if k == "tipo", let hk = HotKey.load() {
-                let o = opts("tipo"), cur = str(pick["tipo"])
-                let next = o.isEmpty ? "el otro tipo" : o[((o.firstIndex(where: { $0.v == cur }) ?? -1) + 1) % o.count].t
-                let t = NSMenuItem(title: "Cambiar a «\(next)»", action: #selector(toggleTipo), keyEquivalent: hk.tipoKey.char.lowercased())
+                let t = NSMenuItem(title: tipoToggleTitle(), action: #selector(toggleTipo), keyEquivalent: hk.tipoKey.char.lowercased())
                 t.target = self; t.keyEquivalentModifierMask = hk.mods
                 menu.addItem(t)
+                tipoToggleItem = t
             }
         }
     }
@@ -1009,16 +1071,37 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
                 if group != nil || !m.items.isEmpty { m.addItem(.separator()) }
                 group = o.g
                 if !o.g.isEmpty {
-                    if #available(macOS 14.0, *) { m.addItem(.sectionHeader(title: o.g)) }
-                    else { let h = NSMenuItem(title: o.g, action: nil, keyEquivalent: ""); h.isEnabled = false; m.addItem(h) }
+                    let h = NSMenuItem(title: o.g, action: nil, keyEquivalent: "")
+                    h.isEnabled = false; h.view = StayRow(o.g, header: true)
+                    m.addItem(h)
                 }
             }
+            // fila con vista propia: elegirla no cierra el menú (se cierra al hacer clic fuera)
             let i = NSMenuItem(title: o.t, action: #selector(command(_:)), keyEquivalent: "")
             i.target = self
             i.representedObject = "\(k):\(o.v)"
-            i.state = o.v == cur ? .on : .off
+            i.view = StayRow(o.t)
             m.addItem(i)
         }
+        markPick(m, k)
+    }
+
+    /// Pone el ✓ del submenú abierto en la opción actual (tras elegir, o cuando la página
+    /// manda su estado) sin rehacer las filas.
+    func markPick(_ m: NSMenu, _ k: String, _ v: String? = nil) {
+        let cur = "\(k):" + (v ?? str(pick[k]))
+        for i in m.items where i.action != nil {
+            let on = i.representedObject as? String == cur
+            i.state = on ? .on : .off
+            (i.view as? StayRow)?.on = on
+        }
+    }
+
+    /// Título del alternador de tipo: «Cambiar a «<el siguiente>»».
+    func tipoToggleTitle() -> String {
+        let o = opts("tipo"), cur = str(pick["tipo"])
+        let next = o.isEmpty ? "el otro tipo" : o[((o.firstIndex(where: { $0.v == cur }) ?? -1) + 1) % o.count].t
+        return "Cambiar a «\(next)»"
     }
 
     @objc func toggleRemaining() { D.set(!D.bool(forKey: "showRemaining"), forKey: "showRemaining"); render() }
@@ -1032,8 +1115,16 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
     /// que primero se pone al día con el server.
     @objc func command(_ sender: NSMenuItem) {
         guard let cmd = sender.representedObject as? String else { return }
+        // elegir en Etapa ▸ / Escena ▸ / …: el menú sigue abierto, así que el ✓ se mueve ya
+        // (y vuelve a su sitio si la página no lo acepta)
+        let k = String(cmd.prefix(while: { $0 != ":" })), m = sender.menu
+        let isPick = PICKS[k] != nil && cmd.contains(":")
+        if isPick, let m { markPick(m, k, String(cmd.dropFirst(k.count + 1))) }
         send(cmd) { [weak self] r in
-            if r != "ok" { Sounds.play("error") }     // la página no estaba lista o el estado ya cambió
+            if r != "ok" {
+                Sounds.play("error")     // la página no estaba lista o el estado ya cambió
+                if isPick, let m { self?.markPick(m, k) }
+            }
             self?.poll()
         }
     }
@@ -1229,7 +1320,11 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
         }
         if let d = m.body as? [String: Any], d["k"] as? String == "state" {
             dest = str(d["dest"]); note = str(d["note"]); pick = d
-            for (k, i) in pickItems { i.title = pickTitle(k) }      // menú abierto
+            for (k, i) in pickItems {                               // menú abierto
+                i.title = pickTitle(k)
+                if let sub = i.submenu { markPick(sub, k) }
+            }
+            tipoToggleItem?.title = tipoToggleTitle()
             return
         }
         switch m.body as? String {
