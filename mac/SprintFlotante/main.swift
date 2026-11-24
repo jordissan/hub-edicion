@@ -353,6 +353,50 @@ let DET_TIMES: [(key: String, title: String, opts: [Int])] = [
     ("det.idle", "Deja de contar sin actividad a los", [60, 180, 300]),
 ]
 
+
+/// El icono de la barra de menús: el mismo símbolo del Hub que está en el Dock (un playhead
+/// recorriendo tres capas de la línea de tiempo), dibujado en un color como imagen *template*,
+/// así macOS lo pinta en blanco o negro según el tema y la barra, igual que los SF Symbols.
+/// Se dibuja en vectores a 18 pt, así se ve nítido en pantallas normales y Retina.
+enum HubIcon {
+    static let name = "hub"            // el nombre que usa render() (y la prueba sin pantalla)
+    static let image: NSImage = {
+        let img = NSImage(size: NSSize(width: 18, height: 18), flipped: true) { _ in
+            guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
+            NSColor.black.setFill()
+            // las capas: video arriba y en medio, audio abajo (como en el icono grande)
+            for r in [NSRect(x: 2.0, y: 4.2, width: 8.6, height: 2.4),
+                      NSRect(x: 5.0, y: 8.0, width: 11.0, height: 2.4),
+                      NSRect(x: 2.0, y: 11.8, width: 10.6, height: 2.4)] {
+                NSBezierPath(roundedRect: r, xRadius: 1.2, yRadius: 1.2).fill()
+            }
+            // hueco alrededor del playhead, para que se lea encima de las capas
+            let x: CGFloat = 9.6
+            ctx.setBlendMode(.clear)
+            NSRect(x: x - 1.9, y: 3.4, width: 3.8, height: 14).fill()
+            ctx.setBlendMode(.normal)
+            // el playhead: cabeza en trapecio y la línea hacia abajo
+            let head = NSBezierPath()
+            head.move(to: NSPoint(x: x - 2.6, y: 0.8))
+            head.line(to: NSPoint(x: x + 2.6, y: 0.8))
+            head.line(to: NSPoint(x: x + 2.6, y: 2.4))
+            head.line(to: NSPoint(x: x + 0.8, y: 4.2))
+            head.line(to: NSPoint(x: x - 0.8, y: 4.2))
+            head.line(to: NSPoint(x: x - 2.6, y: 2.4))
+            head.close()
+            head.lineJoinStyle = .round
+            head.lineWidth = 0.6
+            head.fill(); NSColor.black.setStroke(); head.stroke()
+            NSBezierPath(roundedRect: NSRect(x: x - 0.8, y: 3.0, width: 1.6, height: 14.2),
+                         xRadius: 0.8, yRadius: 0.8).fill()
+            return true
+        }
+        img.isTemplate = true
+        img.accessibilityDescription = "Sprint de enfoque"
+        return img
+    }()
+}
+
 final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavigationDelegate,
                  WKUIDelegate, NSMenuDelegate {
     var panel: Panel!
@@ -776,9 +820,9 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
     func render() {
         guard let b = item?.button else { return }
         let s = sprint, now = nowMs()
-        var symbol = "timer", title = ""
+        var symbol = HubIcon.name, title = ""     // el símbolo del Hub (como el del Dock)
         if !s.online {
-            symbol = "timer"
+            symbol = HubIcon.name
         } else if let r = s.run {
             let el = (now - num(r["start"])) / 1000, target = num(r["target"]), left = target - el
             if target > 0 && left <= 0 { symbol = "flag.checkered" }
@@ -799,7 +843,8 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
             title = "\(s.queued.count)"
         }
         if let f = flash { if f.until > Date() { symbol = f.symbol; if !f.text.isEmpty { title = f.text } } else { flash = nil } }
-        let img = NSImage(systemSymbolName: symbol, accessibilityDescription: "Sprint de enfoque")
+        let img = symbol == HubIcon.name ? HubIcon.image
+            : NSImage(systemSymbolName: symbol, accessibilityDescription: "Sprint de enfoque")
         img?.isTemplate = true
         b.image = img
         symbolNow = symbol
