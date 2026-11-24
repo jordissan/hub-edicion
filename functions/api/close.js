@@ -62,6 +62,25 @@ async function setDone(token, pageId, finIso, kind) {
   return moved;
 }
 
+// «Finalizar la escena / la etapa» sin bloque en marcha (it.ultima): la fecha de fin es el Fin de
+// la última sesión de esa escena/etapa, no la hora del clic. Mismo criterio que server.last_session_end.
+async function lastSessionEnd(token, db, escena) {
+  const props = (await notion(token, "GET", `/databases/${db}`)).properties || {};
+  const fin = Object.keys(props).find(k => props[k].type === "date" && norm(k) === "fin");
+  if (!fin) return null;
+  let filter = { property: fin, date: { is_not_empty: true } };
+  if (escena) {
+    const rel = Object.keys(props).find(k => props[k].type === "relation" && norm(k).startsWith("escena"));
+    if (!rel) return null;
+    filter = { and: [filter, { property: rel, relation: { contains: escena } }] };
+  }
+  const d = await notion(token, "POST", `/databases/${db}/query`,
+    { page_size: 1, filter, sorts: [{ property: fin, direction: "descending" }] });
+  const v = (((d.results || [])[0] || {}).properties || {})[fin];
+  const start = v && v.date && v.date.start;
+  return start && /T.*([+-]\d\d:\d\d|Z)$/.test(start) ? start : null;   // sin hora no sirve
+}
+
 export async function onRequestPost({ request, env }) {
   let it;
   try { it = await request.json(); } catch { return json({ ok: false, error: "JSON inválido" }, 400); }
@@ -88,8 +107,9 @@ export async function onRequestPost({ request, env }) {
       const closed = [];
       const order = [["escena", it.escena]];
       if (it.cerrar === "etapa") order.push(["etapa", it.stageId]);
-      for (const [kind, id] of order) if (id && await setDone(env.NOTION_TOKEN, id, it.fin, kind)) closed.push(kind);
-      const out = { ok: true, closed };
+      const fin = (it.ultima && await lastSessionEnd(env.NOTION_TOKEN, it.db, it.cerrar === "escena" ? it.escena : null)) || it.fin;
+      for (const [kind, id] of order) if (id && await setDone(env.NOTION_TOKEN, id, fin, kind)) closed.push(kind);
+      const out = { ok: true, closed, fin };
       await env.HUB_KV.put(doneKey, JSON.stringify(out), { expirationTtl: 86400 });
       return json(out);
     } catch (e) { /* Notion falló: cae a la cola */ }
