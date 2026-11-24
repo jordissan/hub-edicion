@@ -659,7 +659,7 @@ struct PickerRow: View {
                     Spacer()
                     if k == "tipo", let hk = HotKey.load() { KeyCap(k: hk.tipoLabel).help("Cambia el tipo desde cualquier app") }
                 }
-                ChipGrid(k == "tipo" ? max(1, o.count) : 3) {
+                ChipGrid(k == "tipo" ? max(1, o.count) : 2) {          // el esquema en 2 columnas: «Pomodoro · 25/5» cabe entero
                     ForEach(0..<o.count, id: \.self) { i in
                         Chip(title: o[i].t, on: o[i].v == cur) { app.choose(k, o[i].v) }
                     }
