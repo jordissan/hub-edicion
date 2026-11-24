@@ -10,7 +10,7 @@ mkdir -p "$BUILD/Sprint flotante.app/Contents/MacOS" "$BUILD/Sprint flotante.app
 # -target: sin él swiftc apunta al SDK (puede ser un macOS más nuevo que el instalado y la app
 # no abre: error -10825). Igual que LSMinimumSystemVersion del Info.plist.
 swiftc -O -target "$(uname -m)-apple-macos13.0" -o "$BUILD/Sprint flotante.app/Contents/MacOS/SprintFlotante" main.swift \
-  -framework Cocoa -framework WebKit -framework ServiceManagement -framework Network
+  -framework Cocoa -framework SwiftUI -framework WebKit -framework ServiceManagement -framework Network
 cp Info.plist "$BUILD/Sprint flotante.app/Contents/Info.plist"
 
 # icono: el mismo del Hub

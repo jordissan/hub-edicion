@@ -147,8 +147,9 @@ policy Allow email) → Service Token + policy Service Auth para los widgets.
 GOTCHA UI: para crear el proyecto Pages, en Workers&Pages → Create application → abajo "Looking to deploy Pages? Get started".
 
 ## Sprint desde la barra de menús del Mac (nov-2026)
-- El reloj de la barra de menús (app `mac/SprintFlotante/`, solo local) tiene **Etapa ▸**, **Escena ▸**, **Tipo ▸**
-  (Edición/Gestión) y **Esquema ▸** para elegir destino, tipo y esquema del próximo bloque. En la nube no cambia nada (no hay sincronía del sprint en
+- El reloj de la barra de menús (app `mac/SprintFlotante/`, solo local) abre un **popover con pestañas** (Sprint,
+  Ventana y barra, Detector, Sonidos, Atajos; nov-2026). En *Sprint* se eligen **Etapa**, **Escena**, **Tipo**
+  (Edición/Gestión) y **Esquema** del próximo bloque sin que se cierre; se cierra con clic fuera o Esc. En la nube no cambia nada (no hay sincronía del sprint en
   `pages.dev`); el `index.html` solo gana las órdenes `etapa:`/`escena:`/`tipo:`/`modo:`/`tipo-toggle` (atajo ⌃⌥B, Edición ↔ Gestión) de `SprintCmd` (modo mini) y
   respeta «Sin escena» elegida a propósito. Detalle en `docs/arquitectura.md` (Barra de menús).
 - **Ventana flotante** (18-nov-2026): usa el mismo sprint compacto de la tarjeta de Hoy (vidrio oscuro, reloj lima,
