@@ -355,40 +355,34 @@ let DET_TIMES: [(key: String, title: String, opts: [Int])] = [
 
 
 /// El icono de la barra de menús: el mismo símbolo del Hub que está en el Dock (un playhead
-/// recorriendo tres capas de la línea de tiempo), dibujado en un color como imagen *template*,
+/// recorriendo tres capas de la línea de tiempo), reducido a un color como imagen *template*,
 /// así macOS lo pinta en blanco o negro según el tema y la barra, igual que los SF Symbols.
-/// Se dibuja en vectores a 18 pt, así se ve nítido en pantallas normales y Retina.
+/// Reglas de la reducción (lienzo de 18 pt, vectores):
+/// - Todo cae en la retícula de 1 pt, así se ve nítido a 1x y a 2x.
+/// - Un solo grosor de trazo (2 pt) para capas y playhead, como el peso regular del sistema.
+/// - La jerarquía del Dock (playhead de acento, capas en grises) se pasa a opacidad: el playhead
+///   al 100 % y las capas al 90/70/50 %, de arriba abajo, como el blanco y los dos grises del icono.
+/// - Las capas se cortan 1 pt antes y después del playhead, para que se lea encima de ellas.
 enum HubIcon {
     static let name = "hub"            // el nombre que usa render() (y la prueba sin pantalla)
     static let image: NSImage = {
         let img = NSImage(size: NSSize(width: 18, height: 18), flipped: true) { _ in
-            guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
-            NSColor.black.setFill()
-            // las capas: video arriba y en medio, audio abajo (como en el icono grande)
-            for r in [NSRect(x: 2.0, y: 4.2, width: 8.6, height: 2.4),
-                      NSRect(x: 5.0, y: 8.0, width: 11.0, height: 2.4),
-                      NSRect(x: 2.0, y: 11.8, width: 10.6, height: 2.4)] {
-                NSBezierPath(roundedRect: r, xRadius: 1.2, yRadius: 1.2).fill()
+            func bar(_ x: CGFloat, _ y: CGFloat, _ w: CGFloat, _ alpha: CGFloat) {
+                NSColor(white: 0, alpha: alpha).setFill()
+                NSBezierPath(roundedRect: NSRect(x: x, y: y, width: w, height: 2), xRadius: 1, yRadius: 1).fill()
             }
-            // hueco alrededor del playhead, para que se lea encima de las capas
-            let x: CGFloat = 9.6
-            ctx.setBlendMode(.clear)
-            NSRect(x: x - 1.9, y: 3.4, width: 3.8, height: 14).fill()
-            ctx.setBlendMode(.normal)
-            // el playhead: cabeza en trapecio y la línea hacia abajo
-            let head = NSBezierPath()
-            head.move(to: NSPoint(x: x - 2.6, y: 0.8))
-            head.line(to: NSPoint(x: x + 2.6, y: 0.8))
-            head.line(to: NSPoint(x: x + 2.6, y: 2.4))
-            head.line(to: NSPoint(x: x + 0.8, y: 4.2))
-            head.line(to: NSPoint(x: x - 0.8, y: 4.2))
-            head.line(to: NSPoint(x: x - 2.6, y: 2.4))
-            head.close()
-            head.lineJoinStyle = .round
-            head.lineWidth = 0.6
-            head.fill(); NSColor.black.setStroke(); head.stroke()
-            NSBezierPath(roundedRect: NSRect(x: x - 0.8, y: 3.0, width: 1.6, height: 14.2),
-                         xRadius: 0.8, yRadius: 0.8).fill()
+            // las capas (el playhead pasa por x = 9…11)
+            bar(2, 6, 7, 0.9)                          // video 1
+            bar(5, 10, 4, 0.7); bar(11, 10, 5, 0.7)    // video 2
+            bar(2, 14, 7, 0.5); bar(11, 14, 2, 0.5)    // audio
+            // el playhead: cabeza en trapecio (6 pt, tres veces el trazo) y la línea hacia abajo
+            NSColor.black.setFill()
+            NSBezierPath(roundedRect: NSRect(x: 7, y: 1, width: 6, height: 2.2), xRadius: 0.5, yRadius: 0.5).fill()
+            let taper = NSBezierPath()
+            taper.move(to: NSPoint(x: 7, y: 3)); taper.line(to: NSPoint(x: 13, y: 3))
+            taper.line(to: NSPoint(x: 11, y: 5)); taper.line(to: NSPoint(x: 9, y: 5))
+            taper.close(); taper.fill()
+            NSBezierPath(roundedRect: NSRect(x: 9, y: 4, width: 2, height: 13.5), xRadius: 1, yRadius: 1).fill()
             return true
         }
         img.isTemplate = true
