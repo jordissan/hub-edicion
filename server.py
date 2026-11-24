@@ -732,8 +732,41 @@ def set_done(page_id, fin_iso, kind):
     return moved
 
 
+def last_session_end(db, escena=None):
+    """Fin de la última sesión registrada en esa DB de Sesiones (solo las de esa escena si se
+    da). Es la hora de cierre de «Finalizar la escena / la etapa»: se termina cuando acabó la
+    última sesión, no cuando se toca el botón. ISO con la zona del Mac, o None si no hay."""
+    schema = notion("GET", "/databases/%s" % db).get("properties", {})
+    fin = next((k for k, v in schema.items() if v.get("type") == "date" and _sinacento(k) == "fin"), None)
+    if not fin:
+        return None
+    filt = {"property": fin, "date": {"is_not_empty": True}}
+    if escena:
+        rel = next((k for k, v in schema.items()
+                    if v.get("type") == "relation" and _sinacento(k).startswith("escena")), None)
+        if not rel:
+            return None
+        filt = {"and": [filt, {"property": rel, "relation": {"contains": escena}}]}
+    d = notion("POST", "/databases/%s/query" % db,
+               {"page_size": 1, "filter": filt, "sorts": [{"property": fin, "direction": "descending"}]})
+    for r in d.get("results", []):
+        v = (((r.get("properties") or {}).get(fin) or {}).get("date") or {}).get("start")
+        try:
+            dt = datetime.datetime.fromisoformat((v or "").replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        if dt.tzinfo is None:            # fecha sin hora: no sirve como hora de cierre
+            return None
+        if dt.utcoffset():               # tal cual se registró (con la zona de quien la registró)
+            return dt.isoformat(timespec="seconds")
+        return dt.astimezone().isoformat(timespec="seconds")   # en UTC: a la hora del Mac
+    return None
+
+
 def validate_close(item):
-    """item = {id, db, cerrar: "escena"|"etapa", fin, stageId?, escena?}."""
+    """item = {id, db, cerrar: "escena"|"etapa", fin, stageId?, escena?, ultima?}.
+    ultima=True (botones «Finalizar…» sin bloque en marcha): la fecha de fin es la de la
+    última sesión de esa escena/etapa; "fin" queda solo de respaldo si no hay ninguna."""
     if not isinstance(item, dict) or not item.get("db") or not item.get("id"):
         return "Faltan datos del cierre"
     if item.get("cerrar") not in ("escena", "etapa"):
@@ -759,10 +792,15 @@ def close_targets(item, step=None, save_step=None):
     order = [("escena", item.get("escena"))]
     if item.get("cerrar") == "etapa":
         order.append(("etapa", item.get("stageId")))
+    if item.get("ultima") and "fin" not in step:     # se calcula una vez (los reintentos usan la misma)
+        step["fin"] = last_session_end(item["db"], item.get("escena") if item.get("cerrar") == "escena" else None) \
+            or item["fin"]
+        save_step()
+    fin = step.get("fin") or item["fin"]
     for kind, pid in order:
         if not pid or kind in hecho:
             continue
-        if set_done(pid, item["fin"], kind):
+        if set_done(pid, fin, kind):
             done.append(kind)
         hecho.append(kind); save_step()
     return list(done)
@@ -1688,7 +1726,8 @@ def _ob_send_one(e):
         if res.get("warn"):
             out["warn"] = res["warn"]
         return out
-    return {"ok": True, "closed": close_targets(e["item"], e["step"], save_step)}
+    closed = close_targets(e["item"], e["step"], save_step)
+    return {"ok": True, "closed": closed, "fin": e["step"].get("fin") or e["item"].get("fin")}
 
 
 def outbox_flush(force=False, until=None):

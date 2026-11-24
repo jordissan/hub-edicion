@@ -414,6 +414,13 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   o deja `edicion:pending-close:<id>` (lo aplica `drain_pending`). Hasta que el tablero se
   reconstruye, los ids cerrados (`scSprintClosed`, 30 min) se marcan terminados en el selector y
   el destino salta a la siguiente escena abierta o a la siguiente etapa de esa boda (por `orden`).
+- **Finalizar sin bloque en marcha** (botones *Finalizar la escena «…»* y *Finalizar la etapa «…»*,
+  en la ventana y en el popover del reloj, comandos `close-escena` / `close-etapa`): mismo camino
+  (`queueClose`, 8 s para deshacer) con `ultima: true`. La fecha de fin **no es la del clic**: el
+  servidor (`last_session_end`, y `lastSessionEnd` en `close.js`) busca en Notion el *Fin* más
+  reciente de la DB de Sesiones (solo las de esa escena, si se cierra la escena) y usa ese; la hora
+  del clic queda de respaldo si no hay sesiones. Se calcula una vez (`step["fin"]`) y la respuesta
+  la devuelve (`fin`) para el aviso «cerrada en Notion (fin: …)».
 
 ### 5.2 Cola sin internet (`server.py`, nov-2026)
 - **Todo envío pasa por la cola**: `POST /api/session` y `/api/close` validan y comprueban la lista

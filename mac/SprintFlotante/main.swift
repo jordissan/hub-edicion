@@ -1,9 +1,9 @@
 // Sprint flotante — el Sprint de enfoque del Hub de Edición integrado en el Mac:
 //  · un reloj en la barra de menús (tiempo que llevas / descanso) que abre un popover con pestañas
 //    (Sprint · Ventana y barra · Detector · Sonidos · Atajos): terminar, cerrar escena/etapa,
-//    descartar o empezar el siguiente bloque, finalizar la etapa elegida sin bloque en marcha
-//    (si al terminar no la cerraste), y elegir la etapa, la escena, el tipo y el esquema del
-//    próximo bloque, como en la ventana. Elegir no lo cierra; se cierra con clic fuera o Esc;
+//    descartar o empezar el siguiente bloque, finalizar la escena o la etapa elegidas sin bloque en
+//    marcha (si al terminar no la cerraste; con fecha de fin = su última sesión), y elegir la
+//    etapa, la escena, el tipo y el esquema del próximo bloque, como en la ventana. Elegir no lo cierra; se cierra con clic fuera o Esc;
 //  · la tarjeta del sprint en una ventanita propia que se arrastra desde cualquier zona sin
 //    controles, siempre encima (también sobre Premiere/Resolve en pantalla completa) o fijada
 //    al escritorio como un widget.
@@ -1626,13 +1626,19 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
         let s = sprint, hk = HotKey.load()
         guard s.online else { return [] }
         var a: [PopAction] = []
-        // cerrar la etapa elegida sin bloque en marcha (por si al terminar no elegiste «…y cerrar la etapa»):
-        // la página lo ofrece (pick["fin"]) solo si la etapa existe en Notion y no hay otro cierre en espera
+        // cerrar la escena / la etapa elegidas sin bloque en marcha (por si al terminar no elegiste «…y cerrar»):
+        // la página lo ofrece (pick["finE"] / pick["fin"]) solo si existen en Notion y no hay otro cierre en
+        // espera. La fecha de fin que se registra es la de la última sesión de esa escena/etapa, no la del clic.
         func finStage() {
-            var fin = str(pick["fin"])
-            guard !fin.isEmpty, s.close == nil else { return }
-            if fin.count > 40 { fin = String(fin.prefix(39)) + "…" }
-            a.append(PopAction(title: "Finalizar la etapa «\(fin)»", cmd: "close-etapa", icon: "checkmark.seal"))
+            guard s.close == nil else { return }
+            func cut(_ t: String) -> String { t.count > 40 ? String(t.prefix(39)) + "…" : t }
+            let finE = str(pick["finE"]), fin = str(pick["fin"])
+            if !finE.isEmpty {
+                a.append(PopAction(title: "Finalizar la escena «\(cut(finE))»", cmd: "close-escena", icon: "checkmark.circle"))
+            }
+            if !fin.isEmpty {
+                a.append(PopAction(title: "Finalizar la etapa «\(cut(fin))»", cmd: "close-etapa", icon: "checkmark.seal"))
+            }
         }
         if let r = s.run {
             a.append(PopAction(title: "Terminar", cmd: "finish", icon: "stop.fill", key: hk?.label() ?? "", kind: .primary))

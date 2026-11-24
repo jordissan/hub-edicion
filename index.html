@@ -1706,7 +1706,8 @@ html.race-open .racecard:not(.rbusy) .rbody-clip{overflow:visible}
               <button type="button" data-t="Edición" aria-pressed="true">Edición</button><button type="button" data-t="Gestión" aria-pressed="false">Gestión</button>
             </div>
           </div>
-          <!-- cerrar la etapa elegida sin bloque en marcha (por si al terminar no elegiste «Etapa») -->
+          <!-- cerrar la escena / la etapa elegidas sin bloque en marcha (por si al terminar no elegiste «Escena» / «Etapa») -->
+          <button id="fEndE" class="fdrop" type="button" hidden>Finalizar la escena</button>
           <button id="fEnd" class="fdrop" type="button" hidden>Finalizar la etapa</button>
         </div>
         <div class="flbl" id="fLbl" hidden></div>
@@ -3472,7 +3473,7 @@ const Sprint=EMBED?{update(){}}:(function(){
   const card=$('focus'), btn=$('focusBtn'), drop=$('fDrop'), code=$('tcode'), why=$('focusWhy'), adj=$('fAdj'),
         pick=$('fPick'), selT=$('fTarget'), selE=$('fScene'), seg=$('fTipo'), lbl=$('fLbl'), state=$('fState'),
         modeBox=$('fMode'), edit=$('fEdit'), inF=$('fFoc'), inB=$('fBrk'), ok=$('fOk'), pendBox=$('fPend'),
-        cutBox=$('fCut'), clsBox=$('fCls'), endBtn=$('fEnd');
+        cutBox=$('fCut'), clsBox=$('fCls'), endBtn=$('fEnd'), endBtnE=$('fEndE');
   const LS='scSprint', LSP='scSprintPend', LSD='scSprintDest', LSM='scSprintMode', LSB='scSprintBrk', LSC='scSprintCyc';
   // cierre de escena/etapa al terminar: LSX = cierre en espera (8 s para deshacer) · LSK = ids ya
   // cerrados aquí, que se ocultan/marcan hasta que el tablero de Notion se reconstruya
@@ -3670,7 +3671,7 @@ const Sprint=EMBED?{update(){}}:(function(){
       // tipo de sesión, como sus dos botones (se elige en reposo y en descanso, nunca con el bloque en marcha)
       tipos:[...seg.querySelectorAll('button')].map(b=>({v:b.dataset.t, t:b.textContent.trim(), g:''})), tipo,
       // esquemas, como sus botones (nombre + tiempos); solo en reposo, igual que en la ventana
-      pickModo:!run&&!load(LSB), fin:(endable()||{}).etapa||'', modos:Object.entries(SCHEMES).map(([k,v])=>({v:k, t:v.nm+(TAG[k]()?' · '+TAG[k]():''), g:''})), modo:mode.k};
+      pickModo:!run&&!load(LSB), fin:(endable()||{}).etapa||'', finE:(sceneEndable()||{}).nm||'', modos:Object.entries(SCHEMES).map(([k,v])=>({v:k, t:v.nm+(TAG[k]()?' · '+TAG[k]():''), g:''})), modo:mode.k};
     const j=JSON.stringify(st); if(j!==lastTold){ lastTold=j; try{ window.webkit.messageHandlers.hub.postMessage(st); }catch(e){} } }
   function startTick(){ clearInterval(tick); tick=(run||load(LSB))?setInterval(paint,1000):null; }
 
@@ -3728,7 +3729,9 @@ const Sprint=EMBED?{update(){}}:(function(){
   function withClosures(list){ const m=closedMap();
     return list.filter(t=>!(t.stageId&&m[t.stageId])).map(t=>({...t, scenes:t.scenes.map(sc=>m[sc.id]?{...sc,estado:'done'}:sc)})); }
   function refreshTargets(db){ targets=withClosures(baseTargets); if(db!==undefined) selT.value=db||''; fillTargets(); }
-  function queueClose(r,end){
+  // ultima: «Finalizar…» sin bloque en marcha → el servidor pone como fin el de la última sesión
+  // de esa escena/etapa en Notion (end, la hora del clic, solo si no hay ninguna)
+  function queueClose(r,end,ultima){
     const ids=[r.escena, r.cerrar==='etapa'?r.stageId:null].filter(Boolean);
     const m=load(LSK)||{}; ids.forEach(id=>m[id]=Date.now()); save(LSK,m);
     const prevDest=load(LSD);
@@ -3738,7 +3741,7 @@ const Sprint=EMBED?{update(){}}:(function(){
       const nx=open.filter(t=>t.wed===r.wed&&t.orden>(me?me.orden:-1)).sort((a,b)=>a.orden-b.orden)[0]||open[0];
       db=nx?nx.db:''; }
     save(LSD,{db, escena:null, tipo:r.tipo});
-    const item={ id:r.id+'-c', db:r.db, stageId:r.stageId||null, escena:r.escena||null, cerrar:r.cerrar, fin:isoLocal(end) };
+    const item={ id:r.id+'-c', db:r.db, stageId:r.stageId||null, escena:r.escena||null, cerrar:r.cerrar, fin:isoLocal(end), ...(ultima?{ultima:true}:{}) };
     save(LSX,{ item, ids, prevDest, by:CLIENT, due:Date.now()+CLOSE_GRACE,
                label:r.cerrar==='etapa'?r.etapa:(r.escenaNm||'La escena') });
     clsMsg=''; refreshTargets(db); schedClose();
@@ -3755,12 +3758,15 @@ const Sprint=EMBED?{update(){}}:(function(){
       const j=await r.json().catch(()=>({}));
       if(!r.ok||!j.ok) throw new Error(j.error||('HTTP '+r.status));
       save(LSX,null);
+      const when=x.item.ultima&&j.fin?` (fin: ${esc(finTx(j.fin))}, tu última sesión)`:'';
       clsMsg=j.local?`✓ Cierre de <b>${esc(x.label)}</b> guardado en el Mac: llega a Notion en cuanto vuelva internet.`
-            :j.queued?`✓ <b>${esc(x.label)}</b> se cerrará en Notion en la próxima actualización.`:`✓ <b>${esc(x.label)}</b> cerrada en Notion.`;
+            :j.queued?`✓ <b>${esc(x.label)}</b> se cerrará en Notion en la próxima actualización.`:`✓ <b>${esc(x.label)}</b> cerrada en Notion${when}.`;
       setTimeout(()=>{ if(typeof loadLive==='function') loadLive(false); },60000);
     }catch(e){ x.err=e.message||'sin conexión'; save(LSX,x); }
     closing=false; paintCls();
   }
+  function finTx(iso){ const d=new Date(iso); if(isNaN(d)) return iso;
+    return d.toLocaleDateString('es-MX',{day:'numeric',month:'short'})+', '+d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}); }
   function forgetClose(x){ const m=load(LSK)||{}; (x.ids||[]).forEach(id=>delete m[id]); save(LSK,Object.keys(m).length?m:null); }
   function undoClose(){ const x=load(LSX); if(!x||closing) return; clearTimeout(clsT);
     forgetClose(x); save(LSD,x.prevDest||null); save(LSX,null);
@@ -3774,16 +3780,25 @@ const Sprint=EMBED?{update(){}}:(function(){
     else clsBox.innerHTML=clsMsg;
     clsBox.hidden=!clsBox.innerHTML; paintEnd(); }
 
-  // ---- finalizar la etapa elegida, sin bloque en marcha (en reposo o en el descanso) ----
-  // Para cuando terminaste la sesión sin elegir «Etapa»: cierra la etapa en Notion (🟢 + fecha de fin)
-  // por el mismo camino que «Terminar + Etapa», con sus 8 s para deshacer. No registra tiempo ni toca
-  // escenas. No se ofrece si ya hay un cierre en espera (se pisaría) o con un error de cierre sin resolver.
+  // ---- finalizar la escena o la etapa elegidas, sin bloque en marcha (en reposo o en el descanso) ----
+  // Para cuando terminaste la sesión sin elegir «Escena» / «Etapa»: la cierra en Notion (🟢 + fecha de fin)
+  // por el mismo camino que «Terminar + Escena/Etapa», con sus 8 s para deshacer. No registra tiempo.
+  // La fecha de fin es la de la ÚLTIMA SESIÓN de esa escena/etapa (la busca el servidor en Notion), no la
+  // hora del clic. No se ofrece si ya hay un cierre en espera (se pisaría) o con un error de cierre sin resolver.
   function endable(){ const t=cur(); return !run&&!busy&&!closing&&!load(LSX)&&t&&t.stageId?t:null; }
-  function paintEnd(){ const t=endable(); endBtn.hidden=!t; if(t) endBtn.textContent=`Finalizar la etapa «${t.etapa}»`; }
+  // la escena elegida, si existe y no está terminada (la etapa debe poder cerrarse igual: misma regla)
+  function sceneEndable(){ const t=endable(); if(!t||selE.hidden||!selE.value) return null;
+    const sc=t.scenes.find(x=>x.id===selE.value); return sc&&sc.estado!=='done'?sc:null; }
+  function paintEnd(){ const t=endable(), sc=sceneEndable();
+    endBtn.hidden=!t; if(t) endBtn.textContent=`Finalizar la etapa «${t.etapa}»`;
+    endBtnE.hidden=!sc; if(sc) endBtnE.textContent=`Finalizar la escena «${sc.nm}»`; }
+  const finId=()=>'fin-'+(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2));
   function endStage(){ const t=endable(); if(!t) return false;
-    const r={ id:'fin-'+(crypto.randomUUID?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2)),
-              db:t.db, stageId:t.stageId, wed:t.wed, etapa:t.etapa, escena:null, escenaNm:'', tipo, cerrar:'etapa' };
-    note=''; queueClose(r,Date.now()); paint(); return true; }
+    const r={ id:finId(), db:t.db, stageId:t.stageId, wed:t.wed, etapa:t.etapa, escena:null, escenaNm:'', tipo, cerrar:'etapa' };
+    note=''; queueClose(r,Date.now(),true); paint(); return true; }
+  function endScene(){ const t=endable(), sc=sceneEndable(); if(!t||!sc) return false;
+    const r={ id:finId(), db:t.db, stageId:t.stageId, wed:t.wed, etapa:t.etapa, escena:sc.id, escenaNm:sc.nm, tipo, cerrar:'escena' };
+    note=''; queueClose(r,Date.now(),true); paint(); return true; }
 
   function startBlock(){
     const t=cur(), x=sch();
@@ -3811,6 +3826,7 @@ const Sprint=EMBED?{update(){}}:(function(){
     else { save(LSB,null); cyc={n:1, at:0}; save(LSC,cyc); note='Ciclo terminado.'; }
     startTick(); paint(); });
   endBtn.addEventListener('click',()=>{ unlock(); endStage(); });
+  endBtnE.addEventListener('click',()=>{ unlock(); endScene(); });
   cutBox.addEventListener('click',e=>{ const b=e.target.closest('button'); if(!b||!run) return;
     run.cerrar=b.dataset.c||null; save(LS,run); paint(); });
   clsBox.addEventListener('click',e=>{ const b=e.target.closest('[data-a]'); if(!b) return; const x=load(LSX);
@@ -3863,6 +3879,8 @@ const Sprint=EMBED?{update(){}}:(function(){
       if(c==='undo'){ undoClose(); return 'ok'; }
       // menú del reloj → «Finalizar la etapa «…»»: como tocar Finalizar en la ventana (etapa elegida, sin bloque)
       if(c==='close-etapa'){ if(run) return 'running'; if(!endable()) return 'no-stage'; endStage(); return 'ok'; }
+      // … y «Finalizar la escena «…»»: la escena elegida (sin bloque)
+      if(c==='close-escena'){ if(run) return 'running'; if(!sceneEndable()) return 'no-scene'; endScene(); return 'ok'; }
       // menú del reloj → Etapa ▸ / Escena ▸ / Tipo ▸: mismo efecto que tocar las listas (no con un bloque en marcha)
       // Esquema ▸: como tocar su botón (Propio usa tus minutos guardados; se cambian en la ventana)
       const md=/^modo:(.*)$/.exec(c);
@@ -3945,6 +3963,7 @@ const Sprint=EMBED?{update(){}}:(function(){
   code.addEventListener('click',e=>{ if(on&&!card.matches('.run,.brk')){ e.stopPropagation(); setTimeout(()=>{ if(popMode.hidden) toggle(chip,popMode); },0); } });
   cut.addEventListener('click',()=>{ if(on) setTimeout(close,0); });
   $('fEnd').addEventListener('click',()=>{ if(on) setTimeout(close,0); });   // que se vea el aviso con Deshacer
+  $('fEndE').addEventListener('click',()=>{ if(on) setTimeout(close,0); });
 
   // lo que dicen los disparadores = lo que está elegido adentro
   const optTx=s=>s&&!s.hidden&&s.selectedIndex>=0&&s.options[s.selectedIndex]?s.options[s.selectedIndex].text:'';
