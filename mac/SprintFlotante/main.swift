@@ -357,38 +357,46 @@ let DET_TIMES: [(key: String, title: String, opts: [Int])] = [
 /// El icono de la barra de menús: el mismo símbolo del Hub que está en el Dock (un playhead
 /// recorriendo tres capas de la línea de tiempo), dibujado en un color como imagen *template*,
 /// así macOS lo pinta en blanco o negro según el tema y la barra, igual que los SF Symbols.
-/// Se dibuja en vectores a 18 pt, así se ve nítido en pantallas normales y Retina.
+/// Se dibuja en vectores a 18 pt. Reducción para la barra (revisión de diseño, nov-2026):
+/// - todo cae en una rejilla de 0,5 pt, así en Retina cada borde cae en un píxel entero;
+/// - mide 14 pt de alto (de 2 a 16,25), como un SF Symbol junto al texto, sin tocar los bordes;
+/// - el playhead manda: línea de 1,5 pt (el trazo de un SF Symbol regular) a opacidad plena y
+///   las capas en degradado 1 / 0,78 / 0,58, la versión en un color del degradado del Dock y de
+///   la marca del dashboard (que ahí se apoyan en el lima);
+/// - el hueco del playhead deja piezas de 2,5 pt o más: nada de puntitos sueltos.
 enum HubIcon {
     static let name = "hub"            // el nombre que usa render() (y la prueba sin pantalla)
     static let image: NSImage = {
         let img = NSImage(size: NSSize(width: 18, height: 18), flipped: true) { _ in
             guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
-            NSColor.black.setFill()
+            let x0: CGFloat = 8.5, w: CGFloat = 1.5, c = x0 + w / 2   // la línea del playhead
             // las capas: video arriba y en medio, audio abajo (como en el icono grande)
-            for r in [NSRect(x: 2.0, y: 4.2, width: 8.6, height: 2.4),
-                      NSRect(x: 5.0, y: 8.0, width: 11.0, height: 2.4),
-                      NSRect(x: 2.0, y: 11.8, width: 10.6, height: 2.4)] {
-                NSBezierPath(roundedRect: r, xRadius: 1.2, yRadius: 1.2).fill()
+            for (r, a) in [(NSRect(x: 2.0, y: 6.0, width: 7.5, height: 2.0), 1.0),
+                           (NSRect(x: 4.5, y: 9.5, width: 11.5, height: 2.0), 0.78),
+                           (NSRect(x: 2.0, y: 13.0, width: 11.5, height: 2.0), 0.58)] as [(NSRect, CGFloat)] {
+                NSColor.black.withAlphaComponent(a).setFill()
+                NSBezierPath(roundedRect: r, xRadius: 1.0, yRadius: 1.0).fill()
             }
-            // hueco alrededor del playhead, para que se lea encima de las capas
-            let x: CGFloat = 9.6
+            // hueco de 1 pt a cada lado del playhead, para que se lea encima de las capas
             ctx.setBlendMode(.clear)
-            NSRect(x: x - 1.9, y: 3.4, width: 3.8, height: 14).fill()
+            NSRect(x: x0 - 1.0, y: 0, width: w + 2.0, height: 18).fill()
             ctx.setBlendMode(.normal)
-            // el playhead: cabeza en trapecio y la línea hacia abajo
+            NSColor.black.setFill()
+            // el playhead: cabeza (5 pt, esquinas de arriba redondeadas) que se afila hasta la línea
             let head = NSBezierPath()
-            head.move(to: NSPoint(x: x - 2.6, y: 0.8))
-            head.line(to: NSPoint(x: x + 2.6, y: 0.8))
-            head.line(to: NSPoint(x: x + 2.6, y: 2.4))
-            head.line(to: NSPoint(x: x + 0.8, y: 4.2))
-            head.line(to: NSPoint(x: x - 0.8, y: 4.2))
-            head.line(to: NSPoint(x: x - 2.6, y: 2.4))
+            head.move(to: NSPoint(x: c - 2.0, y: 2.0))
+            head.line(to: NSPoint(x: c + 2.0, y: 2.0))
+            head.appendArc(from: NSPoint(x: c + 2.5, y: 2.0), to: NSPoint(x: c + 2.5, y: 2.5), radius: 0.5)
+            head.line(to: NSPoint(x: c + 2.5, y: 3.6))
+            head.line(to: NSPoint(x: x0 + w, y: 5.2))
+            head.line(to: NSPoint(x: x0, y: 5.2))
+            head.line(to: NSPoint(x: c - 2.5, y: 3.6))
+            head.line(to: NSPoint(x: c - 2.5, y: 2.5))
+            head.appendArc(from: NSPoint(x: c - 2.5, y: 2.0), to: NSPoint(x: c - 2.0, y: 2.0), radius: 0.5)
             head.close()
-            head.lineJoinStyle = .round
-            head.lineWidth = 0.6
-            head.fill(); NSColor.black.setStroke(); head.stroke()
-            NSBezierPath(roundedRect: NSRect(x: x - 0.8, y: 3.0, width: 1.6, height: 14.2),
-                         xRadius: 0.8, yRadius: 0.8).fill()
+            head.fill()
+            NSBezierPath(roundedRect: NSRect(x: x0, y: 4.5, width: w, height: 11.75),
+                         xRadius: w / 2, yRadius: w / 2).fill()
             return true
         }
         img.isTemplate = true
