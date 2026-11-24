@@ -253,7 +253,8 @@ enum Pal {
 final class PopModel: ObservableObject {
     @Published var tick = 0                 // App lo sube cada segundo (y tras cada cambio) con el popover abierto
     @Published var tab = PopTab.sprint
-    @Published var drill: String? = nil     // lista abierta dentro de Sprint: "etapa" / "escena"
+    @Published var sub: String? = nil       // lista de Etapa / Escena abierta al lado del popover
+    weak var app: App?
     func bump() { tick &+= 1 }
 }
 
@@ -315,9 +316,9 @@ struct SprintPopover: View {
     @ObservedObject var m: PopModel
     let app: App
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             Image(nsImage: HubLogo.image).renderingMode(.template).resizable()
-                .frame(width: 34, height: 34).foregroundColor(Pal.txt)
+                .frame(width: 24, height: 24).foregroundColor(Pal.txt)
                 .accessibilityLabel("Sprint de enfoque")
             TabBar(m: m)
             Group {
@@ -334,8 +335,8 @@ struct SprintPopover: View {
                 FooterButton(title: "Salir", icon: "power") { NSApp.terminate(nil) }
             }
         }
-        .padding(.horizontal, 14).padding(.top, 12).padding(.bottom, 14)
-        .frame(width: 344)
+        .padding(.horizontal, 12).padding(.top, 8).padding(.bottom, 12)
+        .frame(width: 320)
         .foregroundColor(Pal.txt)
         .environment(\.colorScheme, .dark)
     }
@@ -346,12 +347,12 @@ struct TabBar: View {
     var body: some View {
         HStack(spacing: 2) {
             ForEach(PopTab.allCases, id: \.self) { t in
-                TabButton(tab: t, on: m.tab == t) { m.drill = nil; m.tab = t }
+                TabButton(tab: t, on: m.tab == t) { m.app?.closeSub(); m.tab = t }
             }
         }
-        .padding(4)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Pal.card))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Pal.hair, lineWidth: 1))
+        .padding(3)
+        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Pal.card))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Pal.hair, lineWidth: 1))
     }
 }
 
@@ -360,10 +361,10 @@ struct TabButton: View {
     @State private var hover = false
     var body: some View {
         Button(action: action) {
-            Image(systemName: tab.icon).font(.system(size: 15, weight: .regular))
+            Image(systemName: tab.icon).font(.system(size: 13, weight: .regular))
                 .foregroundColor(on ? Pal.sun : hover ? Pal.txt : Pal.mut)
-                .frame(maxWidth: .infinity, minHeight: 32)
-                .background(RoundedRectangle(cornerRadius: 9, style: .continuous)
+                .frame(maxWidth: .infinity, minHeight: 26)
+                .background(RoundedRectangle(cornerRadius: 7, style: .continuous)
                     .fill(on ? Pal.sun.opacity(0.16) : hover ? Pal.card2 : Color.clear))
                 .contentShape(Rectangle())
         }
@@ -377,8 +378,8 @@ struct PopSection<C: View>: View {
     let content: C
     init(_ title: String, @ViewBuilder _ c: () -> C) { self.title = title; content = c() }
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(title.uppercased()).font(.system(size: 11, weight: .semibold)).tracking(0.7)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title.uppercased()).font(.system(size: 10, weight: .semibold)).tracking(0.7)
                 .foregroundColor(Pal.dim).padding(.leading, 2)
             Card { content }
         }
@@ -389,10 +390,10 @@ struct Card<C: View>: View {
     let content: C
     init(@ViewBuilder _ c: () -> C) { content = c() }
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) { content }
-            .padding(12).frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Pal.card))
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Pal.hair, lineWidth: 1))
+        VStack(alignment: .leading, spacing: 7) { content }
+            .padding(.horizontal, 10).padding(.vertical, 9).frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Pal.card))
+            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Pal.hair, lineWidth: 1))
     }
 }
 
@@ -416,10 +417,10 @@ struct Chip: View {
     @State private var hover = false
     var body: some View {
         Button(action: action) {
-            Text(title).lineLimit(1).font(.system(size: 12, weight: on ? .semibold : .medium))
+            Text(title).lineLimit(1).font(.system(size: 11.5, weight: on ? .semibold : .medium))
                 .foregroundColor(on ? Pal.ink : Pal.txt)
-                .padding(.horizontal, 8).frame(maxWidth: .infinity, minHeight: 28)
-                .background(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .padding(.horizontal, 6).frame(maxWidth: .infinity, minHeight: 23)
+                .background(RoundedRectangle(cornerRadius: 6, style: .continuous)
                     .fill(on ? (hover ? Pal.sunHi : Pal.sun) : hover ? Pal.card3 : Pal.card2))
                 .contentShape(Rectangle())
         }
@@ -433,7 +434,7 @@ struct ChipGrid<C: View>: View {
     let content: C
     init(_ cols: Int, @ViewBuilder _ c: () -> C) { self.cols = max(1, cols); content = c() }
     var body: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: cols), spacing: 6) { content }
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 5), count: cols), spacing: 5) { content }
     }
 }
 
@@ -447,14 +448,14 @@ struct ActionButton: View {
                 if !a.icon.isEmpty {
                     Image(systemName: a.icon).font(.system(size: 12, weight: .semibold)).frame(width: 16)
                 }
-                Text(a.title).font(.system(size: 13, weight: a.kind == .primary ? .semibold : .medium))
+                Text(a.title).font(.system(size: 12.5, weight: a.kind == .primary ? .semibold : .medium))
                     .lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: 6)
                 if !a.key.isEmpty { Text(a.key).font(.system(size: 11, weight: .medium)).opacity(0.6) }
             }
             .foregroundColor(a.kind == .primary ? Pal.ink : a.kind == .quiet ? (hover ? Pal.naranja : Pal.mut) : Pal.txt)
-            .padding(.horizontal, 12).frame(height: a.kind == .primary ? 36 : 30)
-            .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(bg))
+            .padding(.horizontal, 10).frame(height: a.kind == .primary ? 30 : 25)
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(bg))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain).onHover { hover = $0 }
@@ -474,13 +475,13 @@ struct FooterButton: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
-                Image(systemName: icon).font(.system(size: 12, weight: .medium))
-                Text(title).font(.system(size: 13, weight: .medium))
+                Image(systemName: icon).font(.system(size: 11, weight: .medium))
+                Text(title).font(.system(size: 12, weight: .medium))
             }
             .foregroundColor(hover ? Pal.txt : Pal.mut)
-            .frame(maxWidth: .infinity, minHeight: 34)
-            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(hover ? Pal.card2 : Pal.card))
-            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Pal.hair, lineWidth: 1))
+            .frame(maxWidth: .infinity, minHeight: 26)
+            .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(hover ? Pal.card2 : Pal.card))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(Pal.hair, lineWidth: 1))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain).onHover { hover = $0 }
@@ -494,8 +495,8 @@ struct HubSwitch: ToggleStyle {
             c.label
             Spacer(minLength: 8)
             ZStack(alignment: c.isOn ? .trailing : .leading) {
-                Capsule().fill(c.isOn ? Pal.sun : Pal.card3).frame(width: 34, height: 20)
-                Circle().fill(c.isOn ? Pal.ink : Pal.txt).frame(width: 16, height: 16).padding(2)
+                Capsule().fill(c.isOn ? Pal.sun : Pal.card3).frame(width: 30, height: 18)
+                Circle().fill(c.isOn ? Pal.ink : Pal.txt).frame(width: 14, height: 14).padding(2)
             }
             .animation(.easeOut(duration: 0.15), value: c.isOn)
         }
@@ -513,7 +514,7 @@ struct ToggleRow: View {
         Toggle(isOn: Binding(get: get, set: set)) {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text(title).font(.system(size: 13))
+                    Text(title).font(.system(size: 12.5))
                     if !key.isEmpty { KeyCap(k: key) }
                 }
                 if !sub.isEmpty {
@@ -564,22 +565,25 @@ struct HeroCard: View {
     let h: Hero
     var body: some View {
         Card {
-            HStack(spacing: 6) {
-                Circle().fill(h.idle ? Pal.dim : h.over ? Pal.naranja : h.tint).frame(width: 7, height: 7)
-                Text(h.state).font(.system(size: 12, weight: .semibold)).foregroundColor(Pal.mut)
-            }
-            if !h.clock.isEmpty {
-                Text(h.clock).font(.system(size: 40, weight: .semibold).monospacedDigit())
-                    .foregroundColor(h.idle ? Pal.dim : h.over ? Pal.naranja : Pal.txt)
-                    .lineLimit(1).minimumScaleFactor(0.6)
-            }
-            if let p = h.progress { Playhead(p: p, color: h.over ? Pal.naranja : h.tint) }
-            VStack(alignment: .leading, spacing: 3) {
-                Text(h.title).font(.system(size: 13, weight: .semibold)).lineLimit(2)
-                if !h.detail.isEmpty {
-                    Text(h.detail).font(.system(size: 12)).foregroundColor(Pal.mut).lineLimit(2)
+            HStack(alignment: .center, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 5) {
+                        Circle().fill(h.idle ? Pal.dim : h.over ? Pal.naranja : h.tint).frame(width: 6, height: 6)
+                        Text(h.state).font(.system(size: 11, weight: .semibold)).foregroundColor(Pal.mut)
+                    }
+                    Text(h.title).font(.system(size: 12.5, weight: .semibold)).lineLimit(2)
+                    if !h.detail.isEmpty {
+                        Text(h.detail).font(.system(size: 11)).foregroundColor(Pal.mut).lineLimit(2)
+                    }
+                }
+                Spacer(minLength: 4)
+                if !h.clock.isEmpty {
+                    Text(h.clock).font(.system(size: 28, weight: .semibold).monospacedDigit())
+                        .foregroundColor(h.idle ? Pal.dim : h.over ? Pal.naranja : Pal.txt)
+                        .lineLimit(1).fixedSize()
                 }
             }
+            if let p = h.progress { Playhead(p: p, color: h.over ? Pal.naranja : h.tint) }
         }
     }
 }
@@ -588,29 +592,26 @@ struct SprintTab: View {
     @ObservedObject var m: PopModel
     let app: App
     var body: some View {
-        if let k = m.drill {
-            PickList(m: m, app: app, k: k)
-        } else {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
                 if app.detPrompting {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 6) {
                             Image(systemName: "scissors").foregroundColor(Pal.sun)
-                            Text("Estás editando en \(app.detLabel) sin timer").font(.system(size: 13, weight: .semibold))
+                            Text("Estás editando en \(app.detLabel) sin timer").font(.system(size: 12.5, weight: .semibold))
                         }
                         HStack(spacing: 6) {
                             Chip(title: "Iniciar sprint", on: true) { app.perform(PopAction(title: "", cmd: "det-start")) }
                             Chip(title: "Ahora no") { app.perform(PopAction(title: "", cmd: "det-mute")) }
                         }
                     }
-                    .padding(12)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Pal.sun.opacity(0.10)))
-                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Pal.sun.opacity(0.5), lineWidth: 1))
+                    .padding(10)
+                    .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Pal.sun.opacity(0.10)))
+                    .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Pal.sun.opacity(0.5), lineWidth: 1))
                 }
                 HeroCard(h: app.hero())
                 let acts = app.popActions()
                 if !acts.isEmpty {
-                    VStack(spacing: 6) {
+                    VStack(spacing: 4) {
                         ForEach(0..<acts.count, id: \.self) { i in ActionButton(a: acts[i]) { app.perform(acts[i]) } }
                     }
                 }
@@ -629,9 +630,9 @@ struct SprintTab: View {
                         ForEach(0..<notes.count, id: \.self) { i in
                             HStack(alignment: .top, spacing: 8) {
                                 Image(systemName: notes[i].warn ? "exclamationmark.triangle.fill" : "info.circle")
-                                    .font(.system(size: 12)).foregroundColor(notes[i].warn ? Pal.naranja : Pal.mut)
-                                    .frame(width: 16)
-                                Text(notes[i].text).font(.system(size: 12)).fixedSize(horizontal: false, vertical: true)
+                                    .font(.system(size: 11)).foregroundColor(notes[i].warn ? Pal.naranja : Pal.mut)
+                                    .frame(width: 14)
+                                Text(notes[i].text).font(.system(size: 11.5)).fixedSize(horizontal: false, vertical: true)
                             }
                             if let a = notes[i].action {
                                 ActionButton(a: a) { app.perform(a) }
@@ -640,22 +641,23 @@ struct SprintTab: View {
                     }
                 }
             }
-        }
     }
 }
 
-/// Etapa y Escena abren su lista; Tipo y Esquema se eligen con chips ahí mismo.
+/// Etapa y Escena abren su lista al lado del popover con solo pasar el cursor (como un submenú);
+/// Tipo y Esquema se eligen con chips ahí mismo.
 struct PickerRow: View {
     @ObservedObject var m: PopModel
     let app: App, k: String
     @State private var hover = false
+    @State private var box = AnchorBox()
     var body: some View {
         let title = app.PICKS[k]?.title ?? k
         if k == "tipo" || k == "modo" {
             let o = app.opts(k), cur = app.curPick(k)
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 5) {
                 HStack {
-                    Text(title).font(.system(size: 12)).foregroundColor(Pal.mut)
+                    Text(title).font(.system(size: 11.5)).foregroundColor(Pal.mut)
                     Spacer()
                     if k == "tipo", let hk = HotKey.load() { KeyCap(k: hk.tipoLabel).help("Cambia el tipo desde cualquier app") }
                 }
@@ -666,65 +668,60 @@ struct PickerRow: View {
                 }
             }
         } else {
-            Button { m.drill = k } label: {
-                HStack(spacing: 8) {
-                    Text(title).font(.system(size: 12)).foregroundColor(Pal.mut).frame(width: 52, alignment: .leading)
-                    Text(app.pickLabel(k)).font(.system(size: 13, weight: .medium)).lineLimit(1).truncationMode(.middle)
-                    Spacer(minLength: 4)
-                    Image(systemName: "chevron.right").font(.system(size: 11, weight: .semibold)).foregroundColor(Pal.dim)
-                }
-                .padding(.vertical, 3)
-                .background(RoundedRectangle(cornerRadius: 6, style: .continuous).fill(hover ? Pal.card2 : Color.clear).padding(-4))
-                .contentShape(Rectangle())
+            let open = m.sub == k
+            HStack(spacing: 8) {
+                Text(title).font(.system(size: 11.5)).foregroundColor(Pal.mut).frame(width: 48, alignment: .leading)
+                Text(app.pickLabel(k)).font(.system(size: 12.5, weight: .medium)).lineLimit(1).truncationMode(.middle)
+                Spacer(minLength: 4)
+                Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold))
+                    .foregroundColor(open ? Pal.sun : Pal.dim)
             }
-            .buttonStyle(.plain).onHover { hover = $0 }
+            .padding(.vertical, 2)
+            .background(RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(open ? Pal.card3 : hover ? Pal.card2 : Color.clear).padding(-4))
+            .background(AnchorView(box: box))
+            .contentShape(Rectangle())
+            .onHover { inside in hover = inside; app.subHover(k, inside, box.view) }
+            .onTapGesture { app.openSub(k, box.view) }
         }
     }
 }
 
-/// La lista de Etapa o Escena, con sus grupos (En curso / Por hacer…). Elegir no cierra nada:
-/// la marca se mueve y puedes volver con «‹» o seguir eligiendo.
-struct PickList: View {
+/// Para saber dónde está una fila en pantalla (y abrir su lista a esa altura).
+final class AnchorBox { weak var view: NSView? }
+struct AnchorView: NSViewRepresentable {
+    let box: AnchorBox
+    func makeNSView(context: Context) -> NSView { let v = NSView(); box.view = v; return v }
+    func updateNSView(_ v: NSView, context: Context) { box.view = v }
+}
+
+/// La lista de Etapa o Escena en su panel al lado del popover, con sus grupos (En curso / Por
+/// hacer…). Elegir no cierra nada: la marca se mueve y se puede seguir eligiendo; se cierra al
+/// llevar el cursor a otra parte del popover, con un clic fuera o con Esc.
+struct SubList: View {
     @ObservedObject var m: PopModel
-    let app: App, k: String
+    let app: App
+    static let width: CGFloat = 270, rowH: CGFloat = 24, headH: CGFloat = 22, pad: CGFloat = 5, maxH: CGFloat = 440
     var body: some View {
-        let o = app.opts(k), cur = app.curPick(k)
-        let rows: [(head: String, i: Int)] = {
-            var r: [(head: String, i: Int)] = [], g: String? = nil
-            for (i, x) in o.enumerated() {
-                if x.g != g { g = x.g; if !x.g.isEmpty { r.append((head: x.g, i: -1)) } }
-                r.append((head: "", i: i))
-            }
-            return r
-        }()
-        let h = rows.reduce(CGFloat(0)) { $0 + ($1.i < 0 ? 26 : 30) }
-        VStack(alignment: .leading, spacing: 8) {
-            Button { m.drill = nil } label: {
-                HStack(spacing: 5) {
-                    Image(systemName: "chevron.left").font(.system(size: 12, weight: .semibold))
-                    Text(app.PICKS[k]?.title ?? k).font(.system(size: 13, weight: .semibold))
-                    Spacer()
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            Card {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(0..<rows.count, id: \.self) { n in
-                            if rows[n].i < 0 {
-                                Text(rows[n].head).font(.system(size: 11, weight: .semibold)).foregroundColor(Pal.dim)
-                                    .frame(height: 26, alignment: .bottomLeading).padding(.leading, 8)
-                            } else {
-                                let x = o[rows[n].i]
-                                OptionRow(title: x.t, on: x.v == cur) { app.choose(k, x.v) }
-                            }
-                        }
+        let k = m.sub ?? "", o = app.opts(k), cur = app.curPick(k), rows = app.subRows(k)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(0..<rows.count, id: \.self) { n in
+                    if rows[n].i < 0 {
+                        Text(rows[n].head).font(.system(size: 10.5, weight: .semibold)).foregroundColor(Pal.dim)
+                            .frame(height: SubList.headH, alignment: .bottomLeading).padding(.leading, 8)
+                    } else if rows[n].i < o.count {
+                        let x = o[rows[n].i]
+                        OptionRow(title: x.t, on: x.v == cur) { app.choose(k, x.v) }
                     }
                 }
-                .frame(height: min(h, 380))
             }
+            .padding(SubList.pad)
         }
+        .frame(width: SubList.width, height: app.subSize(k).height)
+        .foregroundColor(Pal.txt)
+        .environment(\.colorScheme, .dark)
+        .onHover { app.subPanelHover($0) }
     }
 }
 
@@ -733,18 +730,27 @@ struct OptionRow: View {
     @State private var hover = false
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: "checkmark").font(.system(size: 11, weight: .bold)).foregroundColor(Pal.sun)
-                    .opacity(on ? 1 : 0).frame(width: 14)
-                Text(title).font(.system(size: 13, weight: on ? .semibold : .regular)).lineLimit(1).truncationMode(.middle)
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark").font(.system(size: 10, weight: .bold))
+                    .foregroundColor(hover ? Pal.ink : Pal.sun).opacity(on ? 1 : 0).frame(width: 12)
+                Text(title).font(.system(size: 12.5, weight: on ? .semibold : .regular)).lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 8).frame(height: 30)
-            .background(RoundedRectangle(cornerRadius: 7, style: .continuous).fill(hover ? Pal.card2 : Color.clear))
+            .foregroundColor(hover ? Pal.ink : Pal.txt)
+            .padding(.horizontal, 6).frame(height: SubList.rowH)
+            .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(hover ? Pal.sun : Color.clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain).onHover { hover = $0 }
     }
+}
+
+/// Panel sin bordes de la lista de Etapa / Escena: no toma el foco y acepta el primer clic.
+final class SubPanel: NSPanel {
+    override var canBecomeKey: Bool { false }
+}
+final class FirstMouseHost<V: View>: NSHostingView<V> {
+    override func acceptsFirstMouse(for e: NSEvent?) -> Bool { true }
 }
 
 struct VentanaTab: View {
@@ -752,7 +758,7 @@ struct VentanaTab: View {
     let app: App
     var body: some View {
         let hk = HotKey.load(), desk = D.bool(forKey: "onDesktop")
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             PopSection("Ventana flotante") {
                 ToggleRow(title: "Mostrar la ventana",
                           key: hk.map { $0.mods.contains(.command) ? "" : $0.label(cmd: true) } ?? "",
@@ -783,7 +789,7 @@ struct DetectorTab: View {
     var body: some View {
         let apps = D.stringArray(forKey: "det.apps") ?? []
         let label = { (s: Int) in s % 60 == 0 ? "\(s / 60) min" : "\(s) s" }
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             PopSection("Detector") {
                 ToggleRow(title: "Avisar si edito sin timer",
                           sub: "Con la app de edición al frente y sin bloque en marcha, el reloj te pide iniciar.",
@@ -815,7 +821,7 @@ struct SonidosTab: View {
     @ObservedObject var m: PopModel
     let app: App
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             PopSection("Sonidos") {
                 ForEach(0..<Sounds.actions.count, id: \.self) { i in
                     let a = Sounds.actions[i]
@@ -853,7 +859,7 @@ struct AtajosTab: View {
     let app: App
     var body: some View {
         let hk = HotKey.load()
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             PopSection("Atajo de teclado") {
                 ChipGrid(3) {
                     ForEach(0..<HotKey.presets.count, id: \.self) { i in
@@ -998,6 +1004,11 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
     var popover: NSPopover!
     let model = PopModel()
     var prevApp: NSRunningApplication?   // la app que estaba al frente al abrir el popover (vuelve al cerrarlo)
+    var popMonitors: [Any] = []          // clic fuera del popover → se cierra (solo mientras está abierto)
+    var popObserver: NSObjectProtocol?   // otra app al frente → se cierra
+    var subPanel: SubPanel?              // la lista de Etapa / Escena al lado del popover
+    var subClose: DispatchWorkItem?
+    var subInside = false
     var chimed = ""
     var hotRefs: [EventHotKeyRef] = []
     var flash: (symbol: String, until: Date, text: String)? = nil   // destello del reloj al usar el atajo (+ texto breve)
@@ -1068,7 +1079,10 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
         item.button?.action = #selector(togglePopover)
         item.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
         popover = NSPopover()
-        popover.behavior = .transient            // clic fuera lo cierra; elegir algo dentro, no
+        // se cierra a mano (clic fuera, Esc, otra app al frente): con .transient un clic en la lista
+        // de Etapa / Escena, que es otra ventana, también lo cerraría
+        popover.behavior = .applicationDefined
+        model.app = self
         popover.animates = true
         popover.delegate = self
         popover.appearance = NSAppearance(named: .darkAqua)
@@ -1436,22 +1450,129 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
         web.callAsyncJavaScript("if (window.SprintCmd) window.SprintCmd('sync')", arguments: [:], in: nil, in: .page)
         let front = NSWorkspace.shared.frontmostApplication
         prevApp = front?.processIdentifier == ProcessInfo.processInfo.processIdentifier ? nil : front
-        model.drill = nil
+        model.sub = nil
         model.bump()
         NSApp.activate(ignoringOtherApps: true)
         popover.show(relativeTo: b.bounds, of: b, preferredEdge: .minY)
         popover.contentViewController?.view.window?.makeKey()
         b.highlight(true)
+        // clic en otra app, en la ventana flotante o en otro icono de la barra → se cierra
+        let downs: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        if let g = NSEvent.addGlobalMonitorForEvents(matching: downs, handler: { [weak self] _ in self?.closePopover() }) {
+            popMonitors.append(g)
+        }
+        if let l = NSEvent.addLocalMonitorForEvents(matching: downs, handler: { [weak self] e in
+            guard let self else { return e }
+            let w = e.window
+            // el propio reloj ya lo cierra con su acción (togglePopover)
+            if w != self.popover.contentViewController?.view.window && w != self.subPanel && w != self.item.button?.window {
+                self.closePopover()
+            }
+            return e
+        }) { popMonitors.append(l) }
+        popObserver = NotificationCenter.default.addObserver(forName: NSApplication.didResignActiveNotification,
+                                                             object: nil, queue: .main) { [weak self] _ in self?.closePopover() }
     }
 
     func closePopover() { if popover.isShown { popover.performClose(nil) } }
 
     func popoverDidClose(_ n: Notification) {
+        popMonitors.forEach(NSEvent.removeMonitor)
+        popMonitors = []
+        if let o = popObserver { NotificationCenter.default.removeObserver(o); popObserver = nil }
+        closeSub()
         item.button?.highlight(false)
-        model.drill = nil
         pickOverride = [:]
         if NSApp.isActive, let p = prevApp, !p.isTerminated, !panel.isKeyWindow { p.activate() }
         prevApp = nil
+    }
+
+    // ── la lista de Etapa / Escena al lado del popover (como un submenú: se abre al pasar el cursor) ──
+    /// Filas de la lista: encabezados de grupo (i = -1) y opciones (i = índice en opts).
+    func subRows(_ k: String) -> [(head: String, i: Int)] {
+        var r: [(head: String, i: Int)] = [], g: String? = nil
+        for (i, x) in opts(k).enumerated() {
+            if x.g != g { g = x.g; if !x.g.isEmpty { r.append((head: x.g, i: -1)) } }
+            r.append((head: "", i: i))
+        }
+        return r
+    }
+    func subSize(_ k: String) -> NSSize {
+        let h = subRows(k).reduce(SubList.pad * 2) { $0 + ($1.i < 0 ? SubList.headH : SubList.rowH) }
+        return NSSize(width: SubList.width, height: min(max(h, 40), SubList.maxH))
+    }
+
+    func subHover(_ k: String, _ inside: Bool, _ anchor: NSView?) {
+        if inside { openSub(k, anchor) } else { closeSubSoon() }
+    }
+    func subPanelHover(_ inside: Bool) {
+        subInside = inside
+        if inside { subClose?.cancel(); subClose = nil } else { closeSubSoon() }
+    }
+
+    /// Abre (o cambia) la lista a la izquierda del popover, con su primera fila a la altura de la
+    /// fila de Etapa / Escena; si no cabe a la izquierda, a la derecha.
+    func openSub(_ k: String, _ anchor: NSView?) {
+        subClose?.cancel(); subClose = nil
+        guard let anchor, let win = anchor.window, let pw = popover.contentViewController?.view.window else { return }
+        let p = subPanel ?? makeSubPanel()
+        subPanel = p
+        if model.sub != k { model.sub = k }
+        let row = win.convertToScreen(anchor.convert(anchor.bounds, to: nil))
+        let size = subSize(k), pf = pw.frame
+        let scr = (pw.screen ?? NSScreen.main)?.visibleFrame ?? pf
+        var x = pf.minX - size.width + 4
+        if x < scr.minX + 4 { x = pf.maxX - 4 }
+        let y = max(scr.minY + 4, min(row.maxY + 2 + SubList.pad - size.height, scr.maxY - size.height - 4))
+        p.setFrame(NSRect(x: x, y: y, width: size.width, height: size.height), display: true)
+        if p.parent == nil { pw.addChildWindow(p, ordered: .above) }
+        p.orderFront(nil)
+    }
+
+    /// Se cierra un momento después de salir de la fila (da tiempo a llevar el cursor a la lista).
+    func closeSubSoon() {
+        subClose?.cancel()
+        let w = DispatchWorkItem { [weak self] in
+            guard let self, !self.subInside else { return }
+            self.closeSub()
+        }
+        subClose = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: w)
+    }
+
+    func closeSub() {
+        subClose?.cancel(); subClose = nil; subInside = false
+        if let p = subPanel { p.parent?.removeChildWindow(p); p.orderOut(nil) }
+        if model.sub != nil { model.sub = nil }
+    }
+
+    func makeSubPanel() -> SubPanel {
+        let p = SubPanel(contentRect: NSRect(x: 0, y: 0, width: SubList.width, height: 200),
+                         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: true)
+        p.isOpaque = false
+        p.backgroundColor = .clear
+        p.hasShadow = true
+        p.level = .popUpMenu
+        p.isReleasedWhenClosed = false
+        p.hidesOnDeactivate = false
+        p.appearance = NSAppearance(named: .darkAqua)
+        let fx = NSVisualEffectView(frame: p.contentRect(forFrameRect: p.frame))
+        fx.material = .popover
+        fx.state = .active
+        fx.blendingMode = .behindWindow
+        let r: CGFloat = 10
+        let mask = NSImage(size: NSSize(width: 2 * r + 1, height: 2 * r + 1), flipped: false) { rect in
+            NSColor.black.set(); NSBezierPath(roundedRect: rect, xRadius: r, yRadius: r).fill(); return true
+        }
+        mask.capInsets = NSEdgeInsets(top: r, left: r, bottom: r, right: r)
+        mask.resizingMode = .stretch
+        fx.maskImage = mask
+        let host = FirstMouseHost(rootView: SubList(m: model, app: self))
+        host.frame = fx.bounds
+        host.autoresizingMask = [.width, .height]
+        fx.addSubview(host)
+        p.contentView = fx
+        return p
     }
 
     var detPrompting: Bool { sprint.online && sprint.run == nil && detector.prompting }
@@ -1915,6 +2036,19 @@ extension App {
         host.cacheDisplay(in: host.bounds, to: rep)
         try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: out))
         print("captura del popover → \(out)")
+        // y la lista de Etapa como se ve al pasar el cursor
+        model.sub = "etapa"
+        let sub = NSHostingView(rootView: SubList(m: model, app: self).background(Color(hex: 0x2a2a2e)))
+        sub.appearance = NSAppearance(named: .darkAqua)
+        sub.frame = NSRect(origin: .zero, size: subSize("etapa"))
+        sub.layoutSubtreeIfNeeded()
+        let out2 = (out as NSString).deletingPathExtension + "-etapa.png"
+        if let r2 = sub.bitmapImageRepForCachingDisplay(in: sub.bounds) {
+            sub.cacheDisplay(in: sub.bounds, to: r2)
+            try? r2.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: out2))
+            print("captura de la lista de Etapa → \(out2)")
+        }
+        model.sub = nil
     }
     func dumpMenuTest() {
         panel.alphaValue = 0              // la prueba no enseña la ventana en pantalla
