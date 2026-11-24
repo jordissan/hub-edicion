@@ -465,13 +465,27 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   propio `NSTrackingArea` (`.activeAlways`: el panel casi nunca es key y WebKit no reporta el
   hover ahí) y en cada `mouseMoved` pregunta `window.__hubDragAt(x,y)` (nada de
   `button,a,input,select,…,.fcut,.fmode,.fpick,.fedit`, ni el reloj en reposo, que abre Ajustar).
-  Nivel: `.floating` o, en *Opciones → En el escritorio*, `desktopIconWindow + 1` (`.stationary`).
+  Nivel: `.floating` o, en la pestaña *Ventana y barra → En el escritorio*, `desktopIconWindow + 1` (`.stationary`).
   Puente JS → nativo: `webkit.messageHandlers.hub.postMessage('dashboard'|'close'|{k:'state',…})`
   — `close` y ⌘W **ocultan** (`orderOut`); la app sigue viva en la barra de menús.
 - **Barra de menús** (`NSStatusItem`): cada 1 s lee `GET /api/sprint-state` (sin `?from=mini`:
   no es latido) y pinta el reloj con los mismos datos que la tarjeta (`scSprint.start/target`,
-  `scSprintBrk.start/secs`, `scSprintPend`, `scSprintClose`). El menú se arma al abrirse
-  (`menuNeedsUpdate`; la línea "Llevas…" se actualiza en vivo, timer en `.common`). Las
+  `scSprintBrk.start/secs`, `scSprintPend`, `scSprintClose`). **Popover** (24-nov-2026, PR #9;
+  antes era un `NSMenu`): el clic en el reloj abre un `NSPopover` con SwiftUI (`SprintPopover`,
+  `NSHostingController` con `sizingOptions = .preferredContentSize`, apariencia oscura): logo del Hub
+  (`HubLogo` = el dibujo de `HubIcon` a 24 pt), barra de pestañas con iconos (`PopTab`: *Sprint*,
+  *Ventana y barra*, *Detector*, *Sonidos*, *Atajos*; la activa en lima `#d9ed2f`), secciones con
+  título en versalitas y tarjetas (`PopSection`/`Card`), chips (`Chip`/`ChipGrid`), interruptores
+  (`HubSwitch`) y abajo *Abrir dashboard* / *Salir*. Pestaña *Sprint*: tarjeta del bloque (`hero()`:
+  estado, etapa · escena, reloj a la derecha y un **playhead** que avanza hacia la meta; naranja en
+  tiempo extra, violeta en el descanso), botones (`popActions()`, con el atajo global al lado),
+  *Próximo bloque* (`pickKinds()`) y *Avisos* (`notices()`). Las mismas funciones alimentan la vista y
+  la prueba `DUMP_MENU`. Se refresca con `PopModel.bump()` (cada segundo con el popover abierto y tras
+  cada cambio). **Cierre:** `behavior = .applicationDefined`; lo cierran un clic fuera (monitores
+  global y local de `mouseDown`, salvo en el propio reloj o en la lista), Esc (monitor local de
+  teclado), otra app al frente (`didResignActive`) o *Abrir dashboard*. Al abrir, la app se activa
+  (para que Esc llegue) y al cerrar vuelve al frente la que estaba (`prevApp`). Elegir **no** lo
+  cierra. Las
   acciones **no se reimplementan**: `callAsyncJavaScript` → `window.SprintCmd(c)` en la página
   mini aunque esté oculta, que primero hace `pull()` y luego ejecuta (`finish` /
   `finish-escena` / `finish-etapa` / `discard` / `endcycle` / `start` / `undo`; devuelve
@@ -479,22 +493,27 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   escena, tipos, tipo, pickModo, modos, modo}` (destino propuesto, último aviso, las listas de
   `#fTarget`/`#fScene` tal cual —cada opción `{v, t, g}` con `g` = su `optgroup`— y los esquemas
   de `SCHEMES` con su `TAG`; `tipos` = los dos botones de `#fTipo`) desde `paint()` y `remember()`.
-  **Etapa ▸ / Escena ▸** (nov-2026): submenús del reloj en reposo y en el descanso (`pick` =
+  **Etapa / Escena** (nov-2026): filas de *Próximo bloque* en reposo y en el descanso (`pick` =
   sin bloque y con etapas; con bloque no salen, como en la ventana: `run` fija db/escena del
-  registro). Se rellenan al abrirse (`fillPick`, delegado con `identifier` "etapa"/"escena"),
-  ✓ en la actual, título "Etapa: …" / "Escena: …" que se refresca si llega un `state` con el
-  menú abierto. Elegir = `SprintCmd('etapa:<db>'|'escena:<id>')`: pone el valor en el
+  registro). Al **pasar el cursor** por la fila se abre su lista al lado del popover, como un
+  submenú (`SubList` en un `SubPanel` sin bordes, hijo de la ventana del popover, que no toma el
+  foco y acepta el primer clic): grupos de la página, ✓ en la actual, a la izquierda del popover
+  (a la derecha si no cabe) con la primera fila a la altura de la de Etapa/Escena. Se cierra 0,4 s
+  después de sacar el cursor de la fila y de la lista (`closeSubSoon`), al cambiar de pestaña o al
+  cerrar el popover. Elegir marca ya la opción (`pickOverride`, se descarta si la página no la
+  acepta o al llegar su `state`). Elegir = `SprintCmd('etapa:<db>'|'escena:<id>')`: pone el valor en el
   `<select>` y dispara `change` (mismo `fillScenes`/`remember` → `scSprintDest` → sync); con
-  bloque devuelve `running`. **Tipo ▸** (3-nov-2026, entre Escena y Esquema; mismas reglas que
+  bloque devuelve `running`. **Tipo** (3-nov-2026, chips entre Escena y Esquema; mismas reglas que
   Etapa/Escena: reposo y descanso, nunca con bloque): `SprintCmd('tipo:<Edición|Gestión>')` =
   `setTipo` + `remember()` como tocar el botón de `#fTipo` (→ `scSprintDest.tipo` → sync); valor
   desconocido → `unknown`, con bloque `running`. El bloque en marcha conserva su `run.tipo`
-  (fijado en `startBlock`), por eso no se cambia a mitad. **Esquema ▸** solo en reposo (`pickModo` = sin bloque ni
+  (fijado en `startBlock`), por eso no se cambia a mitad. **Esquema** (chips en 2 columnas) solo en reposo (`pickModo` = sin bloque ni
   descanso): `SprintCmd('modo:<k>')` = `setMode(k)` como el botón (reinicia el ciclo; `custom`
-  usa `mode.custom` sin abrir Ajustar); con bloque `running`, en descanso `break`. Submenús
-  genéricos en `main.swift` (`PICKS`, `can`, `pickers`, `fillPick`). Prueba sin pantalla:
-  `swiftc -D DUMP_MENU` imprime el menú y ejecuta `HUB_PICK="modo:pomo,etapa:<db>,tipo:Gestión,…"` por
-  `send` (no va en la build de `build.sh`). Al abrir el menú la app pide `SprintCmd('sync')` (oculta, la
+  usa `mode.custom` sin abrir Ajustar); con bloque `running`, en descanso `break`. Genérico en
+  `main.swift` (`PICKS`, `can`, `pickKinds`, `choose`). Prueba sin pantalla:
+  `swiftc -D DUMP_MENU` imprime el contenido del popover (y con `HUB_SNAPSHOT_POPOVER=/ruta.png`
+  guarda su captura y la de la lista de Etapa, `-etapa.png`) y ejecuta `HUB_PICK="modo:pomo,etapa:<db>,tipo:Gestión,…"` por
+  `send` (no va en la build de `build.sh`). Al abrir el popover la app pide `SprintCmd('sync')` (oculta, la
   página no hace `pull()` sola). `scSprintDest.escena`: `''` = «Sin escena» elegida a propósito
   (se respeta en esa etapa), `null` = proponer (la recordada / última sesión / primera abierta). Oculta, la página recibe `window.__hubShown=false` (también
   como `WKUserScript` para recargas): no hace latido. En modo mini la página **nunca** pone su tono de
@@ -513,51 +532,52 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   `togglePanel()`: `orderFrontRegardless`/`orderOut`, sin activar la app; no se registra si la
   tecla base ya lleva ⌘, posible solo con atajos grabados antes). id 1 *alterna*: manda `finish` y,
   si responde `'no-run'`, `start` (así decide con el estado recién sincronizado por `pull()`,
-  no con el último sondeo); id 2 manda `discard`. Mismo camino que el menú (`send(cmd)` →
+  no con el último sondeo); id 2 manda `discard`. Mismo camino que el popover (`send(cmd)` →
   `SprintCmd`). Feedback: `Sounds.play(acción)` + el icono de la barra cambia 1,5 s a
   `play`/`checkmark`/`xmark.circle` (`flash` en `render()`); si no aplica, `Sounds.play("error")`.
   **id 4 = Edición ↔ Gestión (⌃⌥B, 6-nov-2026)**: mismos modificadores que la tecla base, tecla B
   (`HotKey.tipoKey`; si la base ya es B, N). `toggleTipo()` → `SprintCmd('tipo-toggle')` (index.html,
   junto a `tipo:`): rota `#fTipo` con `setTipo` + `remember()` + `paint()`; devuelve `'ok:<tipo>'`,
-  `'running'` con bloque en marcha (misma regla que Tipo ▸: el bloque conserva su `run.tipo`) o
+  `'running'` con bloque en marcha (misma regla que Tipo: el bloque conserva su `run.tipo`) o
   `'unknown'`. Aviso: `flash` ahora lleva texto (el reloj muestra 2 s «Edición»/«Gestión» con icono
   `scissors`/`folder`) y suena la acción `tipo` (Pop; 1 toque = Edición, 2 = Gestión); en error,
-  `Sounds.play("error")`. El menú añade bajo *Tipo ▸* «Cambiar a «…»» con el atajo como `keyEquivalent`.
+  `Sounds.play("error")`. En el popover, la fila *Tipo* muestra el atajo a su lado.
   Probar sin pantalla: `HUB_PICK="hotkey:4,…"` en la build `-D DUMP_MENU` ejecuta `hotKey(4)` e
   imprime el título de la barra; `HUB_LOG=1` registra el resultado de cada `RegisterEventHotKey`.
 - **Detector de Final Cut** (nov-2026, solo en `main.swift`; sin permisos de Accesibilidad): si Final
   Cut (`com.apple.FinalCut`) o Premiere (prefijo `com.adobe.PremierePro`) está al frente, se usó teclado
   o ratón hace menos de `det.idle` y no hay bloque, cuenta segundos activos. Al cambiar de app se
   pausa; tras `det.snooze` sin editar vuelve a cero. **Aviso A** a los `det.wait`: el reloj dice
-  «¿Iniciar?», suena `nudge`, manda `SprintCmd('tipo:Edición')` y el menú gana «Final Cut sin timer —
-  Iniciar» y «Ahora no». **Aviso B** tras `det.escalate` activos más: `showPanel()` sin robar el foco
+  «¿Iniciar?», suena `nudge`, manda `SprintCmd('tipo:Edición')` y el popover gana arriba la tarjeta «Estás
+  editando en Final Cut sin timer» con *Iniciar sprint* y *Ahora no*. **Aviso B** tras `det.escalate` activos más: `showPanel()` sin robar el foco
   (`detOpenedPanel`; va encima aunque la ventana esté «En el escritorio»). Si lo ignoras, sigue el
   «¿Iniciar?» sin repetir nada durante `det.snooze` y vuelve a contar de cero. «Ahora no» calla hasta
   cerrar la app vigilada. Iniciar un bloque por cualquier vía apaga el aviso y oculta la ventana si la
   abrió el detector. Al cerrar la última app vigilada con un bloque corriendo: `NSAlert` «Llevas X min.
   ¿Terminar el bloque?» (no sale al apagar el Mac). Un descanso ya vencido cuenta como reposo porque
   `scSprintBrk` sigue guardado hasta empezar otro bloque. Piezas: `struct Detector` (lógica pura, entre
-  `DETECTOR-INICIO` y `DETECTOR-FIN`), `detectorTick()` en el sondeo de 1 s, `detectorMenu()`.
+  `DETECTOR-INICIO` y `DETECTOR-FIN`), `detectorTick()` en el sondeo de 1 s, pestaña *Detector* (`DetectorTab`).
   `UserDefaults`: `det.on`, `det.apps` (`fcp`, `premiere`), `det.wait` 120, `det.escalate` 300,
-  `det.snooze` 1200, `det.idle` 180 y `snd.nudge` (Purr); todo se cambia en *Opciones → Detector* y
-  *Opciones → Sonidos*. **Probar sin Final Cut:** build `-D DUMP_MENU` en un bundle de prueba contra
+  `det.snooze` 1200, `det.idle` 180 y `snd.nudge` (Purr); todo se cambia en las pestañas *Detector* y
+  *Sonidos* del popover. **Probar sin Final Cut:** build `-D DUMP_MENU` en un bundle de prueba contra
   `HUB_BASE=http://localhost:4611`, con `HUB_DET_BUNDLE=com.apple.finder` y `HUB_PICK` con
   `det-front:<bundle>`, `det-quit:<bundle>`, `det-idle:<s>` y `det-mute`; `HUB_DET_ANSWER=terminar`
   contesta el diálogo y `defaults write <id-prueba> det.wait -int 6` acorta los tiempos.
-- **Sonidos** (`enum Sounds` + `soundsMenu()` en `main.swift`, *Opciones → Sonidos*): acciones
+- **Sonidos** (`enum Sounds` + `SonidosTab` en `main.swift`, pestaña *Sonidos*): acciones
   `start` (de serie Tink), `finish` (Hero), `discard` (Funk), `goal` (Glass, meta/descanso), `tipo` (Pop, ⌃⌥B) y
-  `error` (aviso del sistema; también cuando falla una acción del menú). Guardado en
+  `error` (aviso del sistema; también cuando falla una acción del popover). Guardado en
   `UserDefaults` `snd.<acción>`: nombre de un sonido (`NSSound(named:)`, lista de
   `/System/Library/Sounds` + `~/Library/Sounds`), `"·sistema"` = `NSSound.beep()` o `""` =
-  ninguno; sin clave = el de serie (*Restablecer* borra las claves). Vista previa: los
-  submenús tienen de delegado `SoundPreview` (`menu(_:willHighlight:)` suena al pasar).
+  ninguno; sin clave = el de serie (*Restablecer* borra las claves). Cada acción tiene un
+  selector (`Picker` de menú, con la lista leída al abrir la app: `Sounds.installed`); al elegir suena,
+  y el botón ▶ la repite.
   Hasta nov-2026 iniciar era Pop; Jordi lo cambió a Tink. El grabador de atajos sigue usando
   `NSSound.beep()` para rechazar una tecla.
-  Configurable en *Opciones → Atajo de teclado* (presets N/B/P/J/K con ⌃⌥, *Grabar otro…* con
+  Configurable en la pestaña *Atajos* (presets N/B/P/J/K con ⌃⌥ en chips, *Grabar otro…* con
   un `NSAlert` + monitor local: exige ⌃ y/o ⌥, sin ⇧ ni ⌘, que se reservan; *Sin atajo*).
   `UserDefaults`: `hkCode` (keyCode virtual), `hkMods` (`NSEvent.ModifierFlags`), `hkChar`,
-  `hkOff`. Los ítems Iniciar/Terminar/Descartar y Mostrar/Ocultar ventana muestran el atajo como
-  `keyEquivalent`. Conflictos revisados (oct-2026): Final Cut usa ⌃⌥ con 0–6, C D E F L M R S T
+  `hkOff`. Los botones Iniciar/Terminar/Descartar y el interruptor de la ventana muestran el
+  atajo a su lado, y la pestaña lista qué hace cada uno (`hotKeyLegend`). Conflictos revisados (oct-2026): Final Cut usa ⌃⌥ con 0–6, C D E F L M R S T
   V y flechas, y ⌃⌥⌘ con dígitos, C, O, S, M, flechas (no N/B/P/J/K) (set JORDISSAN ≈ el de serie); Premiere (perfil de Jordi) y macOS no usan ⌃⌥;
   ⌃⌥ es el prefijo de VoiceOver (solo si está activo). `HUB_LOG=1` (vía `open --env`) registra
   cada atajo en stderr. **Probar:** bundle de prueba con otro bundle id **y otro
@@ -607,7 +627,7 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   previo a la sincronía cuenta como `rev` 1. La ventana pregunta con `?from=mini` (latido) →
   `miniOpen` → clase `.floating` en la tarjeta del dashboard. El aviso sonoro es **por
   cliente** (`scSprintChimed`, no se sincroniza) y el dashboard calla si la ventana está
-  abierta; en la ventana suena la app nativa (*Opciones → Sonidos*), no el tono de la página. Doble "Terminar" del mismo bloque no duplica: `/api/session` deduplica por `id`.
+  abierta; en la ventana suena la app nativa (pestaña *Sonidos*), no el tono de la página. Doble "Terminar" del mismo bloque no duplica: `/api/session` deduplica por `id`.
   En la nube (`*.pages.dev`) no hay sincronía ni botón.
 
 ## 6. Claves de estado
