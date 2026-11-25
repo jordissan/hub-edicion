@@ -3,6 +3,26 @@
 Contexto general: `README.md` (operar la nube), `docs/arquitectura.md` (referencia técnica) y
 `docs/guia-de-uso.md` (guía de uso, el README de la Mac).
 
+## Dónde vive cada cosa (léelo primero)
+Cada cosa vive en un solo lugar; los demás apuntan a él, no la copian.
+
+| Pieza | Qué guarda | Quién la cambia |
+|---|---|---|
+| Notion › Trabajo › **🤖 Contexto Claude** (busca «Contexto Claude») | Negocio, estado, decisiones y el mapa del sistema. Puerta de entrada para cualquier proyecto de Claude. | El proyecto «Trabajo» de Claude |
+| Bases de Notion (Trabajo, Sesiones por boda/etapa) | Los datos. El Hub solo los lee y registra sesiones. | Jordi, el sprint y los widgets |
+| Este repo (público) | Lo técnico: código, `CLAUDE.md`, `docs/`, `pendientes/`. Nada privado. | Sesiones de Claude (PR o `main`, según las reglas de abajo) |
+| `~/HubEdicion` en la Mac | El sistema vivo: datos reales, llaves, servidor local, app y widgets. | Jordi y Claude Code en la Mac |
+| Cloudflare Pages (`hub-edicion.pages.dev`) | Solo muestra: lo publica GitHub Actions. Notion lo embebe y los widgets lo leen. | Nadie a mano |
+
+**Cuándo se actualiza qué:**
+- Un cambio que altera cómo funciona algo (PR mergeado o publicación desde la Mac) → `docs/arquitectura.md`
+  en la Mac y una línea en el Registro de la página de Notion.
+- Una decisión de negocio → solo la página de Notion.
+- Una idea para después → un pendiente en `pendientes/`.
+- Un dato → solo su base de Notion.
+- Desde otro proyecto de Claude (Finanzas, Iglesia, Personal): se lee la página de Notion y este repo; no se
+  editan.
+
 ## Mapa del repo
 - Dashboard desplegado: `index.html`, `server.py`, `fonts/`, `functions/`, `embed/`, `publish.py`.
 - Sistema de la Mac (copias): `mac/` (app del sprint, Siri), `widgets/` (Scriptable, SwiftBar),
