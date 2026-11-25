@@ -516,7 +516,13 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   cerrar el popover. Elegir marca ya la opción (`pickOverride`, se descarta si la página no la
   acepta o al llegar su `state`). Elegir = `SprintCmd('etapa:<db>'|'escena:<id>')`: pone el valor en el
   `<select>` y dispara `change` (mismo `fillScenes`/`remember` → `scSprintDest` → sync); con
-  bloque devuelve `running`. **Tipo** (3-nov-2026, chips entre Escena y Esquema; mismas reglas que
+  bloque devuelve `running`. **Proyecto** (25-nov-2026, PR #11): fila arriba de Etapa, con las
+  mismas reglas y la misma lista al pasar el cursor. Etapa solo lista las del proyecto elegido, con
+  su nombre corto. Por defecto el proyecto es el de la etapa elegida; al cambiarlo se elige su
+  primera etapa (la última trabajada si hay una en curso; si no, la siguiente por empezar). Con un
+  solo proyecto la fila no sale. Para eso `tellNative` (index.html) manda en cada etapa `p`
+  (proyecto: la boda, o «Proyecto · Cliente» si es freelance) y `s` (nombre corto); con una página
+  vieja sin `p` la app sigue con la lista única de etapas. **Tipo** (3-nov-2026, chips entre Escena y Esquema; mismas reglas que
   Etapa/Escena: reposo y descanso, nunca con bloque): `SprintCmd('tipo:<Edición|Gestión>')` =
   `setTipo` + `remember()` como tocar el botón de `#fTipo` (→ `scSprintDest.tipo` → sync); valor
   desconocido → `unknown`, con bloque `running`. El bloque en marcha conserva su `run.tipo`
@@ -525,7 +531,7 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
   usa `mode.custom` sin abrir Ajustar); con bloque `running`, en descanso `break`. Genérico en
   `main.swift` (`PICKS`, `can`, `pickKinds`, `choose`). Prueba sin pantalla:
   `swiftc -D DUMP_MENU` imprime el contenido del popover (y con `HUB_SNAPSHOT_POPOVER=/ruta.png`
-  guarda su captura y la de la lista de Etapa, `-etapa.png`) y ejecuta `HUB_PICK="modo:pomo,etapa:<db>,tipo:Gestión,…"` por
+  guarda su captura y la de la lista de Etapa, `-etapa.png`) y ejecuta `HUB_PICK="modo:pomo,proyecto:<nombre>,etapa:<db>,tipo:Gestión,…"` por
   `send` (no va en la build de `build.sh`). Al abrir el popover la app pide `SprintCmd('sync')` (oculta, la
   página no hace `pull()` sola). `scSprintDest.escena`: `''` = «Sin escena» elegida a propósito
   (se respeta en esa etapa), `null` = proponer (la recordada / última sesión / primera abierta). Oculta, la página recibe `window.__hubShown=false` (también
