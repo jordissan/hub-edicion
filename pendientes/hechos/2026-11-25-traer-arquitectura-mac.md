@@ -1,6 +1,6 @@
 # P5 · Traer a la Mac el cambio de GitHub en docs/arquitectura.md
 
-- **Estado:** Por hacer
+- **Estado:** Hecho
 - **Dónde se ejecuta:** Mac
 - **Creado:** 2026-11-25, desde la app (proyecto Trabajo)
 - **Resumen:** el sync marca un cambio de GitHub en `docs/arquitectura.md` que no pudo traer solo
@@ -21,3 +21,8 @@
 ## Registro
 - 2026-11-25: creado. `.sync-estado` del 24-nov 20:53 decía «Cambios de GitHub por traer a mano —
   docs/arquitectura.md».
+- 2026-11-25: hecho desde la Mac. La copia local ya tenía el bloque nuevo de §5.1 («Finalizar sin
+  bloque en marcha»); solo sobraba una línea en blanco, que impedía que el sync lo diera por igual.
+  Se quitó, `--traer` quedó «Al día» (c7fd581) y se agregó en el encabezado la nota de que el
+  contexto de negocio vive en Notion › Trabajo › 🤖 Contexto Claude, con la regla de «cuándo se
+  actualiza qué» (sin el enlace con ID, porque el repo es público). Publicado en 9a1a236.
