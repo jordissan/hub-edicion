@@ -2,8 +2,9 @@
 //  · un reloj en la barra de menús (tiempo que llevas / descanso) que abre un popover con pestañas
 //    (Sprint · Ventana y barra · Detector · Sonidos · Atajos): terminar, cerrar escena/etapa,
 //    descartar o empezar el siguiente bloque, finalizar la escena o la etapa elegidas sin bloque en
-//    marcha (si al terminar no la cerraste; con fecha de fin = su última sesión), y elegir la
-//    etapa, la escena, el tipo y el esquema del próximo bloque, como en la ventana. Elegir no lo cierra; se cierra con clic fuera o Esc;
+//    marcha (si al terminar no la cerraste; con fecha de fin = su última sesión), y elegir el
+//    proyecto, la etapa, la escena, el tipo y el esquema del próximo bloque, como en la ventana
+//    (Proyecto filtra Etapa: solo salen las etapas de ese proyecto). Elegir no lo cierra; se cierra con clic fuera o Esc;
 //  · la tarjeta del sprint en una ventanita propia que se arrastra desde cualquier zona sin
 //    controles, siempre encima (también sobre Premiere/Resolve en pantalla completa) o fijada
 //    al escritorio como un widget.
@@ -253,7 +254,7 @@ enum Pal {
 final class PopModel: ObservableObject {
     @Published var tick = 0                 // App lo sube cada segundo (y tras cada cambio) con el popover abierto
     @Published var tab = PopTab.sprint
-    @Published var sub: String? = nil       // lista de Etapa / Escena abierta al lado del popover
+    @Published var sub: String? = nil       // lista de Proyecto / Etapa / Escena abierta al lado del popover
     weak var app: App?
     func bump() { tick &+= 1 }
 }
@@ -644,7 +645,7 @@ struct SprintTab: View {
     }
 }
 
-/// Etapa y Escena abren su lista al lado del popover con solo pasar el cursor (como un submenú);
+/// Proyecto, Etapa y Escena abren su lista al lado del popover con solo pasar el cursor (como un submenú);
 /// Tipo y Esquema se eligen con chips ahí mismo.
 struct PickerRow: View {
     @ObservedObject var m: PopModel
@@ -670,7 +671,7 @@ struct PickerRow: View {
         } else {
             let open = m.sub == k
             HStack(spacing: 8) {
-                Text(title).font(.system(size: 11.5)).foregroundColor(Pal.mut).frame(width: 48, alignment: .leading)
+                Text(title).font(.system(size: 11.5)).foregroundColor(Pal.mut).frame(width: 54, alignment: .leading)
                 Text(app.pickLabel(k)).font(.system(size: 12.5, weight: .medium)).lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: 4)
                 Image(systemName: "chevron.right").font(.system(size: 10, weight: .semibold))
@@ -1723,23 +1724,52 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
     typealias Opt = (v: String, t: String, g: String)
     /// tipo → (lista, "¿se puede?" que manda la página, título)
     var PICKS: [String: (list: String, flag: String, title: String)] {
-        ["etapa": ("etapas", "pick", "Etapa"), "escena": ("escenas", "pick", "Escena"),
+        ["proyecto": ("etapas", "pick", "Proyecto"),
+         "etapa": ("etapas", "pick", "Etapa"), "escena": ("escenas", "pick", "Escena"),
          "tipo": ("tipos", "pick", "Tipo"), "modo": ("modos", "pickModo", "Esquema")]
     }
     func opts(_ k: String) -> [Opt] {
-        (pick[PICKS[k]?.list ?? ""] as? [[String: Any]] ?? []).map { (str($0["v"]), str($0["t"]), str($0["g"])) }
+        if k == "proyecto" { return projects() }
+        if k == "etapa", byProject {      // solo las etapas del proyecto elegido, sin repetir su nombre
+            let p = curProject()
+            return etapasAll().filter { $0.p == p }.map { ($0.v, $0.s.isEmpty ? $0.t : $0.s, $0.g) }
+        }
+        return (pick[PICKS[k]?.list ?? ""] as? [[String: Any]] ?? []).map { (str($0["v"]), str($0["t"]), str($0["g"])) }
+    }
+
+    /// Proyecto ▸ (boda o proyecto freelance): la página manda en cada etapa su proyecto (p) y su
+    /// nombre corto (s). Los proyectos salen en el orden de sus etapas (los que tienen una en curso
+    /// primero, el último trabajado arriba) y con el grupo de su primera etapa. El proyecto elegido
+    /// es el de la etapa elegida; elegir otro elige su primera etapa (la última trabajada si hay
+    /// una en curso, si no la siguiente por empezar). Con un solo proyecto la fila no sale.
+    typealias Etp = (v: String, t: String, g: String, p: String, s: String)
+    func etapasAll() -> [Etp] {
+        (pick["etapas"] as? [[String: Any]] ?? []).map { (str($0["v"]), str($0["t"]), str($0["g"]), str($0["p"]), str($0["s"])) }
+    }
+    /// La página es de antes (sus etapas no traen proyecto): lista única, como antes.
+    var byProject: Bool { let e = etapasAll(); return !e.isEmpty && e.allSatisfy { !$0.p.isEmpty } }
+    func projects() -> [Opt] {
+        guard byProject else { return [] }
+        var seen = Set<String>(), r: [Opt] = []
+        for x in etapasAll() where seen.insert(x.p).inserted { r.append((x.p, x.p, x.g)) }
+        return r
+    }
+    func curProject() -> String {
+        let e = etapasAll(), cur = curPick("etapa")
+        return e.first(where: { $0.v == cur })?.p ?? e.first?.p ?? ""
     }
     func can(_ k: String) -> Bool {
         guard let p = PICKS[k], sprint.run == nil, pick[p.flag] as? Bool == true, !opts(k).isEmpty else { return false }
+        if k == "proyecto" { return opts(k).count > 1 }
         return k != "modo" || sprint.brk == nil
     }
     /// Qué se puede elegir ahora (el esquema no se cambia en el descanso, como en la ventana).
     func pickKinds() -> [String] {
         guard sprint.online, sprint.run == nil else { return [] }
-        let ks = sprint.brk != nil ? ["etapa", "escena", "tipo"] : ["etapa", "escena", "tipo", "modo"]
+        let ks = sprint.brk != nil ? ["proyecto", "etapa", "escena", "tipo"] : ["proyecto", "etapa", "escena", "tipo", "modo"]
         return ks.filter { can($0) && ($0 == "modo" || can("etapa")) }
     }
-    func curPick(_ k: String) -> String { pickOverride[k] ?? str(pick[k]) }
+    func curPick(_ k: String) -> String { k == "proyecto" ? curProject() : pickOverride[k] ?? str(pick[k]) }
     func pickLabel(_ k: String) -> String {
         let cur = curPick(k)
         return cur.isEmpty && k == "escena" ? "Ninguna" : opts(k).first(where: { $0.v == cur })?.t ?? "—"
@@ -1748,6 +1778,11 @@ final class App: NSObject, NSApplicationDelegate, WKScriptMessageHandler, WKNavi
     /// Elegir en Etapa / Escena / Tipo / Esquema: la marca se mueve ya y vuelve a su sitio si la
     /// página no lo acepta.
     func choose(_ k: String, _ v: String) {
+        if k == "proyecto" {           // cambiar de proyecto = elegir su primera etapa (la página no sabe de proyectos)
+            guard v != curProject(), let first = etapasAll().first(where: { $0.p == v }) else { return }
+            choose("etapa", first.v)
+            return
+        }
         pickOverride[k] = v
         model.bump()
         send("\(k):\(v)") { [weak self] r in
@@ -2082,6 +2117,11 @@ extension App {
             }
             if c.hasPrefix("det-idle:") { detFakeIdle = Double(c.dropFirst(9)); next(); return }
             if c == "det-mute" { detMute(); next(); return }
+            if c.hasPrefix("proyecto:") {    // como elegir en Proyecto ▸ (choose → etapa:<db> → SprintCmd)
+                choose("proyecto", String(c.dropFirst(9)))
+                DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { next() }
+                return
+            }
             if c == "red" {                   // como si NWPathMonitor viera volver la red
                 netUp = false; flushOutbox()
                 print("red → POST /api/outbox/flush"); fflush(stdout)
