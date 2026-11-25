@@ -3,6 +3,12 @@
 > Referencia única para **mantener** el proyecto. La guía de uso está en el
 > [`README.md`](guia-de-uso.md) de la raíz; la operación de la nube, en [`cloud/README.md`](../README.md).
 > Este archivo vive en `docs/` y `sync-cloud.sh` lo copia a `cloud/docs/` (queda versionado en git).
+>
+> **Contexto de negocio** (estado, decisiones y el mapa de cómo se conectan Notion, la Mac, GitHub
+> y el dashboard): Notion › Trabajo › 🤖 *Contexto Claude* (busca «Contexto Claude»). Aquí solo va
+> lo técnico. Cuándo se actualiza qué: un cambio en cómo funciona algo → este archivo + una línea
+> en el Registro de esa página; una decisión de negocio → solo la página; una idea para después →
+> `pendientes/` (detalle en el `CLAUDE.md` del repo).
 
 ---
 
