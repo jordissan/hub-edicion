@@ -3667,7 +3667,10 @@ const Sprint=EMBED?{update(){}}:(function(){
     // listas de etapa y escena tal cual están en la ventana (grupo = optgroup); solo se eligen sin bloque en marcha
     const opts=sel=>sel.hidden?[]:[...sel.options].map(o=>({v:o.value, t:o.text, g:o.parentNode.tagName==='OPTGROUP'?o.parentNode.label:''}));
     const st={k:'state', dest:t?[t.etapa,sc&&sc.nm].filter(Boolean).join(' · '):'', note:txt(clsMsg||note), busy,
-      pick:!run&&targets.length>0, etapas:opts(selT), etapa:selT.value, escenas:opts(selE), escena:selE.hidden?null:selE.value,
+      // cada etapa lleva su proyecto (p: la boda, o «Proyecto · Cliente» si es freelance) y su nombre corto (s),
+      // para que el popover elija primero el proyecto y luego solo sus etapas
+      pick:!run&&targets.length>0, etapas:opts(selT).map(o=>{ const x=targets.find(t=>t.db===o.v); return x?{...o,
+        p:x.otro?[x.etapa,x.wed].filter(Boolean).join(' · '):x.wed, s:x.etapa+(x.corr&&x.ronda?' · ronda '+x.ronda:'')}:o; }), etapa:selT.value, escenas:opts(selE), escena:selE.hidden?null:selE.value,
       // tipo de sesión, como sus dos botones (se elige en reposo y en descanso, nunca con el bloque en marcha)
       tipos:[...seg.querySelectorAll('button')].map(b=>({v:b.dataset.t, t:b.textContent.trim(), g:''})), tipo,
       // esquemas, como sus botones (nombre + tiempos); solo en reposo, igual que en la ventana
