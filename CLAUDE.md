@@ -8,7 +8,8 @@ Cada cosa vive en un solo lugar; los demás apuntan a él, no la copian.
 
 | Pieza | Qué guarda | Quién la cambia |
 |---|---|---|
-| Notion › Trabajo › **🤖 Contexto Claude** (busca «Contexto Claude») | Negocio, estado, decisiones y el mapa del sistema. Puerta de entrada para cualquier proyecto de Claude. | El proyecto «Trabajo» de Claude |
+| Notion › Hola 👋 › **📘 Manual de operación** (busca «Manual de operación») | Las reglas comunes a todos los proyectos de Claude: qué leer al empezar, dónde va cada dato y cómo documentar al terminar. Se lee primero. | Cualquier proyecto de Claude, cuando Jordi cambia una regla |
+| Notion › Trabajo › **🤖 Contexto Claude** (busca «Contexto Claude») | Negocio, estado, decisiones y el mapa del sistema. Puerta de entrada al área Trabajo. | El proyecto «Trabajo» de Claude |
 | Bases de Notion (Trabajo, Sesiones por boda/etapa) | Los datos. El Hub solo los lee y registra sesiones. | Jordi, el sprint y los widgets |
 | Este repo (público) | Lo técnico: código, `CLAUDE.md`, `docs/`, `pendientes/`. Nada privado. | Sesiones de Claude (PR o `main`, según las reglas de abajo) |
 | `~/HubEdicion` en la Mac | El sistema vivo: datos reales, llaves, servidor local, app y widgets. | Jordi y Claude Code en la Mac |
@@ -20,8 +21,8 @@ Cada cosa vive en un solo lugar; los demás apuntan a él, no la copian.
 - Una decisión de negocio → solo la página de Notion.
 - Una idea para después → un pendiente en `pendientes/`.
 - Un dato → solo su base de Notion.
-- Desde otro proyecto de Claude (Finanzas, Iglesia, Personal): se lee la página de Notion y este repo; no se
-  editan.
+- Desde otro proyecto de Claude (Finanzas, Personal): se sigue el Manual de operación (Manual → Contexto
+  Claude del área → Registro de las otras áreas). Lo técnico de este repo sigue las reglas de abajo.
 
 ## Mapa del repo
 - Dashboard desplegado: `index.html`, `server.py`, `fonts/`, `functions/`, `embed/`, `publish.py`.
