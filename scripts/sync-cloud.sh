@@ -38,6 +38,7 @@ ARCHIVOS=(
   "docs/arquitectura.md:docs/arquitectura.md"
   "docs/arquitectura-unificada-analisis.md:docs/arquitectura-unificada-analisis.md"
   "docs/atajo-modo-oscuro.md:docs/atajo-modo-oscuro.md"
+  "docs/diseno.md:docs/diseno.md"
   "docs/migracion-swiftui.md:docs/migracion-swiftui.md"
   "docs/solo-en-la-mac.md:docs/solo-en-la-mac.md"
   "docs/propuestas/auditoria-diseno-2026-11-10.md:docs/propuestas/auditoria-diseno-2026-11-10.md"

@@ -1,7 +1,8 @@
 # Hub de Edición (cloud)
 
-Contexto general: `README.md` (operar la nube), `docs/arquitectura.md` (referencia técnica) y
-`docs/guia-de-uso.md` (guía de uso, el README de la Mac).
+Contexto general: `README.md` (operar la nube), `docs/arquitectura.md` (referencia técnica),
+`docs/guia-de-uso.md` (guía de uso, el README de la Mac) y `docs/diseno.md` (criterios de diseño
+de Jordi y lo descartado: léelo antes de tocar la interfaz).
 
 ## Dónde vive cada cosa (léelo primero)
 Cada cosa vive en un solo lugar; los demás apuntan a él, no la copian.

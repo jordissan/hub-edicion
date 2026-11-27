@@ -10,3 +10,4 @@ Protocolo: [`README.md`](README.md). Los terminados están en [`hechos/`](hechos
 | P4 | [Cerrar la información sensible del repo público](2026-11-23-privacidad-repo.md) | Nube + Mac | En curso (solo menores) |
 | P5 | [Traer a la Mac el cambio de GitHub en `docs/arquitectura.md`](hechos/2026-11-25-traer-arquitectura-mac.md) | Mac | Hecho |
 | P6 | [Limpiar los restos del sync GitHub → Mac](2026-11-27-limpieza-sync-retirado.md) | Mac | Por hacer |
+| P7 | [Cabos sueltos al cerrar la conversación vieja del Hub](2026-11-27-cabos-sueltos-cierre.md) | Mac + iPhone | Por hacer |

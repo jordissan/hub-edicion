@@ -115,6 +115,7 @@ stageProgress, stageHours, scene}, weddings[{name, icon, progress, done, live, w
 | `is_session_log_db()` | Una DB es de sesiones solo si tiene fechas **Inicio y Fin**. ⚠️ "Tiempo total" también titula su columna "Sesión". |
 | `adopt_archive_ids()` | **Identidad por ID de página** (20-nov-2026). Las entradas viejas sin `id` lo toman de la página con su mismo nombre o, si se renombró, de la única página sin entrada con el mismo inicio de proyecto (el fin, que se mueve, solo desempata). Si el título cambia en Notion, la entrada toma el nombre nuevo y guarda el viejo en `aka`. Dos entradas con el mismo ID se quedan en una. No corre en modo degradado. |
 | `merge_archive` / `backfill_ghosts` | Upsert del archivo **por ID de página** (nombre solo para entradas sin ID) con las finalizadas del tablero; reconstruye desde Notion (máx. `BACKFILL_MAX` = 2 por corrida) las entradas sin `ghost` o con `GHOST_VERSION` vieja. Subir la versión fuerza el re-backfill. |
+| `wedding_entregables()` / `wedding_days()` | **Qué se entrega y cuántos días tiene la boda** (20 y 22-nov-2026). «Entregables» de Trabajo se normaliza a `teaser` / `dct` / `completo` (`entOf` en el front); vacío = como antes. Días = 1 + preboda (escena «Día 1…» o columna Día = Preboda → `_dia_extra` la marca «Día 1») + tornaboda (Día = Tornaboda → «Día 3»). Tornaboda sin preboda = 2 días (decidido con Jordi). Solo teaser = siempre 1 día. El front usa la misma regla (`daysOf`) y, si los entregables de las dos bodas comparadas difieren, la Carrera lo dice en vez de comparar días. |
 | `build_summary()` | Resumen para widgets (§2). |
 | `create_session()` / `set_in_progress()` | Registro de sprints (§5). |
 
@@ -752,6 +753,24 @@ ante cualquier `git push`, aunque sea a mano: sin eso, nada sale del clon.
   limpieza); campos de < 16 px hacen zoom al enfocar; la caché de la PWA solo se va matando la app.
 - **Panel de preview de Claude Code**: si está oculto no corre frames (IntersectionObserver,
   rAF y timers se frenan) — una captura fuerza un frame. Las transiciones no avanzan durante un eval.
+  Para probar con datos reales, navegar el panel a `localhost:4599` (el estático trae el snapshot de
+  ejemplo). Para el estado final de una transición: `transition:'none'`, aplicar la clase, leer y
+  restaurar. Para hover en gráficas, despachar un `MouseEvent('mouseover')` real en el punto medio del
+  segmento (`getPointAtLength` + `getScreenCTM`). Tras cambiar `index.html`, el panel puede servir la
+  PWA vieja: desregistrar el service worker, `caches.delete` y recargar con `?v=`. La primera captura
+  tras un clic suele mostrar el estado anterior: tomar dos.
+- **Rendimiento (29 y 30-oct-2026)**: nada grande animado en bucle; nunca animar colores ni
+  `@property` (fundido de opacidad entre dos capas); grano sin `mix-blend-mode`; halos SVG
+  (`filter:url()`) en un solo grupo y apagados mientras la geometría se anima (un halo por segmento
+  del donut hacía que cambiar de proyecto tardara ~1,9 s). Medir con Chromium sin interfaz y
+  `--disable-gpu` (ráster por CPU, como WebKit): el panel oculto va a 1 fps y no sirve.
+- **Foco de gráficas**: al resaltar un segmento, los demás bajan a opacidad ~.4, no menos: más abajo
+  los colores del donut se confunden entre sí. El texto encimado sobre una gráfica lleva
+  `pointer-events:none` o tapa el hover.
+- **Notion no refresca solo los cambios por API**: al cerrar una escena desde el sprint, Notion la
+  muestra hasta pulsar ⌘R. No hay forma oficial de forzarlo; Jordi eligió quedarse con ⌘R (3-nov-2026).
+  Opciones ya evaluadas: que la app pulse ⌘R (pide Accesibilidad, que se pierde en cada recompilación
+  por la firma ad-hoc) o mostrar `Estado (Select)` en vez de la fórmula. Abrir `notion://` no recarga.
 - **Barra de título de la app del Mac (Safari, macOS 26+)**: la franja de ~32 pt de arriba
   (semáforos) la dibuja macOS: es translúcida, el contenido pasa por debajo y la oscurece
   ~80 % con gris `#101012`. No se controla desde la página (ni `theme-color` ni safe-area la
