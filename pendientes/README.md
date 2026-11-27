@@ -30,8 +30,9 @@ pendientes/
    - En la nube: `git fetch origin main` y leer de `origin/main`.
 2. **Dónde viven:** siempre en la rama `main`, carpeta `pendientes/`. Para que el sistema funcione,
    Jordi autoriza que cualquier sesión haga commit y push a `main` **solo de cambios dentro de
-   `pendientes/`**. Cualquier otro archivo sigue el camino normal: en la Mac con `sync-cloud.sh`,
-   y en la nube en la rama de la sesión.
+   `pendientes/`**. Cualquier otro archivo se edita en la Mac (local primero) y sale con
+   `sync-cloud.sh --publicar`. En la Mac, los pendientes se editan en `~/HubEdicion/cloud/pendientes/`
+   y salen con esa misma publicación.
    - Desde una sesión en la nube sin checkout de `main`: crear un worktree temporal de
      `origin/main`, hacer commit solo en `pendientes/`, `git push origin HEAD:main` y borrar el
      worktree. Si el push falla por cambios nuevos: `pull --rebase` y reintentar.

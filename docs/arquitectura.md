@@ -696,9 +696,10 @@ Todo respeta `prefers-reduced-motion`. Animaciones solo con transform/opacity.
 2. Verifica con datos reales en <http://localhost:4599> (en Claude Code: configuración
    `hub-vivo` de `.claude/launch.json`).
 3. `./sync-cloud.sh` → revisa el diff → `./sync-cloud.sh --publicar "mensaje"`
-   (commit + `pull --rebase` + push, porque otra sesión pudo subir pendientes a `main`; Pages
-   despliega en 1-2 min; si cambió `server.py` republica los datos).
-4. `publish.py`, `functions/` y el workflow se editan directamente en `cloud/`.
+   (commit + `pull --rebase` + push; Pages despliega en 1-2 min; si cambió `server.py` republica
+   los datos).
+4. `publish.py`, `functions/`, el workflow, `pendientes/`, `CLAUDE.md` y el `README.md` del repo se
+   editan directamente en `cloud/` y salen con la misma publicación.
 5. Actualiza la documentación en la misma pasada si cambió comportamiento o datos.
 6. Para ver la versión nueva **del diseño** en el iPhone: **matar la PWA** desde el app switcher y
    reabrir (no hay service worker: es la caché de WebKit de la app). Los **datos** no lo necesitan:
@@ -724,15 +725,15 @@ Un nombre nuevo que se cuele se añade en `.privacidad.json` → `extra`. La lis
 sube está en `ARCHIVOS` de `sync-cloud.sh`; lo que no sube y por qué, en `docs/solo-en-la-mac.md`.
 Un archivo nuevo que deba subir se añade a esa lista.
 
-**Sync automático GitHub → Mac (21-nov-2026).** El LaunchAgent `com.jordi.hub-edicion.sync`
-corre `./sync-cloud.sh --traer` al iniciar sesión y cada 15 min (y el hook `SessionStart` de
-Claude Code al abrir una sesión). Pone `cloud/` al día solo con fast-forward; si `cloud/` tiene
-cambios sin commit, commits sin subir o divergió, avisa y no toca nada. Lo que cambió en GitHub de
-un archivo que nace en la Mac lo trae a `~/HubEdicion` **solo si la copia local sigue intacta**
-desde la última sincronización; si no, lo lista con una notificación y `sync-cloud.sh` **no
-publica** hasta que se traiga a mano (así una publicación no deshace en silencio un PR mergeado).
-`--forzar` publica de todos modos y pisa lo de GitHub. La última corrida queda en `.sync-estado`,
-el último commit reflejado en `.sync-base`, y la bitácora en `~/Library/Logs/hub-edicion-sync.log`.
+**Local primero (27-nov-2026).** `~/HubEdicion` es la fuente de verdad: todo se edita y se prueba
+aquí, y `./sync-cloud.sh --publicar` lo lleva a GitHub (y de ahí a Cloudflare). GitHub solo recibe.
+Del 21 al 27-nov hubo un sync al revés (GitHub → Mac: `--traer`, el LaunchAgent
+`com.jordi.hub-edicion.sync` y un hook `SessionStart`) para trabajar desde sesiones en la nube; se
+retiró y sus piezas quedaron en `.retirado/`. Lo que quedó de esa etapa es un **freno**: antes de
+copiar, `sync-cloud.sh` pone `cloud/` al día con GitHub (solo fast-forward) y, si GitHub trae
+cambios de un archivo que nace en la Mac y no salió de aquí, se detiene en lugar de pisarlo
+(`--forzar` lo pisa). Además, `cloud/.git/hooks/pre-push` corre `privacidad.py revisar cloud`
+ante cualquier `git push`, aunque sea a mano: sin eso, nada sale del clon.
 
 ## 9. Trampas conocidas
 

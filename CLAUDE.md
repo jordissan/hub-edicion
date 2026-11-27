@@ -11,12 +11,12 @@ Cada cosa vive en un solo lugar; los demás apuntan a él, no la copian.
 | Notion › Hola 👋 › **📘 Manual de operación** (busca «Manual de operación») | Las reglas comunes a todos los proyectos de Claude: qué leer al empezar, dónde va cada dato y cómo documentar al terminar. Se lee primero. | Cualquier proyecto de Claude, cuando Jordi cambia una regla |
 | Notion › Trabajo › **🤖 Contexto Claude** (busca «Contexto Claude») | Negocio, estado, decisiones y el mapa del sistema. Puerta de entrada al área Trabajo. | El proyecto «Trabajo» de Claude |
 | Bases de Notion (Trabajo, Sesiones por boda/etapa) | Los datos. El Hub solo los lee y registra sesiones. | Jordi, el sprint y los widgets |
-| Este repo (público) | Lo técnico: código, `CLAUDE.md`, `docs/`, `pendientes/`. Nada privado. | Sesiones de Claude (PR o `main`, según las reglas de abajo) |
-| `~/HubEdicion` en la Mac | El sistema vivo: datos reales, llaves, servidor local, app y widgets. | Jordi y Claude Code en la Mac |
+| Este repo (público) | Lo técnico: código, `CLAUDE.md`, `docs/`, `pendientes/`. Nada privado. | Solo `sync-cloud.sh --publicar` desde la Mac |
+| `~/HubEdicion` en la Mac | La fuente de verdad: datos reales, llaves, servidor local, app y widgets. Se trabaja aquí primero. | Jordi y Claude Code en la Mac |
 | Cloudflare Pages (`hub-edicion.pages.dev`) | Solo muestra: lo publica GitHub Actions. Notion lo embebe y los widgets lo leen. | Nadie a mano |
 
 **Cuándo se actualiza qué:**
-- Un cambio que altera cómo funciona algo (PR mergeado o publicación desde la Mac) → `docs/arquitectura.md`
+- Un cambio que altera cómo funciona algo (publicación desde la Mac) → `docs/arquitectura.md`
   en la Mac y una línea en el Registro de la página de Notion.
 - Una decisión de negocio → solo la página de Notion.
 - Una idea para después → un pendiente en `pendientes/`.
@@ -34,34 +34,33 @@ Cada cosa vive en un solo lugar; los demás apuntan a él, no la copian.
 - **El repo es público:** nada de llaves, IDs, correos, nombres de parejas o clientes, ni precios.
   `privacidad.py revisar` lo vigila antes de cada publicación.
 
-## Las dos carpetas de la Mac
-- `~/HubEdicion/` es el sistema vivo: tiene los datos reales y lo que corre (servidor, app, widgets).
-  **No es un clon de git.**
+## Las dos carpetas de la Mac (local primero)
+- `~/HubEdicion/` es el sistema vivo y **la fuente de verdad**: tiene los datos reales y lo que corre
+  (servidor, app, widgets). Todo se edita y se prueba ahí primero. **No es un clon de git.**
 - `~/HubEdicion/cloud/` es el clon de este repo. `sync-cloud.sh` lleva lo local hacia aquí con
-  limpieza de privacidad.
-- **Sync automático GitHub → Mac:** el LaunchAgent `com.jordi.hub-edicion.sync` corre
-  `sync-cloud.sh --traer` al iniciar sesión y cada 15 min. Pone `cloud/` al día (solo fast-forward)
-  y trae a `~/HubEdicion` lo que cambió en GitHub, pero solo si la copia local no se tocó desde la
-  última sincronización. Si `cloud/` tiene cambios a mano, commits sin subir o divergió, avisa con
-  una notificación y no toca nada. Estado de la última corrida: `~/HubEdicion/.sync-estado`.
-- Lo que no puede traer solo (la copia local también cambió, o el repo lleva nombres de ejemplo,
-  como los `.md`) lo avisa, y `sync-cloud.sh` **no publica** hasta que se pase a mano; así un PR
-  mergeado nunca se deshace en silencio. `--forzar` pisa lo de GitHub con lo local.
-- Nunca copies a ciegas del repo a `~/HubEdicion/`: los `.md`, la app y los widgets del repo pueden
-  llevar nombres de ejemplo en lugar de los reales.
+  limpieza de privacidad; GitHub y Cloudflare solo reciben.
+- **Freno:** antes de copiar, `sync-cloud.sh` pone `cloud/` al día con GitHub (solo fast-forward). Si
+  GitHub trae cambios de un archivo que nace en la Mac y no salió de ahí, se detiene en lugar de
+  pisarlos; `--forzar` los pisa con lo local.
+- **Candado:** `cloud/.git/hooks/pre-push` corre `privacidad.py revisar` ante cualquier push.
+- Nunca copies a ciegas del repo a `~/HubEdicion/`: los `.md`, la app y los widgets del repo llevan
+  nombres de ejemplo en lugar de los reales.
+- Del 21 al 27-nov-2026 hubo un sync al revés (GitHub → Mac, `--traer`) para trabajar desde la nube.
+  Se retiró; detalle en `docs/arquitectura.md` §8.
 
 ## Flujo de trabajo (reglas)
-1. **Primero, lo último de GitHub.** En la nube: `git fetch origin main`. En la Mac:
-   `~/HubEdicion/sync-cloud.sh --traer` (en Claude Code lo corre solo un hook al abrir la sesión).
-   Si avisa de cambios locales sin subir, divergencia o archivos por traer a mano,
-   **detente y pregunta**; no fuerces nada.
-2. **Directo a `main`** (commit claro en español): documentación, `pendientes/`, `CLAUDE.md`,
-   `README.md`, `.gitignore`.
-3. **Por PR** para que Jordi lo revise, **sin merge sin su ok**: el dashboard (`index.html`,
-   `server.py`, `functions/`, `publish.py`, el workflow), los widgets (`widgets/`), la app de la Mac
-   (`mac/`) y las herramientas de `scripts/`.
-4. Al abrir o cerrar un pendiente, actualiza `pendientes/INDICE.md`.
-5. Nunca subas secretos (`.env`, tokens, credenciales), medios pesados ni bibliotecas de Final Cut.
+1. **Se trabaja en la Mac**, con Claude Code en `~/HubEdicion`. Antes de empezar, `git -C cloud status`
+   debe estar limpio y en `main`; si no, **detente y pregunta**.
+2. Lo que nace en la Mac (`index.html`, `server.py`, `docs/`, `mac/`, `widgets/`, las herramientas de
+   la raíz) se edita en `~/HubEdicion`, se prueba con datos reales (`http://localhost:4599`, la app o
+   los widgets) y se publica con `./sync-cloud.sh --publicar "mensaje"` cuando Jordi da el ok.
+3. Lo que vive solo en el repo (`README.md`, `CLAUDE.md`, `pendientes/`, `publish.py`, `functions/`,
+   `embed/`, `.github/`, `.gitignore`) se edita en `~/HubEdicion/cloud/` y sale con la misma
+   publicación (commit claro en español).
+4. No se edita en GitHub ni en sesiones en la nube; si pasa con un archivo que nace en la Mac, el freno
+   detiene la siguiente publicación. La única excepción son los pendientes (ver `pendientes/README.md`).
+5. Al abrir o cerrar un pendiente, actualiza `pendientes/INDICE.md`.
+6. Nunca subas secretos (`.env`, tokens, credenciales), medios pesados ni bibliotecas de Final Cut.
 
 ## Diagnóstico (no hay pruebas automáticas)
 Antes de dar un cambio por bueno:
@@ -82,7 +81,7 @@ print("index.html: JS sin errores de sintaxis")
 EOF
 ```
 
-Después de un merge a `main`, revisa la corrida de «Publicar dashboard» (Actions) y el deploy de
+Después de publicar, revisa la corrida de «Publicar dashboard» (Actions) y el deploy de
 Cloudflare Pages.
 
 ## Qué solo se prueba en la Mac
